@@ -865,7 +865,7 @@
         qrCurrentPayload=null;
         qrLastFailureAtMs=Date.now();
         const code=String(err?.message||'unknown_error');
-        const reasons={qr_library_unavailable:'ไม่สามารถโหลดตัวสร้าง QR ได้ กรุณาตรวจสอบอินเทอร์เน็ต',invalid_request:'เซิร์ฟเวอร์ LINE ยังไม่รองรับคำสั่งสร้าง QR กรุณาตรวจเวอร์ชัน line-auth',invalid_qr_expiry:'เวลาของ QR ไม่ถูกต้อง กรุณาลองใหม่',server_not_configured:'เซิร์ฟเวอร์ยังไม่ได้ตั้งค่า QR_SIGNING_SECRET',origin_not_allowed:'การตั้งค่า ALLOWED_ORIGIN ไม่ตรงกับเว็บไซต์',invalid_line_token:'LINE หมดอายุการยืนยันตัวตน กรุณาปิดแล้วเปิดใหม่',line_not_bound:'บัญชี LINE ยังไม่ได้ผูกกับรหัสพนักงาน',already_checked_in:'เช็คอินรอบนี้แล้ว',outside_hours:'ขณะนี้อยู่นอกเวลาเช็คอิน',database_error:'ฐานข้อมูลตอบกลับผิดพลาด'};
+        const reasons={qr_library_unavailable:'ไม่สามารถโหลดตัวสร้าง QR ได้ กรุณาตรวจสอบอินเทอร์เน็ต',invalid_request:'ข้อมูลคำขอไม่ถูกต้อง กรุณาตรวจเวอร์ชันเว็บไซต์',invalid_action:'คำสั่งสร้าง QR ไม่รองรับ กรุณาอัปเดต line-auth',missing_or_invalid_id_token:'LINE ไม่ส่งข้อมูลยืนยันตัวตน กรุณาปิดแล้วเปิดบัตรใหม่',internal_error:'เซิร์ฟเวอร์ขัดข้อง กรุณาตรวจ Logs ของ line-auth',invalid_qr_expiry:'เวลาของ QR ไม่ถูกต้อง กรุณาลองใหม่',server_not_configured:'เซิร์ฟเวอร์ยังไม่ได้ตั้งค่า QR_SIGNING_SECRET',origin_not_allowed:'การตั้งค่า ALLOWED_ORIGIN ไม่ตรงกับเว็บไซต์',invalid_line_token:'LINE หมดอายุการยืนยันตัวตน กรุณาปิดแล้วเปิดใหม่',line_not_bound:'บัญชี LINE ยังไม่ได้ผูกกับรหัสพนักงาน',already_checked_in:'เช็คอินรอบนี้แล้ว',outside_hours:'ขณะนี้อยู่นอกเวลาเช็คอิน',database_error:'ฐานข้อมูลตอบกลับผิดพลาด'};
         qrLastFailureMessage=reasons[code]||'สร้าง QR ไม่สำเร็จ ('+code+')';
         container.textContent=qrLastFailureMessage+' — กรุณาปิด QR แล้วเปิดใหม่';
         updateTimerUI(null);
@@ -877,7 +877,7 @@
       container.replaceChildren();
       const expanded=document.getElementById('qrPassModal').classList.contains('smart-qr-expanded');
       const qrSize=expanded?Math.max(120,Math.min(340,window.innerWidth-56,Math.max(160,window.innerHeight-440))):Math.max(156,Math.min(272,window.innerWidth-104));
-      if (typeof window.QRCode !== 'function') throw new Error('qr_library_unavailable');
+      if (typeof window.QRCode !== 'function') { container.textContent='โหลดตัวสร้าง QR ไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ต'; throw new Error('qr_library_unavailable'); }
       new QRCode(container,{text:qrCurrentPayload,width:qrSize,height:qrSize,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
       for(const el of container.querySelectorAll('canvas,img')){el.style.width=qrSize+'px';el.style.height=qrSize+'px';}
     }
@@ -1222,8 +1222,11 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, idToken: token, employeeCode, enrollmentCode })
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'LINE authentication failed');
+      const data = await response.json().catch(() => ({error:'invalid_server_response'}));
+      if (!response.ok) {
+        console.warn('line-auth request failed', {action, status: response.status, code: data.error || 'unknown'});
+        throw new Error(data.error || ('http_' + response.status));
+      }
       return data;
     }
     // Invitation is visible immediately inside LINE. Authentication happens silently.
