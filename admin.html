@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>VIP Party Connect Admin - Portal</title>
   <link rel="icon" type="image/png" href="calendar.png">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -41,6 +41,12 @@
     }
     .animate-shake { animation: shake 0.35s ease-in-out; }
 
+    /* PIN screen: fixed within the visual viewport; no accidental scroll or touch zoom. */
+    #pinLockModal { height: 100dvh; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; }
+    #pinCard { max-height: calc(100dvh - 20px); overflow: hidden; padding: clamp(12px, 3vh, 28px); }
+    #pinCard button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+    #pinCard .pin-keypad button { width: clamp(48px, 7.7vh, 64px); height: clamp(48px, 7.7vh, 64px); }
+    @media (max-height: 710px) { #pinCard .pin-keypad { gap: 8px; } #pinCard { padding: 12px; } }
     /* แก้ปัญหา Sidebar พับกระตุก: ใช้ Transition ควบคุมความเร็วแบบนุ่มนวล */
     #mainSidebar {
       transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -74,9 +80,10 @@
         <span id="pinDot1" class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 transition-all duration-200"></span>
         <span id="pinDot2" class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 transition-all duration-200"></span>
         <span id="pinDot3" class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 transition-all duration-200"></span>
+        <span id="pinDot4" class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 transition-all duration-200"></span>
       </div>
 
-      <div class="grid grid-cols-3 gap-3.5 w-full max-w-[260px] mb-6 select-none">
+      <div class="pin-keypad grid grid-cols-3 gap-3.5 w-full max-w-[260px] mb-6 select-none">
         <button type="button" onclick="pressPinDigit('1')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">1</button>
         <button type="button" onclick="pressPinDigit('2')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">2</button>
         <button type="button" onclick="pressPinDigit('3')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">3</button>
@@ -235,7 +242,7 @@
 
   <!-- JAVASCRIPT ควบคุมการพับ/กางแบบ Smooth ทั้งคอมและมือถือ -->
   <script>
-    const CORRECT_ADMIN_PIN = "999";
+    const CORRECT_ADMIN_PIN = "9999"; // UI gate only: NOT secure server-side authorization
     let enteredPin = "";
     const IDLE_TIMEOUT_LIMIT = 10 * 60 * 1000;
     let idleTimer = null;
@@ -319,7 +326,7 @@
 
     // PIN LOCK & IDLE TIMER
     function updatePinDotsUI() {
-      for (let i = 1; i <= 3; i++) {
+      for (let i = 1; i <= 4; i++) {
         const dot = document.getElementById(`pinDot${i}`);
         if (!dot) continue;
         if (i <= enteredPin.length) {
@@ -331,12 +338,12 @@
     }
 
     function pressPinDigit(num) {
-      if (enteredPin.length < 3) {
+      if (enteredPin.length < 4) {
         enteredPin += num;
         updatePinDotsUI();
         const errText = document.getElementById('pinErrorText');
         if (errText) errText.classList.add('hidden');
-        if (enteredPin.length === 3) setTimeout(verifyAdminPin, 150);
+        if (enteredPin.length === 4) setTimeout(verifyAdminPin, 150);
       }
     }
 

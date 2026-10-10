@@ -118,8 +118,10 @@
 
     <!-- 5. โหมดกล้องมือถือ -->
     <div id="modeCameraContainer" class="hidden space-y-4">
-      <div class="relative bg-black rounded-2xl overflow-hidden aspect-video border-2 border-purple-600/50 mx-auto max-w-md flex items-center justify-center shadow-inner">
+      <div class="relative bg-black rounded-2xl overflow-hidden aspect-square border-2 border-amber-400/80 mx-auto max-w-md flex items-center justify-center shadow-inner">
         <div id="qrReaderCamera" class="w-full"></div>
+        <div class="absolute inset-[11%] pointer-events-none border-[3px] border-white/80 rounded-2xl shadow-[0_0_0_999px_rgba(0,0,0,0.08)]"></div>
+        <div class="absolute bottom-2 left-2 right-2 text-center text-xs font-semibold text-white bg-black/65 rounded-lg py-1 pointer-events-none">เล็ง QR Code ให้อยู่ในกรอบ • สแกนต่อเนื่องอัตโนมัติ</div>
       </div>
       <div class="flex justify-center gap-3">
         <button id="startCamBtn" onclick="startMobileCamera()" class="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20">
@@ -143,7 +145,7 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let mobileCamScanner = null;
-    let currentScanMode = 'gun';
+    let currentScanMode = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'camera' : 'gun';
     let scanInProgress = false;
     let gunInputTimer = null;
     let lastScanPayload = '';
@@ -324,6 +326,7 @@
         if (updatedGuest) {
           // จังหวะที่ 1: บันทึกสำเร็จทันทีในรอบเดียว (ใช้เวลาเพียงเสี้ยววินาที)
           playBeepSound();
+          if (navigator.vibrate) navigator.vibrate(90);
           toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-emerald-950/90 text-emerald-300 border-emerald-500 shadow-lg shadow-emerald-950/50";
           toast.innerHTML = `
             <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -331,12 +334,6 @@
                 🎉 <b>เช็คอินสำเร็จ!</b>: <span class="text-base font-bold text-yellow-300">${updatedGuest.full_name}</span> (รหัส: ${updatedGuest.employee_code})<br>
                 สาขา: ${updatedGuest.branch || 'สำนักงานใหญ่'} | ${timeSession.icon} ลงเวลา${timeSession.name} (${cleanTime} น.) เรียบร้อย
               </div>
-              <button 
-                onclick="removeCheckInTimeSingle('${updatedGuest.employee_code}', '${updatedGuest.full_name}')" 
-                class="shrink-0 px-3 py-1.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-xs border border-rose-400 transition active:scale-95"
-              >
-                ↺ ลบเวลานี้ (เทสใหม่)
-              </button>
             </div>
           `;
         } else {
@@ -348,6 +345,7 @@
             .maybeSingle();
 
           if (existingGuest && existingGuest[timeSession.field]) {
+            if (navigator.vibrate) navigator.vibrate([80,60,80]);
             toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-blue-950/90 text-sky-300 border-sky-500 shadow-lg";
             toast.innerHTML = `
               <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -355,12 +353,6 @@
                   ℹ️ <b>ลงทะเบียนไปแล้ว:</b> <span class="text-base font-bold text-yellow-300">${existingGuest.full_name}</span> (รหัส: ${existingGuest.employee_code})<br>
                   ได้เช็คอิน${timeSession.name}ไปแล้วเมื่อเวลา <b>${existingGuest[timeSession.field]} น.</b>
                 </div>
-                <button 
-                  onclick="removeCheckInTimeSingle('${existingGuest.employee_code}', '${existingGuest.full_name}')" 
-                  class="shrink-0 px-3 py-1.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-xs border border-rose-400 transition active:scale-95"
-                >
-                  ↺ ลบเวลานี้ (เทสใหม่)
-                </button>
               </div>
             `;
           } else {
@@ -374,27 +366,7 @@
       }
     }
 
-    // 7. ลบเวลาเพื่อทดสอบใหม่
-    async function removeCheckInTimeSingle(empCode, name) {
-      if (!confirm(`ต้องการล้างเวลาเช็คอินของ "${name}" (รหัส ${empCode}) ทั้งหมดเพื่อทดสอบใหม่ ใช่หรือไม่?`)) return;
-
-      try {
-        const { error } = await supabaseClient
-          .from('guests')
-          .update({ morning_check_in: null, evening_check_in: null })
-          .eq('employee_code', empCode);
-
-        if (error) throw error;
-
-        const toast = document.getElementById('scanResultToast');
-        if (toast) {
-          toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-purple-950/80 text-purple-200 border-purple-600";
-          toast.textContent = `↺ ล้างเวลาของรหัส ${empCode} แล้ว สามารถนำมายิงสแกนใหม่ได้ทันที`;
-        }
-      } catch (err) {
-        alert('เกิดข้อผิดพลาด: ' + err.message);
-      }
-    }
+    // 7. การลบเวลาทดสอบถูกปิดเพื่อรักษาประวัติเช็คอิน
 
     // 8. กล้องมือถือ: เลือกกล้องหลัง, กรอบสแกนปรับตามจอ, ป้องกันเปิดซ้อน
     async function startMobileCamera() {

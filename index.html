@@ -402,6 +402,16 @@
     </div>
   </div>
 
+  <!-- แจ้งเตือนรหัสพนักงาน / LINE (แสดงเหนือแป้นตัวเลข) -->
+  <div id="employeePinAlert" class="fixed inset-0 z-[100] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-5" role="alertdialog" aria-modal="true" aria-labelledby="employeePinAlertTitle" aria-describedby="employeePinAlertMessage">
+    <div class="w-full max-w-[340px] rounded-[28px] bg-[#211322] border border-amber-500/60 shadow-2xl p-6 text-center">
+      <div class="text-4xl mb-3" aria-hidden="true">⚠️</div>
+      <h3 id="employeePinAlertTitle" class="text-xl font-bold text-amber-200 mb-3">ไม่พบรหัสพนักงานนี้</h3>
+      <p id="employeePinAlertMessage" class="text-sm text-white/90 leading-relaxed mb-6">กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ</p>
+      <button id="employeePinAlertButton" type="button" onclick="closeEmployeePinAlert()" class="w-full rounded-xl bg-amber-400 text-[#211322] font-bold py-3 text-base">กรอกรหัสใหม่</button>
+    </div>
+  </div>
+
   <!-- ================= MODAL 2: ยืนยันข้อมูลพนักงาน ================= -->
   <div id="verifyModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-[340px] rounded-3xl bg-white p-6 shadow-2xl text-slate-900 border-2 border-amber-400">
@@ -602,7 +612,26 @@
       }
     }
 
+    let employeePinChecking = false;
+    let employeePinAlertReset = true;
+
+    function showEmployeePinAlert(title, message, buttonText = 'กรอกรหัสใหม่', resetPin = true) {
+      employeePinAlertReset = resetPin;
+      document.getElementById('employeePinAlertTitle').textContent = title;
+      document.getElementById('employeePinAlertMessage').textContent = message;
+      document.getElementById('employeePinAlertButton').textContent = buttonText;
+      document.getElementById('employeePinAlert').classList.remove('hidden');
+      document.getElementById('employeePinAlertButton').focus();
+    }
+
+    function closeEmployeePinAlert() {
+      document.getElementById('employeePinAlert').classList.add('hidden');
+      if (employeePinAlertReset) { inputPin = ''; updatePinDashes(); }
+      document.getElementById('pinSearchError').classList.add('hidden');
+    }
+
     function pressPin(digit) {
+      if (employeePinChecking || !document.getElementById('employeePinAlert').classList.contains('hidden')) return;
       if (inputPin.length < 6) {
         inputPin += digit;
         updatePinDashes();
@@ -614,6 +643,7 @@
     }
 
     function backspacePin() {
+      if (employeePinChecking || !document.getElementById('employeePinAlert').classList.contains('hidden')) return;
       if (inputPin.length > 0) {
         inputPin = inputPin.slice(0, -1);
         updatePinDashes();
@@ -622,7 +652,7 @@
 
     window.addEventListener('keydown', (e) => {
       const modal = document.getElementById('pinModal');
-      if (modal && !modal.classList.contains('hidden')) {
+      if (modal && !modal.classList.contains('hidden') && document.getElementById('employeePinAlert').classList.contains('hidden')) {
         if (e.key >= '0' && e.key <= '9') {
           pressPin(e.key);
         } else if (e.key === 'Backspace') {
@@ -632,6 +662,8 @@
     });
 
     async function verifyEmployeePinFromSQL() {
+      if (employeePinChecking || inputPin.length !== 6) return;
+      employeePinChecking = true;
       const active = getActiveRound();
       if (active !== 'morning' && active !== 'evening') { closePinModal(); showTimeRestriction(active); return; }
       if (!['morning', 'evening'].includes(getActiveRound())) { closePinModal(); return; }
@@ -663,12 +695,7 @@
         if (error) throw error;
 
         if (!data) {
-          errEl.textContent = `❌ ไม่พบรหัสพนักงาน "${inputPin}" ในระบบ`;
-          errEl.classList.remove('hidden');
-          card.classList.add('animate-shake');
-          setTimeout(() => card.classList.remove('animate-shake'), 400);
-          inputPin = "";
-          updatePinDashes();
+          showEmployeePinAlert('ไม่พบรหัสพนักงานนี้', 'กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ');
           return;
         }
 
@@ -687,8 +714,20 @@
         }
 
       } catch (err) {
-        errEl.textContent = 'เกิดข้อผิดพลาด: ' + err.message;
-        errEl.classList.remove('hidden');
+        const code = String(err && err.message || '').toLowerCase();
+        if (code.includes('employee_not_found')) {
+          showEmployeePinAlert('ไม่พบรหัสพนักงานนี้', 'กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ');
+        } else if (code.includes('line_already_bound') || code.includes('employee_already_bound') || code.includes('already_bound_to_other') || code.includes('employee_bound') || code.includes('line_bound')) {
+          showEmployeePinAlert('รหัสนี้ผูกบัญชี LINE แล้ว', 'กรุณาติดต่อเจ้าหน้าที่เพื่อขอปลดการผูกบัญชี LINE', 'ตกลง');
+        } else if (code.includes('rate_limited')) {
+          showEmployeePinAlert('ลองกรอกรหัสบ่อยเกินไป', 'กรุณารอสักครู่ แล้วลองใหม่อีกครั้งค่ะ', 'ตกลง');
+        } else if (code.includes('ไม่ตรงกับบัญชี line')) {
+          showEmployeePinAlert('บัญชี LINE นี้ลงทะเบียนแล้ว', 'กรุณาใช้รหัสพนักงานที่เคยลงทะเบียน หรือติดต่อเจ้าหน้าที่', 'ตกลง');
+        } else {
+          showEmployeePinAlert('ไม่สามารถตรวจสอบรหัสได้', 'กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองใหม่อีกครั้ง หากยังไม่สำเร็จให้ติดต่อเจ้าหน้าที่', 'ลองใหม่อีกครั้ง');
+        }
+      } finally {
+        employeePinChecking = false;
       }
     }
 
@@ -829,6 +868,22 @@
       }
     }
 
+    async function pollCurrentQrCheckin(guest, round) {
+      if (qrStatusPolling || !supabaseClient || document.getElementById('qrPassModal').classList.contains('hidden')) return;
+      qrStatusPolling = true;
+      try {
+        const {data, error} = await supabaseClient.from('guests')
+          .select('employee_code,full_name,branch,morning_check_in,evening_check_in')
+          .eq('employee_code', guest.employee_code).maybeSingle();
+        if (!error && data) {
+          matchedGuest = {...matchedGuest,...data};
+          if ((round === 'morning' && data.morning_check_in) || (round === 'evening' && data.evening_check_in)) {
+            closeQrPassModal();
+            showSuccessPopup(matchedGuest, 'checkin', round === 'morning' ? 'รอบเช้า' : 'รอบเย็น');
+          }
+        }
+      } finally { qrStatusPolling = false; }
+    }
     function syncQrClock(guest, expectedRound) {
       const modal = document.getElementById('qrPassModal');
       if (!modal || modal.classList.contains('hidden')) return;
@@ -847,7 +902,29 @@
       updateTimerUI(remainingSeconds);
     }
 
-    function openQrPass(guest) {
+    // Always re-read current session state before showing a new QR.
+    // A completed round must not re-open its QR even on a second device/tab.
+    let qrStatusPolling = false;
+    async function openQrPass(guest) {
+      if (!supabaseClient || !guest) return;
+      try {
+        const {data: latest, error} = await supabaseClient.from('guests')
+          .select('employee_code,full_name,branch,morning_check_in,evening_check_in')
+          .eq('employee_code', guest.employee_code).maybeSingle();
+        if (error || !latest) throw error || new Error('not_found');
+        guest = {...guest, ...latest};
+        matchedGuest = guest;
+        const activeRound = getActiveRound();
+        if ((activeRound === 'morning' && guest.morning_check_in) ||
+            (activeRound === 'evening' && guest.evening_check_in)) {
+          closeQrPassModal();
+          alert('✅ คุณเช็คอินรอบนี้เรียบร้อยแล้ว ไม่สามารถแสดง QR รอบเดิมซ้ำได้');
+          return;
+        }
+      } catch (err) {
+        alert('ไม่สามารถตรวจสอบสถานะเช็คอินได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+        return;
+      }
       if (!lineReady || !guest || guest.employee_code !== lineEmployeeCode) return;
       const round = refreshTimeAccessNotice();
       if (round !== 'morning' && round !== 'evening') {
@@ -871,6 +948,9 @@
       updateTimerUI(QR_LIFETIME_SECONDS);
       if (qrTimerInterval) clearInterval(qrTimerInterval);
       qrTimerInterval = setInterval(() => syncQrClock(guest, round), 250);
+      pollCurrentQrCheckin(guest, round);
+      if (window.qrCheckinPollTimer) clearInterval(window.qrCheckinPollTimer);
+      window.qrCheckinPollTimer = setInterval(() => pollCurrentQrCheckin(guest, round), 2000);
     }
 
     function updateTimerUI(sec) {
@@ -929,6 +1009,8 @@
 
     function closeQrPassModal() {
       document.getElementById('qrPassModal').classList.add('hidden');
+      if (window.qrCheckinPollTimer) clearInterval(window.qrCheckinPollTimer);
+      window.qrCheckinPollTimer = null;
       document.getElementById('qrPassModal').classList.remove('smart-qr-expanded');
       releaseQrWakeLock();
       if (qrTimerInterval) clearInterval(qrTimerInterval);
