@@ -222,7 +222,25 @@
     .clt-brand-label { color:#fef3c7; font-weight:700; font-size:12px; line-height:1.3; }
     #qrPassModal.smart-qr-expanded .clt-brand-label { color:#881337; }
     #qrPassModal.smart-qr-expanded .clt-brand img { width:74px; height:65px; }
-    #qrPassModal.smart-qr-expanded .smart-qr-card { overflow-y:auto; }
+    /* Prevent the QR square from shrinking inside the flex column on iOS LINE. */
+    #qrPassModal.smart-qr-expanded { overflow:hidden; }
+    #qrPassModal.smart-qr-expanded .smart-qr-card {
+      box-sizing:border-box; min-height:0; height:100%; height:100dvh;
+      overflow-y:auto; overflow-x:hidden; justify-content:flex-start;
+      -webkit-overflow-scrolling:touch; padding-top:max(16px, env(safe-area-inset-top));
+      padding-bottom:max(20px, env(safe-area-inset-bottom));
+    }
+    #qrPassModal.smart-qr-expanded .smart-qr-shell {
+      flex:0 0 auto; flex-shrink:0; align-self:center;
+      overflow:visible !important; max-width:calc(100vw - 32px);
+      padding:12px; margin:12px auto;
+    }
+    #qrPassModal.smart-qr-expanded #passQrCanvas { flex:0 0 auto; overflow:visible; }
+    #qrPassModal.smart-qr-expanded #passQrCanvas canvas,
+    #qrPassModal.smart-qr-expanded #passQrCanvas img { flex-shrink:0; max-width:none; }
+    #qrPassModal.smart-qr-expanded .clt-brand { flex-shrink:0; }
+    #qrPassModal.smart-qr-expanded #qrExpandBtn { flex-shrink:0; }
+
     @media (max-height:690px) { .clt-brand img {width:48px;height:42px;} .clt-brand-label{font-size:11px;} #qrPassModal.smart-qr-expanded .clt-brand img{width:55px;height:48px;} }
   </style>
 </head>
@@ -465,7 +483,7 @@
   <!-- ================= MODAL 4: แจ้งลงทะเบียนสำเร็จ ================= -->
   <div id="successModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-[340px] rounded-3xl bg-[#131b2e] border-2 border-emerald-500 p-6 shadow-2xl text-white text-center">
-      <h3 class="text-lg font-bold text-emerald-400 mb-4">ลงทะเบียนเรียบร้อยแล้ว!</h3>
+      <h3 id="successTitle" class="text-lg font-bold text-emerald-400 mb-4">ลงทะเบียนเรียบร้อยแล้ว!</h3>
 
       <div class="p-3.5 rounded-2xl bg-[#0f172a] border border-slate-800 text-left text-xs space-y-2 mb-5">
         <div class="flex items-center gap-2">
@@ -484,7 +502,7 @@
 
       <button onclick="enterPartyPass()" class="w-full py-3.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/25 transition active:scale-95 flex items-center justify-center gap-2">
         <span>🎉</span>
-        <span>เข้าสู่งานเลี้ยง</span>
+        <span id="successButtonLabel">ดูบัตรเข้างาน</span>
       </button>
     </div>
   </div>
@@ -624,6 +642,7 @@
 
       try {
         if (!lineVerified) throw new Error('ยังยืนยันบัญชี LINE ไม่สำเร็จ กรุณาลองใหม่');
+        const firstLineBinding = !lineReady;
         if (!lineReady) {
           const binding = await lineAuthRequest('bind_pin', inputPin);
           if (!binding.linked || binding.employeeCode !== inputPin) {
@@ -656,9 +675,16 @@
         matchedGuest = data;
         closePinModal();
         localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
-        openQrPass(matchedGuest);
+        await checkExistingLogin();
         subscribeToGuestCheckIn(matchedGuest.employee_code);
-        checkExistingLogin();
+        if (firstLineBinding) {
+          showSuccessPopup(matchedGuest, 'binding');
+        } else if (matchedGuest.morning_check_in && matchedGuest.evening_check_in) {
+          // No QR after both rounds are completed.
+          await checkExistingLogin();
+        } else {
+          openQrPass(matchedGuest);
+        }
 
       } catch (err) {
         errEl.textContent = 'เกิดข้อผิดพลาด: ' + err.message;
@@ -786,7 +812,7 @@
       container.replaceChildren();
       const expanded = document.getElementById('qrPassModal').classList.contains('smart-qr-expanded');
       const qrSize = expanded
-        ? Math.max(156, Math.min(340, window.innerWidth - 64, window.innerHeight - 395))
+        ? Math.max(120, Math.min(340, window.innerWidth - 56, Math.max(160, window.innerHeight - 440)))
         : Math.max(156, Math.min(272, window.innerWidth - 104));
       new QRCode(container, {
         text: qrCurrentPayload,
@@ -948,10 +974,7 @@
               closeQrPassModal();
 
               const roundText = justCheckedMorning ? 'รอบเช้า' : 'รอบเย็น';
-              document.getElementById('sName').textContent = updated.full_name;
-              document.getElementById('sBranch').textContent = updated.branch || 'สำนักงานใหญ่';
-              document.getElementById('sRound').textContent = roundText;
-              document.getElementById('successModal').classList.remove('hidden');
+              showSuccessPopup(updated, 'checkin', roundText);
 
               playSuccessSound();
             }
@@ -960,9 +983,25 @@
         .subscribe();
     }
 
+    let successPopupMode = 'checkin';
+    function showSuccessPopup(guest, mode, roundText) {
+      successPopupMode = mode;
+      document.getElementById('successTitle').textContent = mode === 'binding' ? 'ลงทะเบียนเรียบร้อยแล้ว!' : 'เช็คอินสำเร็จ!';
+      document.getElementById('successButtonLabel').textContent = mode === 'binding' ? 'ดูบัตร QR Code' : 'กลับไปหน้าการ์ดเชิญ';
+      document.getElementById('sName').textContent = guest.full_name || '-';
+      document.getElementById('sBranch').textContent = guest.branch || 'สำนักงานใหญ่';
+      document.getElementById('sRound').textContent = mode === 'binding'
+        ? (getActiveRound() === 'morning' ? 'รอบเช้า' : 'รอบเย็น') : roundText;
+      document.getElementById('successModal').classList.remove('hidden');
+    }
     function enterPartyPass() {
       document.getElementById('successModal').classList.add('hidden');
       checkExistingLogin();
+      if (successPopupMode === 'binding' && matchedGuest &&
+          !(matchedGuest.morning_check_in && matchedGuest.evening_check_in) &&
+          ['morning','evening'].includes(getActiveRound())) {
+        openQrPass(matchedGuest);
+      }
     }
 
     function handleMainCardButtonClick() {
@@ -1031,11 +1070,15 @@
           const nextRound = !isMorningDone ? 'รอบเช้า' : 'รอบเย็น';
           document.getElementById('btnMainText').textContent = `แสดง QR Code (${nextRound})`;
         } else {
-          document.getElementById('unregisteredBox').classList.remove('hidden');
-          document.getElementById('completedBox').classList.add('hidden');
+          // Show the bound employee identity even before any check-in.
+          document.getElementById('unregisteredBox').classList.add('hidden');
+          document.getElementById('completedBox').classList.remove('hidden');
+          document.getElementById('completedGuestTitle').textContent = `${guest.employee_code} (${guest.full_name})`;
+          document.getElementById('completedMorningStatus').textContent = '⏳ ยังไม่เช็คอิน';
+          document.getElementById('completedEveningStatus').textContent = '⏳ ยังไม่เช็คอิน';
           document.getElementById('btnOpenPinModal').classList.remove('hidden');
           document.getElementById('btnCompletedLocked').classList.add('hidden');
-          document.getElementById('btnMainText').textContent = `แสดงบัตร QR Code (${guest.full_name})`;
+          document.getElementById('btnMainText').textContent = 'แสดงบัตร QR Code';
         }
 
         subscribeToGuestCheckIn(guest.employee_code);
