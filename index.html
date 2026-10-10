@@ -498,14 +498,7 @@
       <p id="lineGateWarning" style="font-size:11px;color:#ff626e;margin:0 0 18px">(ไม่อนุญาตให้เปิดผ่าน Safari, Chrome หรือเบราว์เซอร์ภายนอก)</p>
       <div id="lineGateTip" style="border:1px dashed #475569;background:#192435;color:#aab8cc;padding:10px 8px;border-radius:12px;font-size:12px;line-height:1.5">📌 กรุณาแตะลิงก์หรือสแกน QR Code จากในห้องแชท<br>LINE โดยตรง</div>
       <p id="lineGateMessage" role="status" aria-live="polite" style="display:none;font-size:13px;line-height:1.6;margin:14px 0 0;color:#e5e7eb"></p>
-      <div id="lineEnrollmentForm" style="display:none;text-align:left;margin-top:18px">
-        <label style="font-size:13px">รหัสพนักงาน 6 หลัก</label>
-        <input id="lineEmployeeCode" inputmode="numeric" maxlength="6" autocomplete="off" style="width:100%;padding:12px;color:#222;border-radius:8px;margin:5px 0 12px">
-        <label style="font-size:13px">รหัสลงทะเบียนลับแบบใช้ครั้งเดียว (32 ตัวอักษร)</label>
-        <input id="lineEnrollmentCode" maxlength="32" autocomplete="off" style="width:100%;padding:12px;color:#222;border-radius:8px;margin:5px 0 12px">
-        <button id="lineBindButton" type="button" style="width:100%;background:#00c964;padding:12px;border-radius:9px;color:#102018;font-weight:bold">ผูกบัญชี LINE</button>
-        <button id="lineEnrollmentClose" type="button" onclick="hideLineEnrollment()" style="display:none;width:100%;margin-top:12px;border:1px solid #64748b;padding:10px;border-radius:9px;color:#e2e8f0">กลับไปดูการ์ดเชิญ</button>
-      </div>
+
     </div>
   </div>
 
@@ -568,7 +561,7 @@
     }
 
     function openPinModal() {
-      if (!lineReady) { showLineEnrollment(); return; }
+      if (!lineVerified) return;
       if (!['morning', 'evening'].includes(getActiveRound())) return;
       const round = getActiveRound();
       if (round !== 'morning' && round !== 'evening') { showTimeRestriction(round); return; }
@@ -624,12 +617,13 @@
       const active = getActiveRound();
       if (active !== 'morning' && active !== 'evening') { closePinModal(); showTimeRestriction(active); return; }
       if (!['morning', 'evening'].includes(getActiveRound())) { closePinModal(); return; }
-      if (!lineReady || !lineEmployeeCode) { closePinModal(); return; }
+      if (!lineVerified) { closePinModal(); return; }
       const errEl = document.getElementById('pinSearchError');
       const card = document.getElementById('pinModalCard');
       errEl.classList.add('hidden');
 
       try {
+        if (!lineReady || !lineEmployeeCode) throw new Error('บัญชี LINE นี้ยังไม่ผูกกับพนักงาน กรุณาติดต่อผู้ดูแลเพื่อยืนยันบัญชีก่อนรับ QR');
         if (inputPin !== lineEmployeeCode) throw new Error('PIN ไม่ตรงกับบัญชี LINE ที่ยืนยันแล้ว');
         if (!supabaseClient) throw new Error('ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
 
@@ -961,7 +955,7 @@
     }
 
     function handleMainCardButtonClick() {
-      if (!lineReady) { showLineEnrollment(); return; }
+      if (!lineVerified) return;
       const active = getActiveRound();
       if (active !== 'morning' && active !== 'evening') { showTimeRestriction(active); return; }
       if (matchedGuest && matchedGuest.morning_check_in && matchedGuest.evening_check_in) return;
@@ -1077,22 +1071,20 @@
       if (!response.ok) throw new Error(data.error || 'LINE authentication failed');
       return data;
     }
-    function showLineEnrollment() {
-      if (!lineVerified) return; // Never permit enrollment without verified LINE identity
-      const gate = document.getElementById('lineAccessGate');
-      gate.style.display = 'flex';
-      document.getElementById('lineGateTitle').textContent = 'ผูกบัญชี LINE เพื่อรับ QR';
-      document.getElementById('lineGateDescription').style.display = 'none';
-      document.getElementById('lineGateWarning').style.display = 'none';
-      document.getElementById('lineGateTip').style.display = 'none';
-      const message = document.getElementById('lineGateMessage');
-      message.style.display = 'block';
-      message.textContent = 'ดูการ์ดเชิญได้ทันที แต่ต้องผูกบัญชี LINE ครั้งแรกก่อนรับ QR เช็คอิน';
-      document.getElementById('lineEnrollmentForm').style.display = 'block';
-      document.getElementById('lineEnrollmentClose').style.display = 'block';
-    }
-    function hideLineEnrollment() {
-      if (lineVerified) document.getElementById('lineAccessGate').style.display = 'none';
+    // Invitation is visible immediately inside LINE. Authentication happens silently.
+    // QR/PIN actions remain blocked until the LINE token is verified by the server.
+    function showLineStatus(text, isError = false) {
+      let el = document.getElementById('lineBackgroundStatus');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'lineBackgroundStatus';
+        el.setAttribute('role', 'status');
+        el.style.cssText = 'position:fixed;bottom:14px;left:50%;transform:translateX(-50%);max-width:calc(100% - 32px);z-index:9990;background:#1e293b;color:#fff;border:1px solid #00cf62;border-radius:12px;padding:10px 14px;text-align:center;font:13px/1.5 system-ui,sans-serif;box-shadow:0 4px 16px #0005;';
+        document.body.appendChild(el);
+      }
+      el.textContent = text;
+      el.style.borderColor = isError ? '#ff626e' : '#00cf62';
+      el.style.display = text ? 'block' : 'none';
     }
     async function initLineAccess() {
       const gate = document.getElementById('lineAccessGate');
@@ -1100,16 +1092,14 @@
       try {
         if (!window.liff) throw new Error('โหลด LINE LIFF SDK ไม่สำเร็จ');
         await liff.init({ liffId: LIFF_ID });
-        if (!liff.isInClient()) return; // External browsers stay blocked
-        document.getElementById('lineGateTitle').textContent = 'กำลังตรวจสอบบัญชี LINE';
-        document.getElementById('lineGateDescription').style.display = 'none';
-        document.getElementById('lineGateWarning').style.display = 'none';
-        document.getElementById('lineGateTip').style.display = 'none';
-        message.style.display = 'block';
-        message.textContent = 'กำลังยืนยันบัญชี LINE…';
-        if (!liff.isLoggedIn()) { message.textContent = 'กรุณาเข้าสู่ระบบ LINE'; return; }
+        if (!liff.isInClient()) {
+          gate.style.display = 'flex'; // External browsers remain blocked.
+          return;
+        }
+        gate.style.display = 'none'; // Do not cover the invitation while checking LINE.
+        if (!liff.isLoggedIn()) throw new Error('กรุณาเข้าสู่ระบบ LINE');
         const result = await lineAuthRequest('status');
-        if (!result.verified) throw new Error('ไม่สามารถยืนยัน LINE ได้');
+        if (!result.verified) throw new Error('ไม่สามารถยืนยันบัญชี LINE ได้');
         lineVerified = true;
         if (result.linked && /^\d{6}$/.test(result.employeeCode || '')) {
           lineEmployeeCode = result.employeeCode;
@@ -1120,37 +1110,26 @@
           lineEmployeeCode = null;
           lineReady = false;
           resetToUnregisteredUI();
-          document.getElementById('btnMainText').textContent = 'ลงทะเบียน LINE เพื่อรับ QR Code';
+          document.getElementById('btnMainText').textContent = 'กรอกรหัสพนักงาน (PIN 6 หลัก)';
         }
-        // Show original envelope/card immediately after successful LINE verification.
-        // Registration is requested only when the employee asks for a check-in QR.
-        gate.style.display = 'none';
+        showLineStatus('');
       } catch (error) {
-        message.style.display = 'block';
-        message.textContent = 'ไม่สามารถตรวจสอบ LINE: ' + error.message;
+        lineVerified = false;
+        lineReady = false;
+        lineEmployeeCode = null;
+        // Only show the invitation immediately if we can identify the LINE in-app context.
+        // A normal browser must continue seeing the LINE-only blocking screen.
+        if (window.liff && liff.isInClient()) {
+          gate.style.display = 'none';
+          showLineStatus('ยังไม่สามารถยืนยัน LINE ได้ กรุณาลองเปิดใหม่ก่อนรับ QR: ' + error.message, true);
+        } else {
+          message.style.display = 'block';
+          message.textContent = 'กรุณาเปิดผ่านแอป LINE';
+        }
       }
     }
-    document.getElementById('lineBindButton').addEventListener('click', async () => {
-      const code = document.getElementById('lineEmployeeCode').value.trim();
-      const secret = document.getElementById('lineEnrollmentCode').value.trim().toLowerCase();
-      const message = document.getElementById('lineGateMessage');
-      if (!/^\d{6}$/.test(code) || !/^[0-9a-f]{32}$/.test(secret)) {
-        message.textContent = 'กรุณากรอกรหัสพนักงาน 6 หลักและรหัสลงทะเบียน 32 ตัวอักษร'; return;
-      }
-      const button = document.getElementById('lineBindButton'); button.disabled = true;
-      try {
-        const result = await lineAuthRequest('bind', code, secret);
-        if (!result.linked) throw new Error(result.result || 'ผูกบัญชีไม่สำเร็จ');
-        lineEmployeeCode = code;
-        lineReady = true;
-        localStorage.setItem('my_registered_emp_code', code);
-        hideLineEnrollment();
-        await checkExistingLogin();
-      } catch (error) { message.textContent = 'ผูกบัญชีไม่สำเร็จ: ' + error.message; }
-      finally { button.disabled = false; }
-    });
-
     window.addEventListener('DOMContentLoaded', () => {
+      if (/\bLine\//i.test(navigator.userAgent)) document.getElementById('lineAccessGate').style.display = 'none';
       initSupabase();
       initLineAccess();
       refreshTimeAccessNotice();
