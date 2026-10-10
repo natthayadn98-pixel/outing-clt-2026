@@ -833,39 +833,39 @@
     }
 
     // One QR payload per 45-second validity window. Resizing NEVER renews it.
-    function generateDynamicQRCode(guest, renew = false) {
+    let qrRequestSequence = 0;
+    let qrRequestInFlight = false;
+    async function generateDynamicQRCode(guest, renew = false) {
       const container = document.getElementById('passQrCanvas');
       if (!container || !guest) return;
       const round = getActiveRound();
-      if (round !== 'morning' && round !== 'evening') {
-        container.replaceChildren();
-        qrCurrentPayload = null;
-        return;
+      if (round !== 'morning' && round !== 'evening') { container.replaceChildren(); qrCurrentPayload=null; return; }
+      if (!renew && qrCurrentPayload && Date.now() < qrExpiresAtMs) {
+        renderSignedQr(container); return;
       }
-      const now = Date.now();
-      if (renew || !qrCurrentPayload || now >= qrExpiresAtMs) {
-        qrIssuedAtMs = now;
-        qrExpiresAtMs = now + QR_LIFETIME_SECONDS * 1000;
-        qrCurrentPayload = `${guest.employee_code}_${Math.floor(now / 1000)}`;
-      }
+      if(qrRequestInFlight) return;
+      qrRequestInFlight=true;
+      const requestId=++qrRequestSequence;
+      container.textContent='กำลังสร้าง QR ที่ปลอดภัย…';
+      try {
+        const result=await lineAuthRequest('issue_qr');
+        if(requestId!==qrRequestSequence || document.getElementById('qrPassModal').classList.contains('hidden')) return;
+        qrCurrentPayload=result.qr;
+        qrIssuedAtMs=Date.now();
+        qrExpiresAtMs=result.expiresAt;
+        renderSignedQr(container);
+      } catch(err) {
+        qrCurrentPayload=null;
+        container.textContent=err.message==='already_checked_in'?'เช็คอินรอบนี้แล้ว':'สร้าง QR ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วเปิด QR อีกครั้ง';
+      } finally { qrRequestInFlight=false; }
+    }
+    function renderSignedQr(container) {
+      if(!qrCurrentPayload) return;
       container.replaceChildren();
-      const expanded = document.getElementById('qrPassModal').classList.contains('smart-qr-expanded');
-      const qrSize = expanded
-        ? Math.max(120, Math.min(340, window.innerWidth - 56, Math.max(160, window.innerHeight - 440)))
-        : Math.max(156, Math.min(272, window.innerWidth - 104));
-      new QRCode(container, {
-        text: qrCurrentPayload,
-        width: qrSize,
-        height: qrSize,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-      for (const element of container.querySelectorAll('canvas, img')) {
-        element.style.width = qrSize + 'px';
-        element.style.height = qrSize + 'px';
-        element.style.imageRendering = 'pixelated';
-      }
+      const expanded=document.getElementById('qrPassModal').classList.contains('smart-qr-expanded');
+      const qrSize=expanded?Math.max(120,Math.min(340,window.innerWidth-56,Math.max(160,window.innerHeight-440))):Math.max(156,Math.min(272,window.innerWidth-104));
+      new QRCode(container,{text:qrCurrentPayload,width:qrSize,height:qrSize,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+      for(const el of container.querySelectorAll('canvas,img')){el.style.width=qrSize+'px';el.style.height=qrSize+'px';}
     }
 
     async function pollCurrentQrCheckin(guest, round) {
@@ -1015,6 +1015,7 @@
       releaseQrWakeLock();
       if (qrTimerInterval) clearInterval(qrTimerInterval);
       qrTimerInterval = null;
+      ++qrRequestSequence;
       qrCurrentPayload = null;
       qrExpiresAtMs = 0;
     }

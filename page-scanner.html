@@ -250,7 +250,7 @@
       if (!code) return;
       // ไม่ล้างข้อมูลที่ยังมาไม่ครบ เพื่อให้เครื่องยิงที่ส่งช้ากว่าสามารถส่งต่อได้
       // A complete USB scan ends with Enter/Tab. Reject malformed input instead of leaving it in the field.
-      if (!/^[0-9]{6}_[0-9]{10}$/.test(code)) {
+      if (!/^CLT1\.\d{6}\.(morning|evening)\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(code)) {
         if (code.length >= 17) { gunInputEl.value = ''; enqueueScan(code); }
         return;
       }
@@ -315,103 +315,40 @@
     function executeScanCheckin(scannedValue) { enqueueScan(scannedValue); }
 
     async function processScannedValue(scannedValue) {
-      const toast = document.getElementById('scanResultToast');
-      const timeSession = getCurrentCheckinSession();
-
-      // โหมดสแกนต้องเป็น QR สดเท่านั้น ไม่รับรหัสพนักงาน 6 หลักล้วน
-      const raw = String(scannedValue || '').trim();
-      const match = /^(\d{6})_(\d{10})$/.exec(raw);
-      if (!match) {
-        toast.className = 'mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-rose-950/90 text-rose-300 border-rose-500 shadow-lg';
-        toast.textContent = '❌ กรุณาสแกน QR สดจากหน้าพนักงานเท่านั้น ไม่รับรหัสพนักงานที่พิมพ์เอง';
-        return;
-      }
-      const empCode = match[1];
-      const createdTimestampSec = Number(match[2]);
-      const currentSec = Math.floor(Date.now() / 1000);
-      const ageInSeconds = currentSec - createdTimestampSec;
-      if (!Number.isSafeInteger(createdTimestampSec) || ageInSeconds >= 45 || ageInSeconds < -5) {
-        toast.className = 'mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-rose-950/90 text-rose-300 border-rose-500 shadow-lg';
-        toast.textContent = '❌ QR หมดอายุ — ภาพแคปหน้าจอหรือ QR เก่าใช้ไม่ได้ กรุณาเปิด QR สดใน LINE อีกครั้ง';
-        playStatusTone('error');
-        return;
-      }
-      if (!timeSession.valid) {
-        toast.className = 'mt-5 p-4 rounded-2xl text-base border block bg-amber-950/90 text-amber-300 border-amber-500 shadow-lg';
-        toast.textContent = '⚠️ ไม่สามารถเช็คอินได้: ' + timeSession.message;
-        playStatusTone('warning');
-        return;
-      }
-      // เช็กช่วงเวลาอีกครั้งก่อนเขียนข้อมูล เพื่อลดโอกาสคาบเกี่ยวรอบ
-      const recheckedSession = getCurrentCheckinSession();
-      if (!recheckedSession.valid || recheckedSession.session !== timeSession.session) {
-        toast.textContent = '⚠️ หมดช่วงเวลาเช็คอิน กรุณาติดต่อเจ้าหน้าที่';
-        return;
-      }
-
-      const cleanTime = getCleanThaiTimeString();
-
+      const toast=document.getElementById('scanResultToast');
+      const show=(message,type)=>{
+        const palette={success:'bg-emerald-950 text-emerald-300 border-emerald-500',warning:'bg-amber-950 text-amber-300 border-amber-500',error:'bg-rose-950 text-rose-300 border-rose-500'};
+        toast.className='mt-5 p-4 rounded-2xl border block text-center font-bold '+(palette[type]||palette.error);
+        toast.textContent=message;
+        playStatusTone(type==='success'?'success':type==='warning'?'warning':'error');
+      };
+      const qr=String(scannedValue||'').trim();
+      if(!/^CLT1\.\d{6}\.(morning|evening)\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(qr)) {show('❌ QR ไม่ถูกต้อง กรุณาเปิด QR ใหม่ใน LINE','error');return;}
       try {
-        // [คำสั่งจังหวะเดียว] สั่ง UPDATE เฉพาะคนที่ยังไม่เคยลงเวลาในรอบนี้ พร้อมดึงข้อมูลกลับมาทันที
-        const { data: updatedGuest, error: updateError } = await supabaseClient
-          .from('guests')
-          .update({ [timeSession.field]: cleanTime })
-          .eq('employee_code', empCode)
-          .is(timeSession.field, null) // เงื่อนไข: ถ้าเคยเช็คแล้วจะไม่โดนอัปเดต
-          .select('full_name, employee_code, branch')
-          .maybeSingle();
-
-        if (updateError) throw updateError;
-
-        if (updatedGuest) {
-          // จังหวะที่ 1: บันทึกสำเร็จทันทีในรอบเดียว (ใช้เวลาเพียงเสี้ยววินาที)
-          totalSuccessfulScans += 1;
-          updateQueueIndicator();
-          playStatusTone('success');
-          if (navigator.vibrate) navigator.vibrate(90);
-          toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-emerald-950/90 text-emerald-300 border-emerald-500 shadow-lg shadow-emerald-950/50";
-          toast.innerHTML = `
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div class="text-left">
-                🎉 <b>เช็คอินสำเร็จ!</b>: <span class="text-base font-bold text-yellow-300">${updatedGuest.full_name}</span> (รหัส: ${updatedGuest.employee_code})<br>
-                สาขา: ${updatedGuest.branch || 'สำนักงานใหญ่'} | ${timeSession.icon} ลงเวลา${timeSession.name} (${cleanTime} น.) เรียบร้อย
-              </div>
-            </div>
-          `;
-        } else {
-          // จังหวะที่ 2: กรณีอัปเดตไม่เข้า (แสดงว่าอาจจะเคยเช็คอินไปแล้ว หรือไม่มีรหัสนี้)
-          const { data: existingGuest } = await supabaseClient
-            .from('guests')
-            .select(`full_name, employee_code, ${timeSession.field}`)
-            .eq('employee_code', empCode)
-            .maybeSingle();
-
-          if (existingGuest && existingGuest[timeSession.field]) {
-            playStatusTone('warning');
-            if (navigator.vibrate) navigator.vibrate([80,60,80]);
-            toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-blue-950/90 text-sky-300 border-sky-500 shadow-lg";
-            toast.innerHTML = `
-              <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div class="text-left">
-                  ℹ️ <b>ลงทะเบียนไปแล้ว:</b> <span class="text-base font-bold text-yellow-300">${existingGuest.full_name}</span> (รหัส: ${existingGuest.employee_code})<br>
-                  ได้เช็คอิน${timeSession.name}ไปแล้วเมื่อเวลา <b>${existingGuest[timeSession.field]} น.</b>
-                </div>
-              </div>
-            `;
-          } else {
-            toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-rose-950/90 text-rose-300 border-rose-500";
-            toast.innerHTML = `❌ ไม่พบรหัสพนักงาน "${empCode}" ในระบบฐานข้อมูล`;
-          }
-        }
-      } catch (err) {
-        showFastScanError('บันทึกไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตและสแกนใหม่');
-        console.error('Fast Scan request failed', err);
-      }
+        const session=await supabaseClient.auth.getSession();
+        const jwt=session.data?.session?.access_token;
+        if(!jwt){show('🔒 กรุณาเข้าสู่ระบบ Admin ด้วยอีเมลและรหัสผ่านก่อนสแกน','error');return;}
+        const response=await fetch(SUPABASE_URL+'/functions/v1/secure-checkin',{
+          method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+jwt,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({qr})
+        });
+        const result=await response.json();
+        if(result.status==='success'){
+          totalSuccessfulScans++;updateQueueIndicator();
+          show(`✅ เช็คอินสำเร็จ: ${result.fullName} (${result.employeeCode}) เวลา ${result.time} น.`,'success');
+        }else if(result.status==='duplicate'){
+          show(`⚠️ ลงทะเบียนซ้ำ: ${result.fullName} (${result.employeeCode}) เช็คอินแล้วเวลา ${result.time} น.`,'warning');
+        }else if(result.error==='qr_expired'){
+          show('⌛ QR หมดอายุ กรุณาเปิด QR สดใน LINE อีกครั้ง','error');
+        }else if(result.error==='admin_login_required'||result.error==='admin_not_authorized'){
+          show('🔒 บัญชีนี้ไม่มีสิทธิ์สแกน กรุณาติดต่อ IT','error');
+        }else if(result.error==='wrong_round'||result.status==='outside_hours'){
+          show('⚠️ QR ไม่ตรงรอบเวลาเช็คอิน','warning');
+        }else if(result.error==='invalid_qr'){
+          show('❌ QR ไม่ถูกต้องหรือถูกแก้ไข','error');
+        }else {show('❌ ไม่สามารถบันทึกได้ กรุณาตรวจสอบและสแกนใหม่','error');}
+      }catch(err){show('❌ อินเทอร์เน็ตขัดข้อง กรุณาสแกนใหม่','error');}
     }
 
-    // 7. การลบเวลาทดสอบถูกปิดเพื่อรักษาประวัติเช็คอิน
-
-    // 8. กล้องมือถือ: เลือกกล้องหลัง, กรอบสแกนปรับตามจอ, ป้องกันเปิดซ้อน
     async function startMobileCamera() {
       if (cameraStarting || mobileCamScanner) return;
       if (!window.Html5Qrcode) {

@@ -64,8 +64,18 @@
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0217]">
 
+  <div id="secureAdminGate" style="position:fixed;inset:0;z-index:9999;background:#0c0217;display:flex;align-items:center;justify-content:center;padding:20px">
+    <form id="secureAdminForm" style="width:100%;max-width:380px;background:#fff;color:#111827;border-radius:22px;padding:28px;display:grid;gap:14px">
+      <h2 style="font-weight:bold;font-size:21px;text-align:center">🔐 CLT Admin — เข้าสู่ระบบ</h2>
+      <p style="font-size:13px;text-align:center">ใช้บัญชี Supabase Auth ที่แผนก IT อนุมัติ</p>
+      <input id="secureAdminEmail" type="email" required autocomplete="username" placeholder="อีเมล Admin" style="border:1px solid #ddd;border-radius:10px;padding:12px;font-size:16px" />
+      <input id="secureAdminPassword" type="password" required autocomplete="current-password" placeholder="รหัสผ่าน" style="border:1px solid #ddd;border-radius:10px;padding:12px;font-size:16px" />
+      <button type="submit" style="background:#d5a12e;color:#111;padding:12px;border-radius:10px;font-weight:bold">เข้าสู่ระบบอย่างปลอดภัย</button>
+      <p id="secureAdminError" role="alert" style="font-size:12px;color:#b91c1c;text-align:center"></p>
+    </form>
+  </div>
   <!-- ================= PIN LOCK SCREEN OVERLAY ================= -->
-  <div id="pinLockModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0319]/90 backdrop-blur-xl">
+  <div id="pinLockModal" style="display:none!important" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0319]/90 backdrop-blur-xl">
     <div id="pinCard" class="w-full max-w-[340px] bg-white rounded-[32px] p-7 shadow-2xl flex flex-col items-center transition-all duration-300">
       <div class="text-4xl mb-2 select-none">🔒</div>
       <h2 class="text-xl font-bold text-slate-900 tracking-tight text-center">ระบบจัดการ Admin</h2>
@@ -242,7 +252,7 @@
 
   <!-- JAVASCRIPT ควบคุมการพับ/กางแบบ Smooth ทั้งคอมและมือถือ -->
   <script>
-    const CORRECT_ADMIN_PIN = "9999"; // UI gate only: NOT secure server-side authorization
+    const CORRECT_ADMIN_PIN = "DISABLED"; // UI gate only: NOT secure server-side authorization
     let enteredPin = "";
     const IDLE_TIMEOUT_LIMIT = 10 * 60 * 1000;
     let idleTimer = null;
@@ -420,7 +430,7 @@
 
     window.addEventListener('keydown', (e) => {
       const modal = document.getElementById('pinLockModal');
-      if (modal && !modal.classList.contains('hidden')) {
+      if (false && modal && !modal.classList.contains('hidden')) {
         if (e.key >= '0' && e.key <= '9') pressPinDigit(e.key);
         else if (e.key === 'Backspace') pressPinBackspace();
         else if (e.key === 'Enter') verifyAdminPin();
@@ -442,5 +452,34 @@
       checkSupabaseConnection();
     });
   </script>
+<script>
+(function(){
+ const url='https://ycljxlywewigwxovdnyj.supabase.co';
+ const key=document.querySelector('script[data-supabase-key]')?.dataset.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI';
+ const client=window.supabase.createClient(url,key);
+ const gate=document.getElementById('secureAdminGate');
+ async function refresh(){
+   const {data:{session}}=await client.auth.getSession();
+   if(!session){gate.style.display='flex';return;}
+   try {
+     const res=await fetch(url+'/functions/v1/secure-checkin',{
+       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':key},
+       body:JSON.stringify({action:'check_admin'})
+     });
+     if(!res.ok){gate.style.display='flex';document.getElementById('secureAdminError').textContent='บัญชีนี้ยังไม่ได้รับสิทธิ์ Admin จาก IT';return;}
+   }catch{gate.style.display='flex';document.getElementById('secureAdminError').textContent='ตรวจสอบสิทธิ์ไม่สำเร็จ กรุณาลองใหม่';return;}
+   gate.style.display='none';
+   sessionStorage.setItem('admin_vip_authenticated','true');
+ }
+ document.getElementById('secureAdminForm').addEventListener('submit',async(e)=>{
+   e.preventDefault();const msg=document.getElementById('secureAdminError');msg.textContent='กำลังตรวจสอบ…';
+   const {error}=await client.auth.signInWithPassword({email:document.getElementById('secureAdminEmail').value.trim(),password:document.getElementById('secureAdminPassword').value});
+   if(error){msg.textContent='อีเมลหรือรหัสผ่านไม่ถูกต้อง';return;}
+   msg.textContent='';await refresh();
+ });
+ window.addEventListener('storage',refresh);
+ refresh();
+})();
+</script>
 </body>
 </html>
