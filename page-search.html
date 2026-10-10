@@ -37,7 +37,7 @@
   <section class="w-full max-w-3xl bg-[#14082e]/95 border border-[#3c1d77] rounded-3xl p-6 sm:p-10 card-glow backdrop-blur-xl">
     <div class="text-center mb-6">
       <h2 class="text-2xl sm:text-3xl font-bold text-amber-300">ค้นหารายชื่อผู้เข้างาน</h2>
-      <p class="text-xs sm:text-sm text-purple-300/80 mt-1.5">ค้นหาพนักงานและจัดการการผูกอุปกรณ์โดยเจ้าหน้าที่ • ปลดล็อกแล้วเครื่องเดิมใช้กรอก PIN ใหม่ได้</p>
+      <p class="text-xs sm:text-sm text-purple-300/80 mt-1.5">ค้นหาพนักงานและจัดการการผูก LINE โดยเจ้าหน้าที่ • ไม่ลบประวัติเช็คอิน</p>
     </div>
 
     <!-- ช่องค้นหา -->
@@ -60,7 +60,7 @@
     <!-- แถบแจ้งเตือนส่งคำสั่งปลดล็อกสำเร็จ -->
     <div id="unlockNotifyAlert" class="hidden mb-4 p-3 rounded-xl bg-[#0f0728] border border-emerald-500/40 text-emerald-400 text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-lg transition-all duration-300">
       <span class="text-base">✅</span>
-      <span id="unlockNotifyText">ส่งคำสั่งปลดล็อกการผูกเครื่องสำเร็จ</span>
+      <span id="unlockNotifyText">ปลดการผูก LINE สำเร็จ</span>
     </div>
 
     <!-- ผลการค้นหา -->
@@ -75,6 +75,8 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     let guestsList = [];
+    let lineBindings = new Set();
+    const ADMIN_UNLOCK_URL = SUPABASE_URL + "/functions/v1/admin-line-unbind";
     let unlockTimer = null;
     let unlockInProgress = false;
     function escapeHTML(value) {
@@ -101,6 +103,11 @@
         const { data, error } = await supabaseClient.from('guests').select('*').order('employee_code', { ascending: true });
         if (error) throw error;
         guestsList = data || [];
+        // Only an authorized Edge Function decides whether a LINE binding exists.
+        // The lookup endpoint does not expose LINE user IDs.
+        try {
+          // ไม่เรียกสถานะการผูก LINE อัตโนมัติ เพื่อไม่ต้องเก็บ PIN บนเครื่อง
+        } catch (statusError) { console.warn('LINE binding status unavailable'); }
       } catch (e) {
         console.error('Error fetching guests:', e);
       }
@@ -189,10 +196,10 @@
               <button 
                 onclick="unlockDeviceManual('${item.employee_code}')" 
                 class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 text-white transition flex items-center gap-1 shadow active:scale-95 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-                title="ปลดล็อกเฉพาะบัญชีนี้ ไม่ลบเวลาเช็คอิน" ${!item.device_token || item.is_locked === false ? 'disabled aria-disabled="true"' : ''}
+                title="ปลดเฉพาะการผูก LINE ของพนักงานนี้ โดยไม่ลบประวัติเช็คอิน"
               >
                 <span>🔓</span>
-                <span>${item.device_token && item.is_locked !== false ? 'ปลดล็อก' : 'ยังไม่ผูกเครื่อง'}</span>
+                <span>${lineBindings.has(String(item.employee_code)) ? 'ปลดผูก LINE' : 'ตรวจสอบ/ปลด LINE'}</span>
               </button>
             </div>
 
@@ -226,37 +233,50 @@
       }
     }
 
-    // ปลดเฉพาะบัญชีที่เลือก ไม่แก้ morning_check_in / evening_check_in
+    async function callAdminUnbind(action, pin, employeeCode, reason) {
+      const response = await fetch(ADMIN_UNLOCK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, adminPin: pin, employeeCode, reason })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error === 'unauthorized' ? 'PIN ผู้ดูแลไม่ถูกต้อง' : result.error === 'rate_limited' ? 'ลองรหัสหลายครั้งเกินไป กรุณารอ 15 นาที' : (result.error || 'เซิร์ฟเวอร์ไม่พร้อมใช้งาน'));
+      return result;
+    }
+
+    async function loadLineBindingStatuses(pin) {
+      const result = await callAdminUnbind('list', pin);
+      lineBindings = new Set((result.employeeCodes || []).map(String));
+      handleTabSearch();
+    }
+
     async function unlockDeviceManual(empCode) {
       if (unlockInProgress) return;
       const guest = guestsList.find(g => String(g.employee_code) === String(empCode));
-      if (!guest) return showUnlockNotice('ไม่พบข้อมูลพนักงาน กรุณาโหลดหน้าใหม่', false);
-      if (!guest.device_token || guest.is_locked === false) {
-        return showUnlockNotice('บัญชีนี้ยังไม่ได้ผูกเครื่อง ไม่จำเป็นต้องปลดล็อก', false);
-      }
-      const reason = prompt(`ปลดล็อกเฉพาะบัญชีนี้\nรหัส: ${guest.employee_code}\nชื่อ: ${guest.full_name}\n\nกรุณาระบุเหตุผล เช่น กรอก PIN ผิดคน (ยกเลิกเพื่อไม่ดำเนินการ)`);
-      if (reason === null) return;
-      if (reason.trim().length < 5) return showUnlockNotice('กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร', false);
-      if (!confirm(`ยืนยันปลดล็อกเฉพาะ ${guest.full_name} (${guest.employee_code})?\n\nเหตุผล: ${reason.trim()}\n\nเวลาเช็คอินเช้าและเย็นจะไม่ถูกลบ เครื่องเดิมสามารถกรอก PIN ใหม่ได้`)) return;
+      if (!guest) return showUnlockNotice('ไม่พบข้อมูลพนักงาน', false);
+      const pin = prompt('กรอก PIN ผู้ดูแล 4 หลักเพื่อปลดการผูก LINE') || '';
+      if (!/^\d{4}$/.test(pin)) return showUnlockNotice('กรุณากรอก PIN 4 หลัก', false);
       unlockInProgress = true;
       try {
-        const { data, error } = await supabaseClient.from('guests')
-          .update({ device_token: null, is_locked: false })
-          .eq('employee_code', empCode)
-          .eq('device_token', guest.device_token)
-          .select('employee_code, device_token, is_locked, morning_check_in, evening_check_in');
-        if (error) throw error;
-        if (!data || data.length !== 1) throw new Error('ข้อมูลการผูกเครื่องเปลี่ยนไปแล้ว หรือไม่มีสิทธิ์แก้ไข กรุณาโหลดข้อมูลใหม่');
-        const idx = guestsList.findIndex(g => String(g.employee_code) === String(empCode));
-        if (idx !== -1) Object.assign(guestsList[idx], data[0]);
+        // Verify the admin credential and fetch actual binding status before prompting to unbind.
+        const status = await callAdminUnbind('status', pin, String(empCode));
+        if (!status.linked) {
+          lineBindings.delete(String(empCode));
+          handleTabSearch();
+          return showUnlockNotice('พนักงานนี้ยังไม่ได้ผูก LINE จึงไม่จำเป็นต้องปลด', false);
+        }
+        const reason = prompt(`ปลดการผูก LINE เฉพาะบัญชีนี้\nรหัส: ${guest.employee_code}\nชื่อ: ${guest.full_name}\n\nระบุเหตุผลอย่างน้อย 5 ตัวอักษร`);
+        if (reason === null) return;
+        if (reason.trim().length < 5) return showUnlockNotice('กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร', false);
+        if (!confirm(`ยืนยันปลดการผูก LINE ของ ${guest.full_name} (${guest.employee_code})?\n\nประวัติเช็คอินเช้า–เย็นจะคงอยู่\nบัญชี LINE เดิมหรือใหม่จะสามารถผูกอีกครั้งได้`)) return;
+        const result = await callAdminUnbind('unbind', pin, String(empCode), reason.trim());
+        if (!result.unbound) throw new Error('ไม่พบการผูก LINE ที่ต้องปลด');
+        lineBindings.delete(String(empCode));
         handleTabSearch();
-        showUnlockNotice(`ปลดล็อก ${guest.employee_code} สำเร็จ • เครื่องเดิมกรอก PIN ใหม่ได้ • ไม่ลบประวัติเช็คอิน (เหตุผล: ${reason.trim()})`, true);
-        // หมายเหตุ: ประวัติเหตุผลนี้แสดงในหน้าจอเท่านั้น ยังไม่ได้เก็บลงฐานข้อมูล
+        showUnlockNotice(`ปลด LINE ของ ${guest.employee_code} สำเร็จ • ไม่ลบประวัติเช็คอิน`, true);
       } catch (err) {
-        showUnlockNotice('ปลดล็อกไม่สำเร็จ: ' + err.message, false);
-      } finally {
-        unlockInProgress = false;
-      }
+        showUnlockNotice('ปลด LINE ไม่สำเร็จ: ' + err.message, false);
+      } finally { unlockInProgress = false; }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
