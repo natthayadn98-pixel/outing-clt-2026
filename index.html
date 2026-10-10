@@ -835,6 +835,8 @@
     // One QR payload per 45-second validity window. Resizing NEVER renews it.
     let qrRequestSequence = 0;
     let qrRequestInFlight = false;
+    let qrLastFailureAtMs = 0;
+    let qrLastFailureMessage = "";
     async function generateDynamicQRCode(guest, renew = false) {
       const container = document.getElementById('passQrCanvas');
       if (!container || !guest) return;
@@ -843,20 +845,27 @@
       if (!renew && qrCurrentPayload && Date.now() < qrExpiresAtMs) {
         renderSignedQr(container); return;
       }
-      if(qrRequestInFlight) return;
+      if(qrRequestInFlight || (qrLastFailureAtMs && Date.now()-qrLastFailureAtMs < 8000)) return;
       qrRequestInFlight=true;
       const requestId=++qrRequestSequence;
       container.textContent='กำลังสร้าง QR ที่ปลอดภัย…';
       try {
         const result=await lineAuthRequest('issue_qr');
         if(requestId!==qrRequestSequence || document.getElementById('qrPassModal').classList.contains('hidden')) return;
+        if(typeof result.qr!=='string'||!result.qr.startsWith('CLT1.')) throw new Error('invalid_qr_response');
+        qrLastFailureAtMs=0;qrLastFailureMessage='';
         qrCurrentPayload=result.qr;
         qrIssuedAtMs=Date.now();
         qrExpiresAtMs=result.expiresAt;
         renderSignedQr(container);
       } catch(err) {
         qrCurrentPayload=null;
-        container.textContent=err.message==='already_checked_in'?'เช็คอินรอบนี้แล้ว':'สร้าง QR ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วเปิด QR อีกครั้ง';
+        qrLastFailureAtMs=Date.now();
+        const code=String(err?.message||'unknown_error');
+        const reasons={server_not_configured:'เซิร์ฟเวอร์ยังไม่ได้ตั้งค่า QR_SIGNING_SECRET',origin_not_allowed:'การตั้งค่า ALLOWED_ORIGIN ไม่ตรงกับเว็บไซต์',invalid_line_token:'LINE หมดอายุการยืนยันตัวตน กรุณาปิดแล้วเปิดใหม่',line_not_bound:'บัญชี LINE ยังไม่ได้ผูกกับรหัสพนักงาน',already_checked_in:'เช็คอินรอบนี้แล้ว',outside_hours:'ขณะนี้อยู่นอกเวลาเช็คอิน',database_error:'ฐานข้อมูลตอบกลับผิดพลาด'};
+        qrLastFailureMessage=reasons[code]||'สร้าง QR ไม่สำเร็จ ('+code+')';
+        container.textContent=qrLastFailureMessage+' — แตะปุ่มขยาย QR เพื่อลองใหม่';
+        console.error('CLT QR issue failed:',code);
       } finally { qrRequestInFlight=false; }
     }
     function renderSignedQr(container) {
@@ -894,7 +903,7 @@
         return;
       }
       // A suspended background tab can miss timer ticks: compare absolute expiry.
-      if (!qrCurrentPayload || Date.now() >= qrExpiresAtMs) {
+      if ((!qrCurrentPayload || Date.now() >= qrExpiresAtMs) && (!qrLastFailureAtMs || Date.now()-qrLastFailureAtMs>=8000)) {
         generateDynamicQRCode(guest, true);
       }
       const remainingMs = Math.max(0, qrExpiresAtMs - Date.now());
@@ -944,6 +953,7 @@
       document.getElementById('qrPassModal').classList.remove('hidden');
       // New QR only on opening, expiry or return from a suspended tab.
       qrCurrentPayload = null;
+      qrLastFailureAtMs=0;
       generateDynamicQRCode(guest, true);
       updateTimerUI(QR_LIFETIME_SECONDS);
       if (qrTimerInterval) clearInterval(qrTimerInterval);
@@ -1017,6 +1027,7 @@
       qrTimerInterval = null;
       ++qrRequestSequence;
       qrCurrentPayload = null;
+      qrLastFailureAtMs=0;
       qrExpiresAtMs = 0;
     }
 

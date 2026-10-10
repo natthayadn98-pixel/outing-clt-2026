@@ -391,8 +391,16 @@
       }
     }
 
-    function adminLogout(isTimeout = false) {
+    async function adminLogout(isTimeout = false) {
       sessionStorage.removeItem('admin_vip_authenticated');
+      // Sign out of the real Supabase Auth session, not only the legacy PIN overlay.
+      if (window.cltSecureAdminClient) {
+        try { await Promise.race([window.cltSecureAdminClient.auth.signOut({scope:'local'}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),5000))]); } catch(e) { console.warn('Sign-out request:',e); }
+      }
+      const secureGate=document.getElementById('secureAdminGate');
+      if(secureGate) secureGate.style.display='flex';
+      const securePassword=document.getElementById('secureAdminPassword');
+      if(securePassword) securePassword.value='';
       clearTimeout(idleTimer);
       const modal = document.getElementById('pinLockModal');
       if (modal) modal.classList.remove('hidden');
@@ -456,28 +464,47 @@
 (function(){
  const url='https://ycljxlywewigwxovdnyj.supabase.co';
  const key=document.querySelector('script[data-supabase-key]')?.dataset.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI';
- const client=window.supabase.createClient(url,key);
+ const client=window.supabase.createClient(url,key,{auth:{autoRefreshToken:true,persistSession:true}});
+ window.cltSecureAdminClient=client;
  const gate=document.getElementById('secureAdminGate');
+ const msg=document.getElementById('secureAdminError');
+ const form=document.getElementById('secureAdminForm');
+ const submit=form.querySelector('button[type="submit"]');
+ function withTimeout(p,ms=12000){return Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),ms))]);}
+ let checking=false;
  async function refresh(){
-   const {data:{session}}=await client.auth.getSession();
-   if(!session){gate.style.display='flex';return;}
+   if(checking)return;
+   checking=true;
    try {
-     const res=await fetch(url+'/functions/v1/secure-checkin',{
+     const {data:{session},error}=await withTimeout(client.auth.getSession(),9000);
+     if(error||!session){gate.style.display='flex';return;}
+     const res=await withTimeout(fetch(url+'/functions/v1/secure-checkin',{
        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':key},
        body:JSON.stringify({action:'check_admin'})
-     });
-     if(!res.ok){gate.style.display='flex';document.getElementById('secureAdminError').textContent='บัญชีนี้ยังไม่ได้รับสิทธิ์ Admin จาก IT';return;}
-   }catch{gate.style.display='flex';document.getElementById('secureAdminError').textContent='ตรวจสอบสิทธิ์ไม่สำเร็จ กรุณาลองใหม่';return;}
-   gate.style.display='none';
-   sessionStorage.setItem('admin_vip_authenticated','true');
+     }),12000);
+     let data={};try{data=await res.json()}catch{}
+     if(!res.ok||data.authorized!==true){
+       gate.style.display='flex';
+       msg.textContent=res.status===401?'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่':res.status===403?'บัญชีนี้ยังไม่ได้รับสิทธิ์ Admin':'ตรวจสอบสิทธิ์ไม่สำเร็จ ('+(data.error||res.status)+')';
+       return;
+     }
+     msg.textContent='';gate.style.display='none';
+     sessionStorage.setItem('admin_vip_authenticated','true');
+   } catch(e){gate.style.display='flex';msg.textContent=e.message==='timeout'?'ระบบตอบสนองช้า กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง':'เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่';}
+   finally{checking=false;}
  }
- document.getElementById('secureAdminForm').addEventListener('submit',async(e)=>{
-   e.preventDefault();const msg=document.getElementById('secureAdminError');msg.textContent='กำลังตรวจสอบ…';
-   const {error}=await client.auth.signInWithPassword({email:document.getElementById('secureAdminEmail').value.trim(),password:document.getElementById('secureAdminPassword').value});
-   if(error){msg.textContent='อีเมลหรือรหัสผ่านไม่ถูกต้อง';return;}
-   msg.textContent='';await refresh();
+ form.addEventListener('submit',async(e)=>{
+   e.preventDefault();
+   if(submit.disabled)return;
+   submit.disabled=true;submit.textContent='กำลังเข้าสู่ระบบ…';msg.textContent='กำลังตรวจสอบบัญชี…';
+   try {
+     const {error}=await withTimeout(client.auth.signInWithPassword({email:document.getElementById('secureAdminEmail').value.trim(),password:document.getElementById('secureAdminPassword').value}),12000);
+     if(error){msg.textContent='เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบอีเมลและรหัสผ่าน';return;}
+     msg.textContent='กำลังตรวจสอบสิทธิ์ Admin…';await refresh();
+   } catch(e){msg.textContent=e.message==='timeout'?'เข้าสู่ระบบใช้เวลานานเกินไป กรุณาตรวจสอบอินเทอร์เน็ต':'ไม่สามารถเชื่อมต่อระบบเข้าสู่ระบบได้';}
+   finally{submit.disabled=false;submit.textContent='เข้าสู่ระบบอย่างปลอดภัย';}
  });
- window.addEventListener('storage',refresh);
+ window.addEventListener('storage',e=>{if(e.key?.includes('auth-token'))refresh();});
  refresh();
 })();
 </script>
