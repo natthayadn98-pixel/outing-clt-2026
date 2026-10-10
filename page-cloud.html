@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    * { font-family: 'Anakotmai', sans-serif; }
+    body { background-color: #0c0217; color: #f1f5f9; min-height: 100vh; padding: 2rem 1rem; }
+    .vip-input { background-color: #0e0523; border: 1px solid rgba(139, 92, 246, 0.35); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #5b21b6; border-radius: 9999px; }
+  </style>
+</head>
+<body class="flex justify-center">
+
+  <section class="w-full max-w-5xl bg-[#14082e]/95 border border-[#3c1d77] rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-amber-300">จัดการรายชื่อและพิมพ์บัตร QR Code</h2>
+      <p class="text-xs sm:text-sm text-purple-300/70 mt-1">นำเข้าไฟล์ Excel เพื่อบันทึกลงตาราง guests และสั่งพิมพ์บัตร</p>
+    </div>
+
+    <div class="mb-4">
+      <div class="bg-[#0e0423] border border-purple-800/80 rounded-2xl p-3 sm:p-4">
+        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="handleExcelFileUpload(event)" class="block w-full text-xs text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-purple-900 file:text-amber-300" />
+      </div>
+    </div>
+
+    <div id="cloudSyncBanner" class="flex items-center justify-center gap-2 text-emerald-400 font-semibold mb-6 text-sm">
+      <span>✅</span><span id="cloudSyncText">ซิงค์ข้อมูลกับ Cloud สำเร็จ (0 คน)</span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-7">
+      <button onclick="fetchGuestsFromSupabase(true)" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-sky-500 to-blue-600 active:scale-95 transition">
+        <span>🔄</span> รีเฟรชดึงข้อมูลล่าสุด
+      </button>
+      <button onclick="openPrintBranchModal()" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 active:scale-95 transition">
+        <span>🖨️</span> สั่งปริ้นแยกสาขา
+      </button>
+      <button onclick="clearCloudDisplay()" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-rose-500 to-red-600 active:scale-95 transition">
+        <span>🗑️</span> ล้างข้อมูลทั้งหมด
+      </button>
+    </div>
+
+    <!-- แถบค้นหาและตัวกรอง -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-5">
+      <input type="text" id="cloudSearchInput" placeholder="ค้นหาด้วยรหัสพนักงาน, ชื่อ หรือ สาขา..." oninput="handleSearchDebounce()" class="flex-1 px-4 py-2.5 vip-input rounded-xl text-white text-xs sm:text-sm focus:outline-none" />
+      <select id="cloudBranchSelect" onchange="renderCloudCardsGrid()" class="px-4 py-2.5 vip-input rounded-xl text-purple-200 text-xs sm:text-sm focus:outline-none">
+        <option value="">ทุกสาขา / แผนก</option>
+      </select>
+    </div>
+
+    <!-- พื้นที่แสดงรายชื่อ -->
+    <div id="cloudCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 max-h-[500px] overflow-y-auto pr-1"></div>
+  </section>
+
+  <!-- MODAL แสดง QR Code รายบุคคล (โหลดเฉพาะเมื่อคลิก) -->
+  <div id="qrPreviewModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#170b36] border border-purple-600/70 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl relative">
+      <button onclick="closeQRModal()" class="absolute top-4 right-4 text-purple-400 hover:text-white text-lg">✕</button>
+      <span class="inline-block px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[11px] font-semibold mb-3">VIP PARTY CONNECT PASS</span>
+      <h3 id="modalGuestName" class="text-xl font-bold text-white mb-0.5">-</h3>
+      <p id="modalGuestCode" class="text-xs text-purple-300 font-mono">-</p>
+      <p id="modalGuestBranch" class="text-xs text-amber-300/90 mb-4">-</p>
+      <div class="bg-white p-3.5 rounded-2xl mx-auto w-fit shadow-lg mb-4">
+        <div id="modalQrCanvas" class="flex justify-center items-center"></div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="downloadModalQRCode()" class="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition">💾 บันทึกรูป QR</button>
+        <button onclick="closeQRModal()" class="px-4 py-2.5 rounded-xl bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs transition">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL สั่งปริ้นแยกสาขา -->
+  <div id="printBranchModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#170b36] border border-purple-600/70 rounded-3xl p-6 max-w-sm w-full">
+      <h3 class="text-lg font-bold text-amber-300 mb-2">พิมพ์บัตร QR Code แยกสาขา</h3>
+      <div class="mb-5">
+        <label class="block text-xs text-purple-200 mb-1.5">เลือกสาขา:</label>
+        <select id="modalPrintBranchSelect" class="w-full px-3.5 py-2.5 vip-input rounded-xl text-white text-xs"></select>
+      </div>
+      <div class="flex gap-2 justify-end">
+        <button onclick="closePrintBranchModal()" class="px-4 py-2.5 rounded-xl bg-purple-900/50 text-purple-300 text-xs">ยกเลิก</button>
+        <button onclick="executeBranchPrinting()" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">พิมพ์บัตร</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let guestsList = [];
+    let searchDebounceTimer = null;
+
+    async function fetchGuestsFromSupabase(showAlert = true) {
+      try {
+        const { data, error } = await supabaseClient.from('guests').select('*').order('employee_code', { ascending: true });
+        if (error) throw error;
+        guestsList = data || [];
+        document.getElementById('cloudSyncText').textContent = `ซิงค์ข้อมูลกับ Cloud สำเร็จ (${guestsList.length} คน)`;
+        renderCloudCardsGrid();
+        if (showAlert) alert(`ดึงข้อมูลสำเร็จ (${guestsList.length} คน)`);
+      } catch (e) {
+        alert('ดึงข้อมูลผิดพลาด: ' + e.message);
+      }
+    }
+
+    function handleSearchDebounce() {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        renderCloudCardsGrid();
+      }, 200); // หน่วงเวลา 0.2 วินาทีเพื่อให้พิมพ์ค้นหาได้ไม่สะดุด
+    }
+
+    // แสดงผลแบบเบาเครื่อง (ไม่วาด QR 500 ภาพค้างไว้)
+    function renderCloudCardsGrid() {
+      const container = document.getElementById('cloudCardsContainer');
+      const keyword = (document.getElementById('cloudSearchInput').value || '').toLowerCase().trim();
+      const branchFilter = document.getElementById('cloudBranchSelect').value;
+      container.innerHTML = '';
+
+      updateBranchDropdowns();
+
+      const filtered = guestsList.filter(guest => {
+        const matchK = String(guest.employee_code).toLowerCase().includes(keyword) || 
+                       String(guest.full_name).toLowerCase().includes(keyword) || 
+                       (guest.branch && String(guest.branch).toLowerCase().includes(keyword));
+        const matchB = !branchFilter || guest.branch === branchFilter;
+        return matchK && matchB;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="col-span-full text-center py-12 text-purple-400/60 text-xs">ไม่พบรายชื่อผู้เข้าร่วม</div>';
+        return;
+      }
+
+      // สร้างการ์ดแบบเบาและเร็ว
+      const fragment = document.createDocumentFragment();
+      filtered.forEach((guest) => {
+        const card = document.createElement('div');
+        card.className = "bg-[#0d0421] border border-purple-800/70 rounded-2xl p-4 flex flex-col justify-between shadow-lg hover:border-amber-400/50 transition cursor-pointer";
+        
+        const hasCheckedIn = guest.morning_check_in || guest.evening_check_in;
+        const qrVal = String(guest.qr_token || guest.employee_code || '').trim();
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs text-purple-300 font-mono font-bold">${guest.employee_code}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full ${hasCheckedIn ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' : 'bg-purple-950 text-purple-300 border border-purple-700/50'}">
+                ${hasCheckedIn ? 'เช็คอินแล้ว' : 'ยังไม่เช็คอิน'}
+              </span>
+            </div>
+            <div class="font-bold text-amber-300 text-sm truncate w-full">${guest.full_name}</div>
+            <div class="text-[11px] text-slate-300 mt-1 truncate">${guest.branch || 'ทั่วไป'}</div>
+          </div>
+          <button type="button" class="mt-3 w-full py-1.5 rounded-xl bg-purple-900/60 hover:bg-amber-400 hover:text-slate-950 text-amber-300 border border-purple-600/50 text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+            <span>🔍</span> ดู QR Code
+          </button>
+        `;
+
+        // กดที่การ์ดแล้วค่อยเรนเดอร์ QR Code ใน Modal
+        card.onclick = () => openQRModal(guest.full_name, guest.employee_code, guest.branch, qrVal);
+        fragment.appendChild(card);
+      });
+
+      container.appendChild(fragment);
+    }
+
+    function openQRModal(name, code, branch, token) {
+      document.getElementById('modalGuestName').textContent = name;
+      document.getElementById('modalGuestCode').textContent = `รหัส: ${code}`;
+      document.getElementById('modalGuestBranch').textContent = `สาขา: ${branch || 'ทั่วไป'}`;
+
+      const qrCanvas = document.getElementById('modalQrCanvas');
+      qrCanvas.innerHTML = '';
+      new QRCode(qrCanvas, {
+        text: String(token),
+        width: 150,
+        height: 150,
+        colorDark: '#0e0423',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      document.getElementById('qrPreviewModal').classList.remove('hidden');
+    }
+
+    function closeQRModal() {
+      document.getElementById('qrPreviewModal').classList.add('hidden');
+    }
+
+    function downloadModalQRCode() {
+      const canvas = document.querySelector('#modalQrCanvas canvas');
+      if (canvas) {
+        const link = document.createElement('a');
+        link.download = `QR-${document.getElementById('modalGuestCode').textContent}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+    }
+
+    function updateBranchDropdowns() {
+      const branches = [...new Set(guestsList.map(g => g.branch).filter(Boolean))];
+      const filterSelect = document.getElementById('cloudBranchSelect');
+      const modalSelect = document.getElementById('modalPrintBranchSelect');
+      const curVal = filterSelect.value;
+
+      filterSelect.innerHTML = '<option value="">ทุกสาขา / แผนก</option>';
+      modalSelect.innerHTML = '<option value="ALL">พิมพ์บัตรทุกสาขา</option>';
+
+      branches.forEach(b => {
+        filterSelect.innerHTML += `<option value="${b}">${b}</option>`;
+        modalSelect.innerHTML += `<option value="${b}">${b}</option>`;
+      });
+      filterSelect.value = curVal;
+    }
+
+    function handleExcelFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array', cellText: true });
+          const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { raw: false, defval: '' });
+          const uniqueMap = new Map();
+
+          jsonRows.forEach(row => {
+            const rawCode = row['รหัสพนักงาน'] || row['รหัส'] || row['employee_code'];
+            const rawName = row['ชื่อพนักงาน'] || row['ชื่อ-สกุล'] || row['full_name'];
+            const rawBranch = row['สาขา'] || row['แผนก'] || 'สำนักงานใหญ่';
+            if (rawCode && rawName) {
+              const code = String(rawCode).trim();
+              uniqueMap.set(code, { employee_code: code, full_name: String(rawName).trim(), branch: String(rawBranch).trim(), qr_token: code });
+            }
+          });
+
+          const list = Array.from(uniqueMap.values());
+          await supabaseClient.from('guests').upsert(list, { onConflict: 'employee_code' });
+          alert(`นำเข้า ${list.length} คน เรียบร้อยแล้ว`);
+          fetchGuestsFromSupabase(false);
+        } catch (err) { alert('ผิดพลาด: ' + err.message); }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function clearCloudDisplay() {
+      if (!confirm('ยืนยันลบข้อมูลทั้งหมดในตาราง guests บน Supabase ใช่หรือไม่?')) return;
+      await supabaseClient.from('guests').delete().neq('employee_code', '');
+      guestsList = [];
+      renderCloudCardsGrid();
+      document.getElementById('cloudSyncText').textContent = 'ซิงค์ข้อมูลกับ Cloud สำเร็จ (0 คน)';
+    }
+
+    function openPrintBranchModal() { document.getElementById('printBranchModal').classList.remove('hidden'); }
+    function closePrintBranchModal() { document.getElementById('printBranchModal').classList.add('hidden'); }
+
+    function executeBranchPrinting() {
+      const selected = document.getElementById('modalPrintBranchSelect').value;
+      closePrintBranchModal();
+      const printItems = selected === 'ALL' ? guestsList : guestsList.filter(g => g.branch === selected);
+      if (printItems.length === 0) return alert('ไม่มีข้อมูล');
+
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <html><head><title>Print Badges</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
+        <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
+        <style>@page { size: A4; margin: 8mm; } body { font-family: 'Anakotmai', sans-serif; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8mm; } .badge { border: 2px dashed #7c3aed; padding: 12px; text-align: center; page-break-inside: avoid; }</style></head>
+        <body><div class="grid" id="c"></div><script>
+          const list = ${JSON.stringify(printItems)};
+          list.forEach((item, idx) => {
+            const b = document.createElement('div'); b.className = 'badge';
+            b.innerHTML = '<h3>✨ VIP Party</h3><div id="q_'+idx+'"></div><p>'+item.full_name+' ('+item.employee_code+')</p>';
+            document.getElementById('c').appendChild(b);
+            new QRCode(document.getElementById('q_'+idx), { text: String(item.qr_token || item.employee_code), width: 105, height: 105 });
+          });
+          setTimeout(() => window.print(), 700);
+        <\/script></body></html>
+      `);
+      printWindow.document.close();
+    }
+
+    fetchGuestsFromSupabase(false);
+  </script>
+</body>
+</html>

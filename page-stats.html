@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { font-family: 'Anakotmai', sans-serif; }
+    .font-digital { font-family: 'Anakotmai', monospace; }
+    body { background-color: #0c0217; color: #f1f5f9; min-height: 100vh; padding: 2rem 1rem; }
+  </style>
+</head>
+<body class="flex justify-center">
+
+  <section class="w-full max-w-4xl bg-[#14082e]/95 border border-[#3c1d77] rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#facc15] tracking-wide">สถิติผู้เข้างาน (Real-time)</h2>
+    </div>
+
+    <div class="flex items-center justify-center gap-2.5 mb-8">
+      <button id="btnFilterAll" onclick="setStatsFilter('all')" class="px-5 py-2 rounded-full font-bold text-xs sm:text-sm bg-[#facc15] text-slate-950">⭐ ทั้งหมด</button>
+      <button id="btnFilterMorning" onclick="setStatsFilter('morning')" class="px-5 py-2 rounded-full font-medium text-xs sm:text-sm bg-[#1b0a3c] text-purple-200 border border-purple-800">🌻 รอบเช้า</button>
+      <button id="btnFilterEvening" onclick="setStatsFilter('evening')" class="px-5 py-2 rounded-full font-medium text-xs sm:text-sm bg-[#1b0a3c] text-purple-200 border border-purple-800">🌙 รอบเย็น</button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
+      <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-5 text-center">
+        <div class="text-xs text-slate-300">จำนวนทั้งหมด</div>
+        <div id="statBoxTotal" class="text-4xl font-extrabold text-[#facc15] font-digital mt-3">0</div>
+      </div>
+      <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-5 text-center">
+        <div class="text-xs text-slate-300">สแกนเข้างานแล้ว</div>
+        <div id="statBoxChecked" class="text-4xl font-extrabold text-white font-digital mt-3">0</div>
+      </div>
+      <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-5 text-center">
+        <div class="text-xs text-slate-300">ยังไม่มา</div>
+        <div id="statBoxRemaining" class="text-4xl font-extrabold text-[#facc15] font-digital mt-3">0</div>
+      </div>
+    </div>
+
+    <div class="mb-8">
+      <button onclick="exportStatsToExcel()" class="w-full py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-green-500">
+        📊 ส่งออกไฟล์ Excel (แยกชีต เช้า-เย็น)
+      </button>
+    </div>
+
+    <div>
+      <h3 class="text-sm sm:text-base font-bold text-[#facc15] mb-4">🏢 สถิติและรายชื่อแยกตามสาขา</h3>
+      <div id="statBranchDetailsList" class="space-y-3 max-h-[480px] overflow-y-auto pr-1"></div>
+    </div>
+  </section>
+
+  <script>
+    const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let guestsList = [];
+    let currentStatsFilter = 'all';
+
+    async function loadStatsData() {
+      const { data } = await supabaseClient.from('guests').select('*');
+      guestsList = data || [];
+      recalculateStatistics();
+    }
+
+    function setStatsFilter(mode) {
+      currentStatsFilter = mode;
+      ['btnFilterAll', 'btnFilterMorning', 'btnFilterEvening'].forEach(id => {
+        document.getElementById(id).className = "px-5 py-2 rounded-full font-medium text-xs sm:text-sm bg-[#1b0a3c] text-purple-200 border border-purple-800";
+      });
+      if (mode === 'all') document.getElementById('btnFilterAll').className = "px-5 py-2 rounded-full font-bold text-xs sm:text-sm bg-[#facc15] text-slate-950";
+      if (mode === 'morning') document.getElementById('btnFilterMorning').className = "px-5 py-2 rounded-full font-bold text-xs sm:text-sm bg-[#facc15] text-slate-950";
+      if (mode === 'evening') document.getElementById('btnFilterEvening').className = "px-5 py-2 rounded-full font-bold text-xs sm:text-sm bg-[#facc15] text-slate-950";
+      recalculateStatistics();
+    }
+
+    function recalculateStatistics() {
+      const total = guestsList.length;
+      let checkedCount = 0;
+      if (currentStatsFilter === 'all') checkedCount = guestsList.filter(g => g.morning_check_in || g.evening_check_in).length;
+      if (currentStatsFilter === 'morning') checkedCount = guestsList.filter(g => g.morning_check_in).length;
+      if (currentStatsFilter === 'evening') checkedCount = guestsList.filter(g => g.evening_check_in).length;
+
+      document.getElementById('statBoxTotal').textContent = total;
+      document.getElementById('statBoxChecked').textContent = checkedCount;
+      document.getElementById('statBoxRemaining').textContent = Math.max(0, total - checkedCount);
+
+      renderBranchBreakdown();
+    }
+
+    function renderBranchBreakdown() {
+      const container = document.getElementById('statBranchDetailsList');
+      container.innerHTML = '';
+      const branchGroups = {};
+      guestsList.forEach(g => {
+        const b = g.branch || 'สำนักงานใหญ่';
+        if (!branchGroups[b]) branchGroups[b] = [];
+        branchGroups[b].push(g);
+      });
+
+      Object.keys(branchGroups).forEach(branch => {
+        const list = branchGroups[branch];
+        const branchTotal = list.length;
+        let checked = 0;
+        if (currentStatsFilter === 'all') checked = list.filter(g => g.morning_check_in || g.evening_check_in).length;
+        if (currentStatsFilter === 'morning') checked = list.filter(g => g.morning_check_in).length;
+        if (currentStatsFilter === 'evening') checked = list.filter(g => g.evening_check_in).length;
+        const percent = branchTotal > 0 ? Math.round((checked / branchTotal) * 100) : 0;
+
+        const card = document.createElement('div');
+        card.className = "bg-[#0d0421] border border-purple-800/80 rounded-2xl p-4";
+        card.innerHTML = `
+          <div class="flex justify-between mb-2">
+            <span class="text-amber-300 font-bold">${branch} (${branchTotal} คน)</span>
+            <span class="text-emerald-400 font-digital">${checked} / ${branchTotal} (${percent}%)</span>
+          </div>
+          <div class="w-full bg-[#1b0a3c] rounded-full h-2">
+            <div class="bg-gradient-to-r from-amber-400 to-emerald-400 h-2 rounded-full" style="width: ${percent}%"></div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function exportStatsToExcel() {
+      const morningData = guestsList.map(g => ({ 'รหัสพนักงาน': g.employee_code, 'ชื่อ-นามสกุล': g.full_name, 'สาขา': g.branch || 'ทั่วไป', 'เวลาเช็คอิน': g.morning_check_in || '-' }));
+      const eveningData = guestsList.map(g => ({ 'รหัสพนักงาน': g.employee_code, 'ชื่อ-นามสกุล': g.full_name, 'สาขา': g.branch || 'ทั่วไป', 'เวลาเช็คอิน': g.evening_check_in || '-' }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(morningData), "รอบเช้า");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eveningData), "รอบเย็น");
+      XLSX.writeFile(wb, `รายงานสถิติเข้างาน_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    loadStatsData();
+  </script>
+</body>
+</html>

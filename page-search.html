@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ค้นหา (ไม่มี QR)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Anakotmai Web Font CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
+  
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { font-family: 'Anakotmai', sans-serif; }
+    body { 
+      background-color: #0c0217; 
+      color: #f1f5f9; 
+      min-height: 100vh; 
+      padding: 1.5rem 1rem; 
+      display: flex;
+      justify-content: center;
+    }
+    .card-glow {
+      box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.8), 0 0 28px -4px rgba(139, 92, 246, 0.25);
+    }
+    ::-webkit-scrollbar { width: 7px; }
+    ::-webkit-scrollbar-track { background: #0d0421; }
+    ::-webkit-scrollbar-thumb { background: #5b21b6; border-radius: 9999px; }
+  </style>
+</head>
+<body class="w-full">
+
+  <section class="w-full max-w-3xl bg-[#14082e]/95 border border-[#3c1d77] rounded-3xl p-6 sm:p-10 card-glow backdrop-blur-xl">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl sm:text-3xl font-bold text-amber-300">ค้นหารายชื่อผู้เข้างาน</h2>
+      <p class="text-xs sm:text-sm text-purple-300/80 mt-1.5">ค้นหาพนักงานและจัดการการผูกอุปกรณ์โดยเจ้าหน้าที่ • ปลดล็อกแล้วเครื่องเดิมใช้กรอก PIN ใหม่ได้</p>
+    </div>
+
+    <!-- ช่องค้นหา -->
+    <div class="relative mb-4">
+      <div class="flex items-center bg-white rounded-2xl border-2 border-amber-400 px-4 py-2.5 shadow-lg">
+        <input 
+          type="text" 
+          id="searchInputTab" 
+          placeholder="พิมพ์รหัสพนักงาน หรือ ชื่อ-นามสกุล..." 
+          oninput="handleTabSearch()" 
+          class="w-full bg-transparent text-slate-900 text-base sm:text-lg font-medium outline-none placeholder-gray-400" 
+          autocomplete="off" 
+        />
+        <button type="button" onclick="clearTabSearchInput()" class="shrink-0 ml-2 px-3 py-1.5 rounded-xl bg-[#2b3548] hover:bg-[#3d4b66] text-white text-xs font-semibold flex items-center gap-1 transition">
+          ✕ เคลียร์
+        </button>
+      </div>
+    </div>
+
+    <!-- แถบแจ้งเตือนส่งคำสั่งปลดล็อกสำเร็จ -->
+    <div id="unlockNotifyAlert" class="hidden mb-4 p-3 rounded-xl bg-[#0f0728] border border-emerald-500/40 text-emerald-400 text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-lg transition-all duration-300">
+      <span class="text-base">✅</span>
+      <span id="unlockNotifyText">ส่งคำสั่งปลดล็อกการผูกเครื่องสำเร็จ</span>
+    </div>
+
+    <!-- ผลการค้นหา -->
+    <div id="tabSearchResultsContainer" class="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
+      <div class="text-center py-12 text-purple-400/60 text-xs sm:text-sm">พิมพ์รหัสพนักงานหรือชื่อเพื่อค้นหาข้อมูล</div>
+    </div>
+  </section>
+
+  <script>
+    const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let guestsList = [];
+    let unlockTimer = null;
+    let unlockInProgress = false;
+    function escapeHTML(value) {
+      return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function showUnlockNotice(message, success) {
+      const box = document.getElementById('unlockNotifyAlert');
+      const text = document.getElementById('unlockNotifyText');
+      if (!box || !text) return;
+      text.textContent = message;
+      box.className = `mb-4 p-3 rounded-xl border text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-lg ${success ? 'bg-[#0f0728] border-emerald-500/40 text-emerald-400' : 'bg-[#280715] border-rose-500/40 text-rose-400'}`;
+      clearTimeout(unlockTimer);
+      if (success) unlockTimer = setTimeout(() => box.classList.add('hidden'), 7000);
+    }
+
+    function getCleanThaiTimeString() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    }
+
+    async function loadGuests() {
+      try {
+        const { data, error } = await supabaseClient.from('guests').select('*').order('employee_code', { ascending: true });
+        if (error) throw error;
+        guestsList = data || [];
+      } catch (e) {
+        console.error('Error fetching guests:', e);
+      }
+    }
+
+    function clearTabSearchInput() {
+      const input = document.getElementById('searchInputTab');
+      input.value = '';
+      input.focus();
+      handleTabSearch();
+    }
+
+    function handleTabSearch() {
+      const q = document.getElementById('searchInputTab').value.trim().toLowerCase();
+      const container = document.getElementById('tabSearchResultsContainer');
+      
+      if (!q) {
+        container.innerHTML = '<div class="text-center py-12 text-purple-400/60 text-xs sm:text-sm">พิมพ์รหัสพนักงานหรือชื่อเพื่อค้นหาข้อมูล</div>';
+        return;
+      }
+
+      const filtered = guestsList.filter(g => 
+        String(g.employee_code).toLowerCase().includes(q) || 
+        String(g.full_name).toLowerCase().includes(q) ||
+        (g.branch && String(g.branch).toLowerCase().includes(q))
+      );
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-rose-400/80 text-xs sm:text-sm">ไม่พบรายชื่อผู้เข้างานที่ตรงกับคำค้นหา</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const isMorning = !!item.morning_check_in;
+        const isEvening = !!item.evening_check_in;
+
+        return `
+          <div class="relative bg-[#0d0421] border border-purple-800/80 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg hover:border-amber-400/50 transition">
+            
+            <div class="flex items-start gap-2.5 min-w-0 flex-1">
+              <div class="w-1.5 self-stretch bg-amber-400 rounded-full shrink-0"></div>
+              <div class="min-w-0 pr-1">
+                <div class="flex items-baseline flex-wrap gap-x-1.5">
+                  <h3 class="text-sm sm:text-base font-bold text-amber-300 truncate">
+                    ${escapeHTML(item.full_name)}
+                  </h3>
+                  <span class="text-xs text-purple-300 font-normal whitespace-nowrap">
+                    (${escapeHTML(item.branch || 'สำนักงานใหญ่')})
+                  </span>
+                </div>
+                <p class="text-xs text-purple-300 font-mono mt-0.5">
+                  รหัส: ${escapeHTML(item.employee_code)}
+                </p>
+                <div class="flex gap-2 text-[10px] sm:text-[11px] font-mono mt-0.5 text-purple-400">
+                  <span>เช้า: ${item.morning_check_in || '-'}</span> | 
+                  <span>เย็น: ${item.evening_check_in || '-'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center flex-nowrap">
+              <button 
+                onclick="checkInRoundManual('${item.employee_code}', 'morning')" 
+                class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow whitespace-nowrap ${
+                  isMorning 
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/60' 
+                    : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 active:scale-95'
+                }"
+              >
+                <span>🟡</span>
+                <span>${isMorning ? 'เช้า (เช็คแล้ว)' : 'เช้า'}</span>
+              </button>
+
+              <button 
+                onclick="checkInRoundManual('${item.employee_code}', 'evening')" 
+                class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow whitespace-nowrap ${
+                  isEvening 
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/60' 
+                    : 'bg-gradient-to-r from-cyan-400 to-sky-500 hover:from-cyan-300 text-slate-950 active:scale-95'
+                }"
+              >
+                <span>🌙</span>
+                <span>${isEvening ? 'เย็น (เช็คแล้ว)' : 'เย็น'}</span>
+              </button>
+
+              <button 
+                onclick="unlockDeviceManual('${item.employee_code}')" 
+                class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 text-white transition flex items-center gap-1 shadow active:scale-95 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+                title="ปลดล็อกเฉพาะบัญชีนี้ ไม่ลบเวลาเช็คอิน" ${!item.device_token || item.is_locked === false ? 'disabled aria-disabled="true"' : ''}
+              >
+                <span>🔓</span>
+                <span>${item.device_token && item.is_locked !== false ? 'ปลดล็อก' : 'ยังไม่ผูกเครื่อง'}</span>
+              </button>
+            </div>
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function checkInRoundManual(empCode, round) {
+      const roundName = round === 'morning' ? 'รอบเช้า' : 'รอบเย็น';
+      const updateField = round === 'morning' ? 'morning_check_in' : 'evening_check_in';
+      const cleanTime = getCleanThaiTimeString();
+
+      try {
+        const { error } = await supabaseClient
+          .from('guests')
+          .update({ [updateField]: cleanTime })
+          .eq('employee_code', empCode);
+
+        if (error) throw error;
+
+        const idx = guestsList.findIndex(g => g.employee_code === empCode);
+        if (idx !== -1) {
+          guestsList[idx][updateField] = cleanTime;
+        }
+
+        handleTabSearch();
+        alert(`บันทึกเช็คอิน ${roundName} สำหรับรหัส "${empCode}" เรียบร้อยแล้ว! (${cleanTime})`);
+      } catch (err) {
+        alert('เกิดข้อผิดพลาดในการบันทึกเวลา: ' + err.message);
+      }
+    }
+
+    // ปลดเฉพาะบัญชีที่เลือก ไม่แก้ morning_check_in / evening_check_in
+    async function unlockDeviceManual(empCode) {
+      if (unlockInProgress) return;
+      const guest = guestsList.find(g => String(g.employee_code) === String(empCode));
+      if (!guest) return showUnlockNotice('ไม่พบข้อมูลพนักงาน กรุณาโหลดหน้าใหม่', false);
+      if (!guest.device_token || guest.is_locked === false) {
+        return showUnlockNotice('บัญชีนี้ยังไม่ได้ผูกเครื่อง ไม่จำเป็นต้องปลดล็อก', false);
+      }
+      const reason = prompt(`ปลดล็อกเฉพาะบัญชีนี้\nรหัส: ${guest.employee_code}\nชื่อ: ${guest.full_name}\n\nกรุณาระบุเหตุผล เช่น กรอก PIN ผิดคน (ยกเลิกเพื่อไม่ดำเนินการ)`);
+      if (reason === null) return;
+      if (reason.trim().length < 5) return showUnlockNotice('กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร', false);
+      if (!confirm(`ยืนยันปลดล็อกเฉพาะ ${guest.full_name} (${guest.employee_code})?\n\nเหตุผล: ${reason.trim()}\n\nเวลาเช็คอินเช้าและเย็นจะไม่ถูกลบ เครื่องเดิมสามารถกรอก PIN ใหม่ได้`)) return;
+      unlockInProgress = true;
+      try {
+        const { data, error } = await supabaseClient.from('guests')
+          .update({ device_token: null, is_locked: false })
+          .eq('employee_code', empCode)
+          .eq('device_token', guest.device_token)
+          .select('employee_code, device_token, is_locked, morning_check_in, evening_check_in');
+        if (error) throw error;
+        if (!data || data.length !== 1) throw new Error('ข้อมูลการผูกเครื่องเปลี่ยนไปแล้ว หรือไม่มีสิทธิ์แก้ไข กรุณาโหลดข้อมูลใหม่');
+        const idx = guestsList.findIndex(g => String(g.employee_code) === String(empCode));
+        if (idx !== -1) Object.assign(guestsList[idx], data[0]);
+        handleTabSearch();
+        showUnlockNotice(`ปลดล็อก ${guest.employee_code} สำเร็จ • เครื่องเดิมกรอก PIN ใหม่ได้ • ไม่ลบประวัติเช็คอิน (เหตุผล: ${reason.trim()})`, true);
+        // หมายเหตุ: ประวัติเหตุผลนี้แสดงในหน้าจอเท่านั้น ยังไม่ได้เก็บลงฐานข้อมูล
+      } catch (err) {
+        showUnlockNotice('ปลดล็อกไม่สำเร็จ: ' + err.message, false);
+      } finally {
+        unlockInProgress = false;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadGuests();
+      const input = document.getElementById('searchInputTab');
+      if (input) input.focus();
+    });
+  </script>
+</body>
+</html>

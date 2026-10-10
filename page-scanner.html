@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>จุดสแกนรับแขกหน้างาน</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Anakotmai Web Font CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- HTML5-QRCode Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    * {
+      font-family: 'Anakotmai', sans-serif;
+    }
+    .font-digital {
+      font-family: 'Anakotmai', monospace;
+      letter-spacing: 1px;
+    }
+    body {
+      background-color: #0c0217;
+      min-height: 100vh;
+      color: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 1.5rem 1rem;
+    }
+    .card-glow {
+      box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.8), 0 0 28px -4px rgba(139, 92, 246, 0.25);
+    }
+    ::-webkit-scrollbar {
+      width: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d0421;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #5b21b6;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="w-full">
+
+  <!-- กล่องการ์ดหลัก -->
+  <section class="w-full max-w-3xl bg-[#14082e]/95 border border-[#3c1d77] rounded-[28px] p-6 sm:p-9 card-glow backdrop-blur-xl mx-auto shadow-2xl">
+    
+    <!-- 1. หัวข้อและเวลาเครื่องแอดมิน -->
+    <div class="text-center mb-5">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#facc15] tracking-wide">
+        จุดสแกนรับแขกหน้างาน
+      </h2>
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1b0a3c] border border-purple-800 text-purple-200 text-xs sm:text-sm font-digital mt-2.5 shadow">
+        <span>⏰</span>
+        <span>เวลาเครื่องแอดมิน: <span id="scannerLiveClock" class="font-bold">00:00:00</span></span>
+      </div>
+    </div>
+
+    <!-- 2. แถบสีม่วง: ระบบตรวจจับเวลาจริงอัตโนมัติ -->
+    <div class="flex justify-center mb-5">
+      <div class="w-full py-2.5 px-4 rounded-2xl bg-[#1d0e44]/80 border border-purple-700/60 text-xs sm:text-sm text-yellow-300 flex items-center justify-center gap-2 text-center font-medium shadow-sm">
+        <span>⏱️</span>
+        <span>ระบบตรวจจับเวลาจริงอัตโนมัติ (เช้า: 07:00–09:30 น. | เย็น: 14:00 น. เป็นต้นไป)</span>
+      </div>
+    </div>
+
+    <!-- 3. ปุ่มสลับโหมด กล้อง / เครื่องยิง -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-5">
+      <button type="button" id="btnModeCamera" onclick="switchScanMode('camera')" class="py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-[#190d3b] text-purple-300 border border-purple-700/60 hover:border-amber-400/50">
+        <span>📸</span><span>สแกนด้วยกล้องมือถือ</span>
+      </button>
+
+      <button type="button" id="btnModeGun" onclick="switchScanMode('gun')" class="py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-lg shadow-amber-500/25">
+        <span>🔫</span><span>ใช้เครื่องยิงบาร์โค้ด</span>
+      </button>
+    </div>
+
+    <!-- 4. โหมดเครื่องยิง -->
+    <div id="modeGunContainer" class="space-y-4">
+      <div class="border-2 border-dashed border-amber-400/80 rounded-2xl p-5 sm:p-7 bg-[#0d0421]/60 text-center space-y-4">
+        <div>
+          <p class="text-sm sm:text-base font-bold text-gray-200">เสียบเครื่องยิงคิวอาร์โค้ด แล้วยิงลงในช่องนี้</p>
+          <p class="text-[11px] sm:text-xs text-emerald-400 mt-1 font-medium">(รองรับแป้นพิมพ์ทุกภาษาอัตโนมัติ ไม่ต้องกังวลเรื่องคีย์บอร์ดไทย/อังกฤษ)</p>
+        </div>
+
+        <!-- แถบไฮไลต์โหมดสแกนความเร็วสูง -->
+        <div class="border border-dashed border-amber-500/50 rounded-xl py-2 px-3 bg-amber-950/20 text-[11px] sm:text-xs text-amber-300 font-medium flex items-center justify-center gap-1.5">
+          <span>⚡</span><span>โหมดสแกนความเร็วสูง: รองรับการยิงต่อเนื่องแบบ Supermarket Speed (ระยะโฟกัสที่แนะนำ: 15–20 ซม.)</span>
+        </div>
+
+        <!-- ช่อง Input ยิงบาร์โค้ด -->
+        <div class="relative">
+          <input 
+            type="text" 
+            id="barcodeGunInput" 
+            placeholder="[ สแกนคิวอาร์โค้ดที่นี่ ]" 
+            autocomplete="off" 
+            class="w-full text-center py-3.5 px-4 bg-[#0e0523] border-2 border-amber-400 rounded-xl text-amber-300 placeholder-amber-400/60 font-mono text-base sm:text-lg focus:outline-none shadow-[0_0_15px_rgba(250,204,21,0.2)]" 
+          />
+        </div>
+      </div>
+
+      <!-- แถบสถานะเครื่องยิง -->
+      <div class="p-3.5 rounded-2xl bg-[#0e0523] border border-purple-800/80 flex items-center justify-center gap-2.5 text-xs sm:text-sm font-medium">
+        <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]"></span>
+        <span class="text-gray-200 font-medium">เครื่องยิงพร้อมทำงาน (Supermarket Speed)...</span>
+      </div>
+    </div>
+
+    <!-- 5. โหมดกล้องมือถือ -->
+    <div id="modeCameraContainer" class="hidden space-y-4">
+      <div class="relative bg-black rounded-2xl overflow-hidden aspect-video border-2 border-purple-600/50 mx-auto max-w-md flex items-center justify-center shadow-inner">
+        <div id="qrReaderCamera" class="w-full"></div>
+      </div>
+      <div class="flex justify-center gap-3">
+        <button id="startCamBtn" onclick="startMobileCamera()" class="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20">
+          ▶️ เปิดกล้อง
+        </button>
+        <button id="stopCamBtn" onclick="stopMobileCamera()" class="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs sm:text-sm transition hidden">
+          ⏹️ ปิดกล้อง
+        </button>
+      </div>
+    </div>
+
+    <!-- แถบผลลัพธ์การสแกน -->
+    <div id="scanResultToast" class="hidden mt-5 p-4 rounded-2xl text-xs sm:text-sm border text-center transition-all duration-300"></div>
+
+  </section>
+
+  <!-- JAVASCRIPT ความเร็วสูง (Supermarket Speed) -->
+  <script>
+    const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let mobileCamScanner = null;
+    let currentScanMode = 'gun';
+    let scanInProgress = false;
+    let gunInputTimer = null;
+    let lastScanPayload = '';
+    let lastScanAt = 0;
+    let cameraStarting = false;
+
+    // 1. เดินเวลานาฬิกาแบบ Real-time
+    function tickClock() {
+      const now = new Date();
+      const timeStr = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Bangkok', hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'}).format(now);
+      const clockEl = document.getElementById('scannerLiveClock');
+      if (clockEl) clockEl.textContent = timeStr;
+    }
+    setInterval(tickClock, 1000);
+    tickClock();
+
+    function getCleanThaiTimeString() {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+      }).formatToParts(new Date());
+      const get = (type) => parts.find(p => p.type === type)?.value || '00';
+      return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+    }
+
+    // 2. Map แปลงคีย์บอร์ดภาษาไทยเป็นภาษาอังกฤษ/ตัวเลขอัตโนมัติ
+    const thaiToEnglishMap = {
+      '_': '%', 'ๅ': '1', '/': '2', '-': '3', 'ภ': '4', 'ถ': '5', 'ุ': '6', 'ึ': '7', 'ค': '8', 'ต': '9', 'จ': '0',
+      'ข': '-', 'ช': '=', 'ๆ': 'q', 'ไ': 'w', 'ำ': 'e', 'พ': 'r', 'ะ': 't', 'ั': 'y', 'ี': 'u', 'ร': 'i', 'น': 'o',
+      'ย': 'p', 'บ': '[', 'ล': ']', 'ฃ': '\\', 'ฟ': 'a', 'ห': 's', 'ก': 'd', 'ด': 'f', 'เ': 'g', '้': 'h', '่': 'j',
+      'า': 'k', 'ส': 'l', 'ว': ';', 'ง': '\'', 'ผ': 'z', 'ป': 'x', 'แ': 'c', 'อ': 'v', 'ิ': 'b', 'ื': 'n', 'ท': 'm',
+      'ม': ',', 'ใ': '.', 'ฝ': '/'
+    };
+
+    function convertThaiKeyToEnglish(str) {
+      return str.split('').map(char => thaiToEnglishMap[char] || char).join('');
+    }
+
+    // 3. ตรวจจับรอบเวลาอัตโนมัติ
+    function getCurrentCheckinSession() {
+      // ใช้เวลาไทยให้ตรงกับฝั่งพนักงาน (ยังเป็นนาฬิกาของอุปกรณ์สำหรับช่วงทดสอบ)
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+      }).formatToParts(new Date());
+      const n = type => Number(parts.find(part => part.type === type).value);
+      const seconds = n('hour') * 3600 + n('minute') * 60 + n('second');
+      if (seconds >= 7 * 3600 && seconds < 9 * 3600 + 31 * 60) {
+        return { valid: true, session: 'morning', field: 'morning_check_in', name: 'รอบเช้า', icon: '🌅' };
+      }
+      if (seconds >= 14 * 3600) {
+        return { valid: true, session: 'evening', field: 'evening_check_in', name: 'รอบเย็น', icon: '🌙' };
+      }
+      return { valid: false, message: 'กรุณาติดต่อเจ้าหน้าที่ (รอบเช้า 07:00–09:30 น. / รอบเย็น 14:00 น. เป็นต้นไป)' };
+    }
+
+    // 4. สลับโหมดการทำงาน
+    function switchScanMode(mode) {
+      currentScanMode = mode;
+      const btnCam = document.getElementById('btnModeCamera');
+      const btnGun = document.getElementById('btnModeGun');
+      const boxCam = document.getElementById('modeCameraContainer');
+      const boxGun = document.getElementById('modeGunContainer');
+
+      if (mode === 'gun') {
+        btnGun.className = "py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-lg shadow-amber-500/25";
+        btnCam.className = "py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-[#190d3b] text-purple-300 border border-purple-700/60 hover:border-amber-400/50";
+        boxGun.classList.remove('hidden');
+        boxCam.classList.add('hidden');
+        stopMobileCamera();
+        const input = document.getElementById('barcodeGunInput');
+        if (input) input.focus();
+      } else {
+        btnCam.className = "py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-lg shadow-amber-500/25";
+        btnGun.className = "py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-[#190d3b] text-purple-300 border border-purple-700/60 hover:border-amber-400/50";
+        boxCam.classList.remove('hidden');
+        boxGun.classList.add('hidden');
+      }
+    }
+
+    // 5. เครื่องยิง QR 2D แบบ USB/Bluetooth (Keyboard HID)
+    // รองรับทั้งเครื่องที่ส่ง Enter/Tab และเครื่องที่ไม่มี suffix
+    const gunInputEl = document.getElementById('barcodeGunInput');
+    function submitGunInput() {
+      if (!gunInputEl || currentScanMode !== 'gun') return;
+      clearTimeout(gunInputTimer);
+      const code = convertThaiKeyToEnglish(gunInputEl.value.trim());
+      if (!code) return;
+      // ไม่ล้างข้อมูลที่ยังมาไม่ครบ เพื่อให้เครื่องยิงที่ส่งช้ากว่าสามารถส่งต่อได้
+      if (!/^[0-9]{6}_[0-9]{10}$/.test(code)) return;
+      gunInputEl.value = '';
+      executeScanCheckin(code);
+    }
+    if (gunInputEl) {
+      gunInputEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          submitGunInput();
+        }
+      });
+      gunInputEl.addEventListener('input', function() {
+        clearTimeout(gunInputTimer);
+        // เครื่องยิงบางรุ่นไม่ส่ง Enter: รอจบชุดข้อมูล 180 ms
+        gunInputTimer = setTimeout(submitGunInput, 180);
+      });
+      gunInputEl.addEventListener('blur', () => {
+        if (currentScanMode === 'gun') setTimeout(() => {
+          if (currentScanMode === 'gun' && document.activeElement !== gunInputEl) gunInputEl.focus();
+        }, 80);
+      });
+    }
+
+    // 6. ประมวลผลและเช็คอิน (รวมคำสั่งจังหวะเดียว + ตรวจจับ QR สด)
+    async function executeScanCheckin(scannedValue) {
+      const toast = document.getElementById('scanResultToast');
+      const rawCandidate = String(scannedValue || '').trim();
+      // ป้องกันกล้องอ่านเฟรมเดิมซ้ำและไม่ส่งคำขอ Supabase ซ้อนกัน
+      if (scanInProgress) return;
+      if (rawCandidate === lastScanPayload && Date.now() - lastScanAt < 1600) return;
+      scanInProgress = true;
+      lastScanPayload = rawCandidate;
+      lastScanAt = Date.now();
+      try {
+      await processScannedValue(rawCandidate);
+      } finally {
+        scanInProgress = false;
+        if (currentScanMode === 'gun' && gunInputEl) gunInputEl.focus();
+      }
+    }
+
+    async function processScannedValue(scannedValue) {
+      const toast = document.getElementById('scanResultToast');
+      const timeSession = getCurrentCheckinSession();
+
+      if (!timeSession.valid) {
+        toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-amber-950/90 text-amber-300 border-amber-500 shadow-lg";
+        toast.innerHTML = `⚠️ <b>ไม่สามารถเช็คอินได้:</b> ${timeSession.message}`;
+        return;
+      }
+
+      // โหมดสแกนต้องเป็น QR สดเท่านั้น ไม่รับรหัสพนักงาน 6 หลักล้วน
+      const raw = String(scannedValue || '').trim();
+      const match = /^(\d{6})_(\d{10})$/.exec(raw);
+      if (!match) {
+        toast.className = 'mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-rose-950/90 text-rose-300 border-rose-500 shadow-lg';
+        toast.textContent = '❌ กรุณาสแกน QR สดจากหน้าพนักงานเท่านั้น ไม่รับรหัสพนักงานที่พิมพ์เอง';
+        return;
+      }
+      const empCode = match[1];
+      const createdTimestampSec = Number(match[2]);
+      const currentSec = Math.floor(Date.now() / 1000);
+      const ageInSeconds = currentSec - createdTimestampSec;
+      if (!Number.isSafeInteger(createdTimestampSec) || ageInSeconds >= 45 || ageInSeconds < -5) {
+        toast.className = 'mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-rose-950/90 text-rose-300 border-rose-500 shadow-lg';
+        toast.textContent = '❌ QR หมดอายุหรือเวลาบนอุปกรณ์ไม่ตรง กรุณาเปิด QR ใหม่';
+        return;
+      }
+      // เช็กช่วงเวลาอีกครั้งก่อนเขียนข้อมูล เพื่อลดโอกาสคาบเกี่ยวรอบ
+      const recheckedSession = getCurrentCheckinSession();
+      if (!recheckedSession.valid || recheckedSession.session !== timeSession.session) {
+        toast.textContent = '⚠️ หมดช่วงเวลาเช็คอิน กรุณาติดต่อเจ้าหน้าที่';
+        return;
+      }
+
+      const cleanTime = getCleanThaiTimeString();
+
+      try {
+        // [คำสั่งจังหวะเดียว] สั่ง UPDATE เฉพาะคนที่ยังไม่เคยลงเวลาในรอบนี้ พร้อมดึงข้อมูลกลับมาทันที
+        const { data: updatedGuest, error: updateError } = await supabaseClient
+          .from('guests')
+          .update({ [timeSession.field]: cleanTime })
+          .eq('employee_code', empCode)
+          .is(timeSession.field, null) // เงื่อนไข: ถ้าเคยเช็คแล้วจะไม่โดนอัปเดต
+          .select('full_name, employee_code, branch')
+          .maybeSingle();
+
+        if (updateError) throw updateError;
+
+        if (updatedGuest) {
+          // จังหวะที่ 1: บันทึกสำเร็จทันทีในรอบเดียว (ใช้เวลาเพียงเสี้ยววินาที)
+          playBeepSound();
+          toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-emerald-950/90 text-emerald-300 border-emerald-500 shadow-lg shadow-emerald-950/50";
+          toast.innerHTML = `
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div class="text-left">
+                🎉 <b>เช็คอินสำเร็จ!</b>: <span class="text-base font-bold text-yellow-300">${updatedGuest.full_name}</span> (รหัส: ${updatedGuest.employee_code})<br>
+                สาขา: ${updatedGuest.branch || 'สำนักงานใหญ่'} | ${timeSession.icon} ลงเวลา${timeSession.name} (${cleanTime} น.) เรียบร้อย
+              </div>
+              <button 
+                onclick="removeCheckInTimeSingle('${updatedGuest.employee_code}', '${updatedGuest.full_name}')" 
+                class="shrink-0 px-3 py-1.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-xs border border-rose-400 transition active:scale-95"
+              >
+                ↺ ลบเวลานี้ (เทสใหม่)
+              </button>
+            </div>
+          `;
+        } else {
+          // จังหวะที่ 2: กรณีอัปเดตไม่เข้า (แสดงว่าอาจจะเคยเช็คอินไปแล้ว หรือไม่มีรหัสนี้)
+          const { data: existingGuest } = await supabaseClient
+            .from('guests')
+            .select(`full_name, employee_code, ${timeSession.field}`)
+            .eq('employee_code', empCode)
+            .maybeSingle();
+
+          if (existingGuest && existingGuest[timeSession.field]) {
+            toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-blue-950/90 text-sky-300 border-sky-500 shadow-lg";
+            toast.innerHTML = `
+              <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-left">
+                  ℹ️ <b>ลงทะเบียนไปแล้ว:</b> <span class="text-base font-bold text-yellow-300">${existingGuest.full_name}</span> (รหัส: ${existingGuest.employee_code})<br>
+                  ได้เช็คอิน${timeSession.name}ไปแล้วเมื่อเวลา <b>${existingGuest[timeSession.field]} น.</b>
+                </div>
+                <button 
+                  onclick="removeCheckInTimeSingle('${existingGuest.employee_code}', '${existingGuest.full_name}')" 
+                  class="shrink-0 px-3 py-1.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-xs border border-rose-400 transition active:scale-95"
+                >
+                  ↺ ลบเวลานี้ (เทสใหม่)
+                </button>
+              </div>
+            `;
+          } else {
+            toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-rose-950/90 text-rose-300 border-rose-500";
+            toast.innerHTML = `❌ ไม่พบรหัสพนักงาน "${empCode}" ในระบบฐานข้อมูล`;
+          }
+        }
+      } catch (err) {
+        toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-rose-950/90 text-rose-300 border-rose-500";
+        toast.innerHTML = `❌ เกิดข้อผิดพลาด: ${err.message}`;
+      }
+    }
+
+    // 7. ลบเวลาเพื่อทดสอบใหม่
+    async function removeCheckInTimeSingle(empCode, name) {
+      if (!confirm(`ต้องการล้างเวลาเช็คอินของ "${name}" (รหัส ${empCode}) ทั้งหมดเพื่อทดสอบใหม่ ใช่หรือไม่?`)) return;
+
+      try {
+        const { error } = await supabaseClient
+          .from('guests')
+          .update({ morning_check_in: null, evening_check_in: null })
+          .eq('employee_code', empCode);
+
+        if (error) throw error;
+
+        const toast = document.getElementById('scanResultToast');
+        if (toast) {
+          toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-purple-950/80 text-purple-200 border-purple-600";
+          toast.textContent = `↺ ล้างเวลาของรหัส ${empCode} แล้ว สามารถนำมายิงสแกนใหม่ได้ทันที`;
+        }
+      } catch (err) {
+        alert('เกิดข้อผิดพลาด: ' + err.message);
+      }
+    }
+
+    // 8. กล้องมือถือ: เลือกกล้องหลัง, กรอบสแกนปรับตามจอ, ป้องกันเปิดซ้อน
+    async function startMobileCamera() {
+      if (cameraStarting || mobileCamScanner) return;
+      if (!window.Html5Qrcode) {
+        alert('ไม่พบไลบรารีสแกน QR กรุณาตรวจสอบอินเทอร์เน็ต');
+        return;
+      }
+      cameraStarting = true;
+      const startBtn = document.getElementById('startCamBtn');
+      startBtn.disabled = true;
+      try {
+        mobileCamScanner = new Html5Qrcode('qrReaderCamera', { verbose: false });
+        await mobileCamScanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 15,
+            qrbox: (w, h) => {
+              const edge = Math.max(150, Math.min(290, Math.floor(Math.min(w, h) * 0.82)));
+              return { width: edge, height: edge };
+            },
+            aspectRatio: 1.0,
+            disableFlip: true
+          },
+          (decodedText) => { executeScanCheckin(decodedText.trim()); },
+          () => {}
+        );
+        document.getElementById('startCamBtn').classList.add('hidden');
+        document.getElementById('stopCamBtn').classList.remove('hidden');
+      } catch (err) {
+        mobileCamScanner = null;
+        alert('ไม่สามารถเปิดกล้องได้: ' + err + '\\nกรุณาใช้ HTTPS หรือ localhost และอนุญาตกล้อง');
+      } finally {
+        cameraStarting = false;
+        startBtn.disabled = false;
+      }
+    }
+
+    async function stopMobileCamera() {
+      if (!mobileCamScanner) return;
+      const scanner = mobileCamScanner;
+      mobileCamScanner = null;
+      try { await scanner.stop(); } catch (err) { console.warn(err); }
+      try { scanner.clear(); } catch (err) {}
+      document.getElementById('startCamBtn').classList.remove('hidden');
+      document.getElementById('stopCamBtn').classList.add('hidden');
+    }
+
+    // 9. เสียง Beep
+    function playBeepSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 880;
+        gain.gain.value = 0.1;
+        osc.start();
+        setTimeout(() => {
+          osc.stop();
+          audioCtx.close();
+        }, 120);
+      } catch (e) {}
+    }
+
+    // โฟกัสช่องยิงอัตโนมัติเมื่อเปิดหน้า
+    window.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('barcodeGunInput');
+      if (input) input.focus();
+    });
+  </script>
+</body>
+</html>

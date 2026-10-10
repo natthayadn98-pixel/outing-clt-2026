@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VIP Party Connect Admin - Portal</title>
+  <link rel="icon" type="image/png" href="calendar.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { font-family: 'Anakotmai', sans-serif; }
+    .font-digital { font-family: 'Anakotmai', monospace; letter-spacing: 1px; }
+    body {
+      background-color: #0c0217;
+      min-height: 100vh;
+      color: #f1f5f9;
+      overflow: hidden;
+    }
+    .glow-gold-title {
+      color: #fde047;
+      text-shadow: 0 0 10px rgba(250, 204, 21, 0.7), 0 0 25px rgba(234, 179, 8, 0.5);
+    }
+    .sidebar-btn.active {
+      background-color: #facc15;
+      color: #020617;
+      font-weight: 700;
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.35);
+    }
+    .vip-input {
+      background-color: #0e0523;
+      border: 1px solid rgba(139, 92, 246, 0.35);
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .animate-shake { animation: shake 0.35s ease-in-out; }
+
+    /* แก้ปัญหา Sidebar พับกระตุก: ใช้ Transition ควบคุมความเร็วแบบนุ่มนวล */
+    #mainSidebar {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform, margin-left;
+    }
+
+    /* เมื่อสั่งพับบนจอคอมพิวเตอร์/แท็บเล็ต */
+    @media (min-width: 768px) {
+      #mainSidebar.sidebar-collapsed {
+        margin-left: -18rem; /* สไลด์เก็บไปทางซ้ายตามความกว้าง 72 (18rem) */
+        pointer-events: none;
+      }
+    }
+  </style>
+</head>
+<body class="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0217]">
+
+  <!-- ================= PIN LOCK SCREEN OVERLAY ================= -->
+  <div id="pinLockModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0319]/90 backdrop-blur-xl">
+    <div id="pinCard" class="w-full max-w-[340px] bg-white rounded-[32px] p-7 shadow-2xl flex flex-col items-center transition-all duration-300">
+      <div class="text-4xl mb-2 select-none">🔒</div>
+      <h2 class="text-xl font-bold text-slate-900 tracking-tight text-center">ระบบจัดการ Admin</h2>
+      <p class="text-xs text-slate-500 mt-1 mb-4 text-center font-normal">กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ</p>
+
+      <!-- แถบแจ้งเตือนหมดเวลา 10 นาที (แสดงในหน้าการ์ดแทน alert) -->
+      <div id="pinTimeoutNotice" class="hidden w-full p-2.5 mb-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] text-center font-medium leading-relaxed">
+        ⚠️ ไม่มีการเคลื่อนไหวเกิน 10 นาที ระบบได้ล็อกหน้าจออัตโนมัติ
+      </div>
+
+      <div class="w-full py-3.5 px-4 rounded-2xl border-2 border-blue-200 bg-white flex items-center justify-center gap-4 mb-6 shadow-sm">
+        <span id="pinDot1" class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 transition-all duration-200"></span>
+        <span id="pinDot2" class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 transition-all duration-200"></span>
+        <span id="pinDot3" class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 transition-all duration-200"></span>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3.5 w-full max-w-[260px] mb-6 select-none">
+        <button type="button" onclick="pressPinDigit('1')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">1</button>
+        <button type="button" onclick="pressPinDigit('2')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">2</button>
+        <button type="button" onclick="pressPinDigit('3')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">3</button>
+
+        <button type="button" onclick="pressPinDigit('4')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">4</button>
+        <button type="button" onclick="pressPinDigit('5')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">5</button>
+        <button type="button" onclick="pressPinDigit('6')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">6</button>
+
+        <button type="button" onclick="pressPinDigit('7')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">7</button>
+        <button type="button" onclick="pressPinDigit('8')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">8</button>
+        <button type="button" onclick="pressPinDigit('9')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">9</button>
+
+        <div class="w-16 h-16"></div>
+        <button type="button" onclick="pressPinDigit('0')" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-800 text-xl font-bold flex items-center justify-center mx-auto transition shadow-sm">0</button>
+        <button type="button" onclick="pressPinBackspace()" class="w-16 h-16 rounded-full bg-[#f1f5f9] hover:bg-slate-200 active:scale-90 text-slate-600 text-lg flex items-center justify-center mx-auto transition shadow-sm" title="ลบ">⌫</button>
+      </div>
+
+      <button type="button" onclick="verifyAdminPin()" class="w-full py-3.5 rounded-2xl bg-[#2563eb] hover:bg-blue-700 active:scale-95 text-white font-bold text-sm shadow-md transition flex items-center justify-center">
+        เข้าสู่ระบบ
+      </button>
+
+      <p id="pinErrorText" class="text-rose-500 text-xs mt-3 hidden font-semibold"></p>
+    </div>
+  </div>
+
+  <!-- ================= TOP HEADER BAR ================= -->
+  <header class="w-full px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between border-b border-purple-900/40 bg-[#0d0322]/90 backdrop-blur-md z-30 shrink-0">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- ปุ่ม 3 ขีด (กดเพื่อพับ/กางทั้งบนคอมและมือถือ) -->
+      <button onclick="toggleSidebar()" class="w-9 h-9 rounded-xl bg-[#1e1346] hover:bg-[#2c1a67] border border-purple-700/60 flex items-center justify-center text-amber-300 text-lg transition active:scale-90 shadow" title="เปิด/ปิด แถบเมนูข้าง">
+        ☰
+      </button>
+
+      <h1 class="text-base sm:text-xl font-black tracking-wide glow-gold-title flex items-center gap-1.5 sm:gap-2 select-none">
+        <span>✨</span> <span class="hidden sm:inline">VIP Party Connect</span><span class="sm:hidden">VIP Connect</span>
+      </h1>
+    </div>
+
+    <!-- เมนูสถานะด้านขวา -->
+    <div class="flex items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+      <div class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#1b0a3c] text-purple-200 border border-purple-600/40 font-digital tracking-wider shadow">
+        <span class="text-xs">⏰</span>
+        <span id="liveClock" class="text-[11px] sm:text-xs">00:00:00</span>
+      </div>
+
+      <div id="syncBadge" onclick="refreshCurrentFrameData()" class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#082336] text-emerald-300 border border-teal-500/40 font-digital tracking-wide shadow cursor-pointer hover:border-emerald-400 transition" title="คลิกเพื่อรีเฟรช">
+        <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
+        <span id="syncText" class="text-[11px] sm:text-xs">Online</span>
+      </div>
+
+      <button onclick="openConfigModal()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#201047] hover:bg-[#341872] border border-purple-500/40 flex items-center justify-center text-xs text-amber-300 transition shadow" title="ตั้งค่า Supabase">
+        ⚙️
+      </button>
+
+      <button onclick="resetDataConfirmation()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#4a0e2a] hover:bg-[#6b133c] border border-rose-500/40 flex items-center justify-center text-xs text-rose-300 transition shadow" title="รีโหลดข้อมูล">
+        ⏹️
+      </button>
+
+      <button onclick="adminLogout()" class="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-rose-950/70 hover:bg-rose-900 border border-rose-600/50 text-rose-300 hover:text-white transition shadow text-xs font-semibold" title="ออกจากระบบ">
+        <span>🔒</span>
+        <span class="hidden md:inline">ออกจากระบบ</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= BODY (SMOOTH SIDEBAR + IFRAME) ================= -->
+  <div class="flex flex-1 relative overflow-hidden">
+
+    <!-- ม่านดำพื้นหลัง เมื่อเปิดบนมือถือ/จอเล็ก -->
+    <div id="sidebarBackdrop" onclick="closeSidebar()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-30 hidden md:hidden transition-opacity"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="mainSidebar" class="fixed md:static top-0 bottom-0 left-0 z-40 w-64 sm:w-72 bg-[#0e0423] border-r border-purple-900/40 flex flex-col justify-between shrink-0 h-full -translate-x-full md:translate-x-0 shadow-2xl md:shadow-none">
+      
+      <!-- หัวข้อบนมือถือ (มีปุ่มกากบาท) -->
+      <div class="p-4 border-b border-purple-900/40 flex items-center justify-between md:hidden">
+        <span class="font-bold text-amber-300 text-sm">เมนูจัดการ Admin</span>
+        <button onclick="closeSidebar()" class="w-8 h-8 rounded-lg bg-purple-950/80 text-purple-300 hover:text-white flex items-center justify-center text-sm">
+          ✕
+        </button>
+      </div>
+
+      <div class="p-4 overflow-y-auto flex-1">
+        <nav class="space-y-1.5 text-xs sm:text-sm">
+          <a href="page-walkin.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn active flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
+            <span class="w-3.5 h-3.5 rounded bg-amber-500/80 inline-block"></span>
+            <span>1. สร้าง QR (เพิ่มคน)</span>
+          </a>
+
+          <a href="page-cloud.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
+            <span>📊</span>
+            <span>2. รายชื่อ & QR จาก Cloud</span>
+          </a>
+
+          <a href="page-search.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
+            <span>🔍</span>
+            <span>3. ค้นหา (ไม่มี QR)</span>
+          </a>
+
+          <a href="page-scanner.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
+            <span>📷</span>
+            <span>4. จุดสแกนเข้างาน</span>
+          </a>
+
+          <a href="page-checked-list.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
+            <span>📋</span>
+            <span>5. เช็คอินแล้ว (ลบ/แก้ไข)</span>
+          </a>
+
+          <a href="page-stats.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
+            <span>📈</span>
+            <span>6. สถิติเข้างาน</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="p-4 border-t border-purple-900/40">
+        <a href="index.html" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#1e1346] hover:bg-[#2c1a67] text-indigo-200 border border-indigo-500/40 text-xs transition">
+          <span>⬅️</span>
+          <span>กลับหน้าการ์ดเชิญ</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- CONTENT FRAME -->
+    <main class="flex-1 h-full w-full overflow-hidden bg-[#0c0217]">
+      <iframe name="adminFrame" id="adminFrame" src="page-walkin.html" class="w-full h-full border-none"></iframe>
+    </main>
+  </div>
+
+  <!-- ================= MODAL: ตั้งค่า Supabase ================= -->
+  <div id="supabaseConfigModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#170b36] border border-purple-600/70 rounded-3xl p-6 max-w-md w-full shadow-2xl">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2"><span>⚙️</span> ข้อมูลการเชื่อมต่อ Supabase</h3>
+        <button onclick="closeConfigModal()" class="text-purple-400 hover:text-white text-sm">✕</button>
+      </div>
+      <p class="text-xs text-purple-300/70 mb-4">เชื่อมต่อตรงกับตาราง <b>guests</b> ในโปรเจกต์ของคุณ</p>
+
+      <div class="space-y-3.5 mb-6 text-xs">
+        <div>
+          <label class="block text-purple-300 mb-1">Project URL</label>
+          <input type="text" id="cfgSupabaseUrl" readonly class="w-full px-3.5 py-2.5 vip-input rounded-xl text-gray-300 bg-purple-950/40" />
+        </div>
+        <div>
+          <label class="block text-purple-300 mb-1">Anon Public Key</label>
+          <input type="password" id="cfgSupabaseKey" readonly class="w-full px-3.5 py-2.5 vip-input rounded-xl text-gray-300 bg-purple-950/40" />
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="closeConfigModal()" class="px-5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs">ตกลง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT ควบคุมการพับ/กางแบบ Smooth ทั้งคอมและมือถือ -->
+  <script>
+    const CORRECT_ADMIN_PIN = "999";
+    let enteredPin = "";
+    const IDLE_TIMEOUT_LIMIT = 10 * 60 * 1000;
+    let idleTimer = null;
+
+    const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
+
+    // ฟังก์ชันสลับการเปิด/ปิด Sidebar (Smooth Transition)
+    function toggleSidebar() {
+      const sidebar = document.getElementById('mainSidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      const isMobile = window.innerWidth < 768;
+
+      if (isMobile) {
+        // บนมือถือ: สไลด์เข้า-ออกจากขอบจอ
+        const isClosed = sidebar.classList.contains('-translate-x-full');
+        if (isClosed) {
+          sidebar.classList.remove('-translate-x-full');
+          backdrop.classList.remove('hidden');
+        } else {
+          closeSidebar();
+        }
+      } else {
+        // บนคอมพิวเตอร์: สลับคลาส margin-left เพื่อให้เลื่อนเก็บเนียน 60fps
+        sidebar.classList.toggle('sidebar-collapsed');
+      }
+    }
+
+    function closeSidebar() {
+      const sidebar = document.getElementById('mainSidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      sidebar.classList.add('-translate-x-full');
+      backdrop.classList.add('hidden');
+    }
+
+    function handleMenuClick(el) {
+      document.querySelectorAll('.sidebar-btn').forEach(btn => btn.classList.remove('active'));
+      el.classList.add('active');
+      // ถ้าเปิดบนมือถือให้พับ Sidebar เก็บอัตโนมัติเมื่อกดเลือกเมนู
+      if (window.innerWidth < 768) {
+        closeSidebar();
+      }
+    }
+
+    async function checkSupabaseConnection() {
+      const syncText = document.getElementById('syncText');
+      if (window.supabase) {
+        try {
+          const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          const { error } = await client.from('guests').select('employee_code').limit(1);
+          syncText.textContent = !error ? "Online" : "Error";
+        } catch (e) {
+          syncText.textContent = "Offline";
+        }
+      }
+    }
+
+    function refreshCurrentFrameData() {
+      const iframe = document.getElementById('adminFrame');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.location.reload();
+      }
+      checkSupabaseConnection();
+    }
+
+    function resetDataConfirmation() {
+      if (confirm('ต้องการรีโหลดข้อมูลจากฐานข้อมูล Supabase ใหม่หรือไม่?')) {
+        refreshCurrentFrameData();
+      }
+    }
+
+    function openConfigModal() {
+      document.getElementById('cfgSupabaseUrl').value = SUPABASE_URL;
+      document.getElementById('cfgSupabaseKey').value = SUPABASE_ANON_KEY;
+      document.getElementById('supabaseConfigModal').classList.remove('hidden');
+    }
+
+    function closeConfigModal() {
+      document.getElementById('supabaseConfigModal').classList.add('hidden');
+    }
+
+    // PIN LOCK & IDLE TIMER
+    function updatePinDotsUI() {
+      for (let i = 1; i <= 3; i++) {
+        const dot = document.getElementById(`pinDot${i}`);
+        if (!dot) continue;
+        if (i <= enteredPin.length) {
+          dot.className = "w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-blue-600 transition-all duration-200 scale-110 shadow-[0_0_8px_rgba(37,99,235,0.5)]";
+        } else {
+          dot.className = "w-3.5 h-3.5 rounded-full border-2 border-slate-300 bg-white transition-all duration-200";
+        }
+      }
+    }
+
+    function pressPinDigit(num) {
+      if (enteredPin.length < 3) {
+        enteredPin += num;
+        updatePinDotsUI();
+        const errText = document.getElementById('pinErrorText');
+        if (errText) errText.classList.add('hidden');
+        if (enteredPin.length === 3) setTimeout(verifyAdminPin, 150);
+      }
+    }
+
+    function pressPinBackspace() {
+      if (enteredPin.length > 0) {
+        enteredPin = enteredPin.slice(0, -1);
+        updatePinDotsUI();
+        const errText = document.getElementById('pinErrorText');
+        if (errText) errText.classList.add('hidden');
+      }
+    }
+
+    function verifyAdminPin() {
+      const card = document.getElementById('pinCard');
+      const errText = document.getElementById('pinErrorText');
+
+      if (enteredPin === CORRECT_ADMIN_PIN) {
+        sessionStorage.setItem('admin_vip_authenticated', 'true');
+        const modal = document.getElementById('pinLockModal');
+        if (modal) modal.classList.add('hidden');
+        enteredPin = "";
+        updatePinDotsUI();
+        startIdleTimer();
+      } else {
+        if (errText) {
+          errText.textContent = "รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง";
+          errText.classList.remove('hidden');
+        }
+        if (card) {
+          card.classList.add('animate-shake');
+          setTimeout(() => card.classList.remove('animate-shake'), 400);
+        }
+        enteredPin = "";
+        updatePinDotsUI();
+      }
+    }
+
+    function adminLogout(isTimeout = false) {
+      sessionStorage.removeItem('admin_vip_authenticated');
+      clearTimeout(idleTimer);
+      const modal = document.getElementById('pinLockModal');
+      if (modal) modal.classList.remove('hidden');
+      enteredPin = "";
+      updatePinDotsUI();
+
+      const errText = document.getElementById('pinErrorText');
+      if (errText) errText.classList.add('hidden');
+
+      const timeoutNotice = document.getElementById('pinTimeoutNotice');
+      if (timeoutNotice) {
+        if (isTimeout) {
+          timeoutNotice.classList.remove('hidden');
+        } else {
+          timeoutNotice.classList.add('hidden');
+        }
+      }
+    }
+
+    function resetIdleTimer() {
+      if (sessionStorage.getItem('admin_vip_authenticated') === 'true') {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+          adminLogout(true);
+        }, IDLE_TIMEOUT_LIMIT);
+      }
+    }
+
+    function startIdleTimer() {
+      resetIdleTimer();
+      ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(evt => {
+        window.addEventListener(evt, resetIdleTimer, { passive: true });
+      });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('pinLockModal');
+      if (modal && !modal.classList.contains('hidden')) {
+        if (e.key >= '0' && e.key <= '9') pressPinDigit(e.key);
+        else if (e.key === 'Backspace') pressPinBackspace();
+        else if (e.key === 'Enter') verifyAdminPin();
+      }
+    });
+
+    if (sessionStorage.getItem('admin_vip_authenticated') === 'true') {
+      const modal = document.getElementById('pinLockModal');
+      if (modal) modal.classList.add('hidden');
+      startIdleTimer();
+    }
+
+    setInterval(() => {
+      const clockEl = document.getElementById('liveClock');
+      if (clockEl) clockEl.textContent = new Date().toTimeString().split(' ')[0];
+    }, 1000);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      checkSupabaseConnection();
+    });
+  </script>
+</body>
+</html>
