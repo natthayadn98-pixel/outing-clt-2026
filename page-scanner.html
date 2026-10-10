@@ -109,6 +109,7 @@
         </div>
       </div>
 
+      <div id="fastScanQueueStatus" role="status" aria-live="polite" class="rounded-xl px-4 py-3 text-center bg-emerald-950/40 border border-emerald-700 text-emerald-300 font-bold text-sm">คิวรอตรวจ: 0 | เช็คอินสำเร็จเครื่องนี้: 0 คน</div>
       <!-- แถบสถานะเครื่องยิง -->
       <div class="p-3.5 rounded-2xl bg-[#0e0523] border border-purple-800/80 flex items-center justify-center gap-2.5 text-xs sm:text-sm font-medium">
         <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]"></span>
@@ -147,6 +148,20 @@
     let mobileCamScanner = null;
     let currentScanMode = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'camera' : 'gun';
     let scanInProgress = false;
+    const scanQueue = [];
+    const queuedPayloads = new Set();
+    const MAX_SCAN_QUEUE = 30;
+    let totalSuccessfulScans = 0;
+    function updateQueueIndicator() {
+      const el = document.getElementById('fastScanQueueStatus');
+      if (el) el.textContent = `คิวรอตรวจ: ${scanQueue.length} | เช็คอินสำเร็จเครื่องนี้: ${totalSuccessfulScans} คน`;
+    }
+    function showFastScanError(message) {
+      const toast = document.getElementById('scanResultToast');
+      toast.className = 'mt-5 p-4 rounded-2xl text-base sm:text-lg font-bold border block bg-rose-950/90 text-rose-200 border-rose-500 shadow-lg';
+      toast.textContent = '❌ ' + message;
+      playStatusTone('error');
+    }
     let gunInputTimer = null;
     let lastScanPayload = '';
     let lastScanAt = 0;
@@ -234,9 +249,13 @@
       const code = convertThaiKeyToEnglish(gunInputEl.value.trim());
       if (!code) return;
       // ไม่ล้างข้อมูลที่ยังมาไม่ครบ เพื่อให้เครื่องยิงที่ส่งช้ากว่าสามารถส่งต่อได้
-      if (!/^[0-9]{6}_[0-9]{10}$/.test(code)) return;
+      // A complete USB scan ends with Enter/Tab. Reject malformed input instead of leaving it in the field.
+      if (!/^[0-9]{6}_[0-9]{10}$/.test(code)) {
+        if (code.length >= 17) { gunInputEl.value = ''; enqueueScan(code); }
+        return;
+      }
       gunInputEl.value = '';
-      executeScanCheckin(code);
+      enqueueScan(code);
     }
     if (gunInputEl) {
       gunInputEl.addEventListener('keydown', function(e) {
@@ -258,32 +277,46 @@
     }
 
     // 6. ประมวลผลและเช็คอิน (รวมคำสั่งจังหวะเดียว + ตรวจจับ QR สด)
-    async function executeScanCheckin(scannedValue) {
-      const toast = document.getElementById('scanResultToast');
-      const rawCandidate = String(scannedValue || '').trim();
-      // ป้องกันกล้องอ่านเฟรมเดิมซ้ำและไม่ส่งคำขอ Supabase ซ้อนกัน
+    // USB Fast Scan: buffer rapid scans so the next employee is not dropped during a network request.
+    function enqueueScan(scannedValue) {
+      const value = String(scannedValue || '').trim();
+      if (!value) return;
+      const now = Date.now();
+      if (value === lastScanPayload && now - lastScanAt < 1300) return;
+      if (queuedPayloads.has(value)) return;
+      if (scanQueue.length >= MAX_SCAN_QUEUE) {
+        showFastScanError('คิวสแกนเต็ม กรุณารอสักครู่แล้วสแกนอีกครั้ง');
+        return;
+      }
+      lastScanPayload = value;
+      lastScanAt = now;
+      scanQueue.push(value);
+      queuedPayloads.add(value);
+      updateQueueIndicator();
+      void drainScanQueue();
+    }
+    async function drainScanQueue() {
       if (scanInProgress) return;
-      if (rawCandidate === lastScanPayload && Date.now() - lastScanAt < 1600) return;
       scanInProgress = true;
-      lastScanPayload = rawCandidate;
-      lastScanAt = Date.now();
       try {
-      await processScannedValue(rawCandidate);
+        while (scanQueue.length) {
+          const value = scanQueue.shift();
+          updateQueueIndicator();
+          try { await processScannedValue(value); }
+          catch (err) { showFastScanError('เชื่อมต่อระบบไม่สำเร็จ กรุณาตรวจสอบและสแกนใหม่'); }
+          finally { queuedPayloads.delete(value); }
+        }
       } finally {
         scanInProgress = false;
         if (currentScanMode === 'gun' && gunInputEl) gunInputEl.focus();
+        updateQueueIndicator();
       }
     }
+    function executeScanCheckin(scannedValue) { enqueueScan(scannedValue); }
 
     async function processScannedValue(scannedValue) {
       const toast = document.getElementById('scanResultToast');
       const timeSession = getCurrentCheckinSession();
-
-      if (!timeSession.valid) {
-        toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-amber-950/90 text-amber-300 border-amber-500 shadow-lg";
-        toast.innerHTML = `⚠️ <b>ไม่สามารถเช็คอินได้:</b> ${timeSession.message}`;
-        return;
-      }
 
       // โหมดสแกนต้องเป็น QR สดเท่านั้น ไม่รับรหัสพนักงาน 6 หลักล้วน
       const raw = String(scannedValue || '').trim();
@@ -299,7 +332,14 @@
       const ageInSeconds = currentSec - createdTimestampSec;
       if (!Number.isSafeInteger(createdTimestampSec) || ageInSeconds >= 45 || ageInSeconds < -5) {
         toast.className = 'mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-rose-950/90 text-rose-300 border-rose-500 shadow-lg';
-        toast.textContent = '❌ QR หมดอายุหรือเวลาบนอุปกรณ์ไม่ตรง กรุณาเปิด QR ใหม่';
+        toast.textContent = '❌ QR หมดอายุ — ภาพแคปหน้าจอหรือ QR เก่าใช้ไม่ได้ กรุณาเปิด QR สดใน LINE อีกครั้ง';
+        playStatusTone('error');
+        return;
+      }
+      if (!timeSession.valid) {
+        toast.className = 'mt-5 p-4 rounded-2xl text-base border block bg-amber-950/90 text-amber-300 border-amber-500 shadow-lg';
+        toast.textContent = '⚠️ ไม่สามารถเช็คอินได้: ' + timeSession.message;
+        playStatusTone('warning');
         return;
       }
       // เช็กช่วงเวลาอีกครั้งก่อนเขียนข้อมูล เพื่อลดโอกาสคาบเกี่ยวรอบ
@@ -325,7 +365,9 @@
 
         if (updatedGuest) {
           // จังหวะที่ 1: บันทึกสำเร็จทันทีในรอบเดียว (ใช้เวลาเพียงเสี้ยววินาที)
-          playBeepSound();
+          totalSuccessfulScans += 1;
+          updateQueueIndicator();
+          playStatusTone('success');
           if (navigator.vibrate) navigator.vibrate(90);
           toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-emerald-950/90 text-emerald-300 border-emerald-500 shadow-lg shadow-emerald-950/50";
           toast.innerHTML = `
@@ -345,6 +387,7 @@
             .maybeSingle();
 
           if (existingGuest && existingGuest[timeSession.field]) {
+            playStatusTone('warning');
             if (navigator.vibrate) navigator.vibrate([80,60,80]);
             toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-blue-950/90 text-sky-300 border-sky-500 shadow-lg";
             toast.innerHTML = `
@@ -361,8 +404,8 @@
           }
         }
       } catch (err) {
-        toast.className = "mt-5 p-4 rounded-2xl text-xs sm:text-sm border block bg-rose-950/90 text-rose-300 border-rose-500";
-        toast.innerHTML = `❌ เกิดข้อผิดพลาด: ${err.message}`;
+        showFastScanError('บันทึกไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตและสแกนใหม่');
+        console.error('Fast Scan request failed', err);
       }
     }
 
@@ -391,7 +434,7 @@
             aspectRatio: 1.0,
             disableFlip: true
           },
-          (decodedText) => { executeScanCheckin(decodedText.trim()); },
+          (decodedText) => { enqueueScan(decodedText.trim()); },
           () => {}
         );
         document.getElementById('startCamBtn').classList.add('hidden');
@@ -416,6 +459,19 @@
     }
 
     // 9. เสียง Beep
+    function playStatusTone(status) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.frequency.value = status === 'success' ? 1000 : status === 'warning' ? 550 : 240;
+        gain.gain.value = 0.09;
+        oscillator.start();
+        setTimeout(() => { oscillator.stop(); void ctx.close(); }, status === 'success' ? 100 : 240);
+      } catch (e) {}
+    }
     function playBeepSound() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
