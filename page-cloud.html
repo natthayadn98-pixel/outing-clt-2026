@@ -14,6 +14,24 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-thumb { background: #5b21b6; border-radius: 9999px; }
   </style>
+  <link rel="stylesheet" href="admin-pages-theme.css" />
+<script>
+(function(){
+  const key = 'clt_admin_color_theme_v1';
+  function setPageTheme(value) {
+    if (value !== 'light' && value !== 'dark') return;
+    document.documentElement.setAttribute('data-admin-theme', value);
+  }
+  try { setPageTheme(localStorage.getItem(key) || 'dark'); } catch (_) {}
+  window.addEventListener('message', function(event) {
+    if (event.origin !== location.origin || event.source !== window.parent) return;
+    if (event.data && event.data.type === 'clt-admin-theme') setPageTheme(event.data.theme);
+  });
+  window.addEventListener('storage', function(event) {
+    if (event.key === key) setPageTheme(event.newValue);
+  });
+})();
+</script>
 </head>
 <body class="flex justify-center">
 

@@ -19,6 +19,8 @@
       }
       function applyTheme(value) {
         document.documentElement.setAttribute('data-admin-theme', value);
+        const frame = document.getElementById('adminFrame');
+        if (frame && frame.contentWindow) frame.contentWindow.postMessage({type:'clt-admin-theme', theme:value}, location.origin);
         const btn = document.getElementById('adminThemeToggle');
         const icon = document.getElementById('adminThemeIcon');
         if (icon) icon.textContent = value === 'dark' ? '☀️' : '🌙';
@@ -283,7 +285,7 @@
 
     <!-- CONTENT FRAME -->
     <main class="flex-1 h-full w-full overflow-hidden bg-[#0c0217]">
-      <iframe name="adminFrame" id="adminFrame" src="page-walkin.html" class="w-full h-full border-none"></iframe>
+      <iframe onload="this.contentWindow.postMessage({type:'clt-admin-theme',theme:document.documentElement.getAttribute('data-admin-theme')},location.origin)" name="adminFrame" id="adminFrame" src="page-walkin.html" class="w-full h-full border-none"></iframe>
     </main>
   </div>
 

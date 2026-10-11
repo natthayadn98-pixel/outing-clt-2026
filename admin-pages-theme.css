@@ -1,0 +1,43 @@
+/* Shared theme for all embedded admin pages. Presentation only. */
+:root { color-scheme: dark; }
+html[data-admin-theme="light"] { color-scheme: light; }
+html[data-admin-theme="light"] body { background: #f3f6fb !important; color: #17263b !important; }
+html[data-admin-theme="light"] section { background: #fff !important; border-color: #dce4ef !important; box-shadow: 0 8px 28px rgba(35,56,91,.08) !important; }
+html[data-admin-theme="light"] .vip-input,
+html[data-admin-theme="light"] input:not([type="hidden"]):not([type="file"]),
+html[data-admin-theme="light"] select,
+html[data-admin-theme="light"] textarea { background: #f8fafc !important; color: #17263b !important; border-color: #cbd5e1 !important; }
+html[data-admin-theme="light"] input::placeholder { color: #75849a !important; opacity: 1; }
+html[data-admin-theme="light"] [class*="bg-[#0"],
+html[data-admin-theme="light"] [class*="bg-[#1"],
+html[data-admin-theme="light"] [class*="bg-[#2"] { background: #f8fafc !important; }
+html[data-admin-theme="light"] [class*="border-purple"],
+html[data-admin-theme="light"] [class*="border-[#3"] { border-color: #dce4ef !important; }
+html[data-admin-theme="light"] [class*="text-purple"],
+html[data-admin-theme="light"] [class*="text-indigo"],
+html[data-admin-theme="light"] [class*="text-slate-300"],
+html[data-admin-theme="light"] [class*="text-gray-200"],
+html[data-admin-theme="light"] [class*="text-gray-400"] { color: #52627a !important; }
+html[data-admin-theme="light"] [class*="text-amber-200"],
+html[data-admin-theme="light"] [class*="text-amber-300"],
+html[data-admin-theme="light"] [class*="text-[#facc15]"] { color: #946000 !important; }
+html[data-admin-theme="light"] [class*="text-white"]:not(button):not(.bg-gradient-to-r) { color: #17263b !important; }
+html[data-admin-theme="light"] [class*="bg-emerald-950"] { background: #e9f9f1 !important; }
+html[data-admin-theme="light"] [class*="bg-rose-950"] { background: #fff1f2 !important; }
+html[data-admin-theme="light"] [class*="bg-amber-950"] { background: #fffbeb !important; }
+html[data-admin-theme="light"] [class*="text-emerald-300"],
+html[data-admin-theme="light"] [class*="text-emerald-400"] { color: #087a53 !important; }
+html[data-admin-theme="light"] [class*="text-rose-300"] { color: #b42341 !important; }
+html[data-admin-theme="light"] [class*="text-yellow-300"] { color: #9a6700 !important; }
+html[data-admin-theme="light"] [class*="bg-black/85"] { background: rgba(15,23,42,.46) !important; }
+html[data-admin-theme="light"] [class*="bg-[#170b36]"] { background: #fff !important; border-color: #dce4ef !important; }
+html[data-admin-theme="light"] #modalQrCanvas { background: white !important; }
+html[data-admin-theme="light"] #qrPreviewModal .bg-white { background: white !important; }
+html[data-admin-theme="light"] .card-glow { box-shadow: 0 8px 28px rgba(35,56,91,.08) !important; }
+html[data-admin-theme="light"] ::-webkit-scrollbar-thumb { background: #bdc8d8; }
+/* Keep intentional solid-color actions and camera preview readable */
+html[data-admin-theme="light"] button.bg-gradient-to-r,
+html[data-admin-theme="light"] button[class*="bg-amber-400"],
+html[data-admin-theme="light"] button[class*="bg-emerald-500"],
+html[data-admin-theme="light"] button[class*="bg-rose-600"] { color: #17263b; }
+html[data-admin-theme="light"] #qrReaderCamera { background: #000 !important; }
