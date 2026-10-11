@@ -8,6 +8,35 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
 
+  <script>
+    // The preference is stored on this device only. Never store auth tokens here.
+    (function () {
+      const storageKey = 'clt_admin_color_theme_v1';
+      let theme;
+      try { theme = localStorage.getItem(storageKey); } catch (_) {}
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+      function applyTheme(value) {
+        document.documentElement.setAttribute('data-admin-theme', value);
+        const btn = document.getElementById('adminThemeToggle');
+        const icon = document.getElementById('adminThemeIcon');
+        if (icon) icon.textContent = value === 'dark' ? '☀️' : '🌙';
+        if (btn) {
+          btn.setAttribute('aria-label', value === 'dark' ? 'เปลี่ยนเป็นธีมสว่าง' : 'เปลี่ยนเป็นธีมมืด');
+          btn.setAttribute('aria-pressed', String(value === 'dark'));
+          btn.title = value === 'dark' ? 'ใช้ธีมสว่าง' : 'ใช้ธีมมืด';
+        }
+      }
+      window.toggleAdminTheme = function () {
+        theme = document.documentElement.getAttribute('data-admin-theme') === 'dark' ? 'light' : 'dark';
+        try { localStorage.setItem(storageKey, theme); } catch (_) {}
+        applyTheme(theme);
+      };
+      applyTheme(theme);
+    })();
+  </script>
+
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -60,6 +89,37 @@
         pointer-events: none;
       }
     }
+
+    /* CLT Admin appearance: applies to the portal shell only. */
+    :root { color-scheme: dark; }
+    html[data-admin-theme="light"] { color-scheme: light; }
+    #adminThemeToggle { min-width: 38px; min-height: 38px; cursor: pointer; }
+    #adminThemeToggle:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
+    html[data-admin-theme="light"] body,
+    html[data-admin-theme="light"] main { background: #f3f6fb !important; color: #14233a !important; }
+    html[data-admin-theme="light"] header { background: rgba(255,255,255,.97) !important; border-color: #dce3ee !important; }
+    html[data-admin-theme="light"] #mainSidebar { background: #fff !important; border-color: #dce3ee !important; box-shadow: 4px 0 18px rgba(25,42,75,.06); }
+    html[data-admin-theme="light"] .glow-gold-title { color: #82550a !important; text-shadow: none !important; }
+    html[data-admin-theme="light"] .sidebar-btn:not(.active) { background: #f4f7fc !important; color: #33435b !important; border-color: #dfe6f0 !important; }
+    html[data-admin-theme="light"] .sidebar-btn:not(.active):hover { background: #e8eef8 !important; }
+    html[data-admin-theme="light"] .sidebar-btn.active { background: #facc15 !important; color: #172033 !important; box-shadow: none !important; }
+    html[data-admin-theme="light"] #adminThemeToggle,
+    html[data-admin-theme="light"] header button[onclick="toggleSidebar()"],
+    html[data-admin-theme="light"] header button[onclick="openConfigModal()"] { background: #edf2f9 !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+    html[data-admin-theme="light"] #liveClock { color: #334155 !important; }
+    html[data-admin-theme="light"] header #liveClockBox { background: #f0f4fa !important; border-color: #dce3ee !important; color: #334155 !important; }
+    html[data-admin-theme="light"] #syncBadge { background: #e6f7f0 !important; border-color: #a8dec7 !important; color: #116d50 !important; }
+    html[data-admin-theme="light"] #mainSidebar > div:first-child { border-color: #e2e8f0 !important; }
+    html[data-admin-theme="light"] #mainSidebar > div:first-child > span { color: #7c560a !important; }
+    html[data-admin-theme="light"] #mainSidebar > div:last-child { border-color: #e2e8f0 !important; }
+    html[data-admin-theme="light"] #mainSidebar a[href="index.html"] { background: #edf2f9 !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+    html[data-admin-theme="light"] #supabaseConfigModal > div { background: #fff !important; border-color: #d4deec !important; color: #14233a !important; }
+    html[data-admin-theme="light"] #supabaseConfigModal h3 { color: #7c560a !important; }
+    html[data-admin-theme="light"] #supabaseConfigModal p,
+    html[data-admin-theme="light"] #supabaseConfigModal label { color: #475569 !important; }
+    html[data-admin-theme="light"] #supabaseConfigModal input { background: #f8fafc !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+    html[data-admin-theme="light"] #supabaseConfigModal button[onclick="closeConfigModal()"]:not(.bg-amber-400) { color: #475569 !important; }
+    @media (prefers-reduced-motion: reduce) { #adminThemeToggle { transition: none !important; } }
   </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0217]">
@@ -134,7 +194,7 @@
 
     <!-- เมนูสถานะด้านขวา -->
     <div class="flex items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-      <div class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#1b0a3c] text-purple-200 border border-purple-600/40 font-digital tracking-wider shadow">
+      <div id="liveClockBox" class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#1b0a3c] text-purple-200 border border-purple-600/40 font-digital tracking-wider shadow">
         <span class="text-xs">⏰</span>
         <span id="liveClock" class="text-[11px] sm:text-xs">00:00:00</span>
       </div>
@@ -143,6 +203,9 @@
         <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
         <span id="syncText" class="text-[11px] sm:text-xs">Online</span>
       </div>
+
+      <!-- Theme toggle is presentation-only; it does not change authentication or check-in data. -->
+      <button id="adminThemeToggle" type="button" onclick="toggleAdminTheme()" aria-label="เปลี่ยนเป็นธีมสว่าง" aria-pressed="false" title="เปลี่ยนธีมสว่าง / มืด" class="w-9 h-9 rounded-xl bg-[#201047] hover:bg-[#341872] border border-purple-500/40 flex items-center justify-center text-lg text-amber-300 transition shadow"><span id="adminThemeIcon" aria-hidden="true">☀️</span></button>
 
       <button onclick="openConfigModal()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#201047] hover:bg-[#341872] border border-purple-500/40 flex items-center justify-center text-xs text-amber-300 transition shadow" title="ตั้งค่า Supabase">
         ⚙️
@@ -471,13 +534,12 @@
  const form=document.getElementById('secureAdminForm');
  const submit=form.querySelector('button[type="submit"]');
  function withTimeout(p,ms=12000){return Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),ms))]);}
- let checking=false;
- async function refresh(){
-   if(checking)return;
-   checking=true;
+ let refreshInFlight=null;
+ async function performRefresh(){
    try {
-     const {data:{session},error}=await withTimeout(client.auth.getSession(),9000);
-     if(error||!session){gate.style.display='flex';return;}
+     const sessionResult=await withTimeout(client.auth.getSession(),9000);
+     const session=sessionResult?.data?.session;
+     if(sessionResult.error||!session){gate.style.display='flex';return false;}
      const res=await withTimeout(fetch(url+'/functions/v1/secure-checkin',{
        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':key},
        body:JSON.stringify({action:'check_admin'})
@@ -486,12 +548,29 @@
      if(!res.ok||data.authorized!==true){
        gate.style.display='flex';
        msg.textContent=res.status===401?'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่':res.status===403?'บัญชีนี้ยังไม่ได้รับสิทธิ์ Admin':'ตรวจสอบสิทธิ์ไม่สำเร็จ ('+(data.error||res.status)+')';
-       return;
+       return false;
      }
      msg.textContent='';gate.style.display='none';
      sessionStorage.setItem('admin_vip_authenticated','true');
-   } catch(e){gate.style.display='flex';msg.textContent=e.message==='timeout'?'ระบบตอบสนองช้า กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง':'เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่';}
-   finally{checking=false;}
+     return true;
+   } catch(e){
+     gate.style.display='flex';
+     msg.textContent=e.message==='timeout'?'ระบบตอบสนองช้า กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง':'เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่';
+     return false;
+   }
+ }
+ function refresh(){
+   if(refreshInFlight)return refreshInFlight;
+   const job=performRefresh();
+   refreshInFlight=job;
+   job.finally(()=>{if(refreshInFlight===job)refreshInFlight=null;});
+   return job;
+ }
+ // After successful sign-in, wait for any earlier session check to finish,
+ // then verify the newly authenticated session (never skip this verification).
+ async function refreshAfterLogin(){
+   if(refreshInFlight)await refreshInFlight;
+   return refresh();
  }
  form.addEventListener('submit',async(e)=>{
    e.preventDefault();
@@ -500,7 +579,7 @@
    try {
      const {error}=await withTimeout(client.auth.signInWithPassword({email:document.getElementById('secureAdminEmail').value.trim(),password:document.getElementById('secureAdminPassword').value}),12000);
      if(error){msg.textContent='เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบอีเมลและรหัสผ่าน';return;}
-     msg.textContent='กำลังตรวจสอบสิทธิ์ Admin…';await refresh();
+     msg.textContent='กำลังตรวจสอบสิทธิ์ Admin…';await refreshAfterLogin();
    } catch(e){msg.textContent=e.message==='timeout'?'เข้าสู่ระบบใช้เวลานานเกินไป กรุณาตรวจสอบอินเทอร์เน็ต':'ไม่สามารถเชื่อมต่อระบบเข้าสู่ระบบได้';}
    finally{submit.disabled=false;submit.textContent='เข้าสู่ระบบอย่างปลอดภัย';}
  });
