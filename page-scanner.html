@@ -268,7 +268,7 @@
       if (!code) return;
       // ไม่ล้างข้อมูลที่ยังมาไม่ครบ เพื่อให้เครื่องยิงที่ส่งช้ากว่าสามารถส่งต่อได้
       // A complete USB scan ends with Enter/Tab. Reject malformed input instead of leaving it in the field.
-      if (!/^CLT1\.\d{6}\.(morning|evening)\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(code)) {
+      if (!/^CLT2\.\d{6}\.[1-9]\d{0,8}\.[A-Za-z0-9_-]{43}$/.test(code)) {
         if (code.length >= 17) { gunInputEl.value = ''; enqueueScan(code); }
         return;
       }
@@ -341,7 +341,7 @@
         playStatusTone(type==='success'?'success':type==='warning'?'warning':'error');
       };
       const qr=String(scannedValue||'').trim();
-      if(!/^CLT1\.\d{6}\.(morning|evening)\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(qr)) {show('❌ QR ไม่ถูกต้อง กรุณาเปิด QR ใหม่ใน LINE','error');return;}
+      if(!/^CLT2\.\d{6}\.[1-9]\d{0,8}\.[A-Za-z0-9_-]{43}$/.test(qr)) {show('❌ QR ไม่ถูกต้อง กรุณาเปิด QR ใหม่ใน LINE','error');return;}
       try {
         const session=await supabaseClient.auth.getSession();
         const jwt=session.data?.session?.access_token;
@@ -355,6 +355,8 @@
           show(`✅ เช็คอินสำเร็จ: ${result.fullName} (${result.employeeCode}) เวลา ${result.time} น.`,'success');
         }else if(result.status==='duplicate'){
           show(`⚠️ ลงทะเบียนซ้ำ: ${result.fullName} (${result.employeeCode}) เช็คอินแล้วเวลา ${result.time} น.`,'warning');
+        }else if(result.error==='qr_revoked'){
+          show('⌛ QR นี้ถูกยกเลิก กรุณาเปิด LINE เพื่อรับ QR ใหม่','error');
         }else if(result.error==='qr_expired'){
           show('⌛ QR หมดอายุ กรุณาเปิด QR สดใน LINE อีกครั้ง','error');
         }else if(result.error==='admin_login_required'||result.error==='admin_not_authorized'){
