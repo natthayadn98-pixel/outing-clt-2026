@@ -122,6 +122,27 @@
     html[data-admin-theme="light"] #supabaseConfigModal input { background: #f8fafc !important; color: #334155 !important; border-color: #cbd5e1 !important; }
     html[data-admin-theme="light"] #supabaseConfigModal button[onclick="closeConfigModal()"]:not(.bg-amber-400) { color: #475569 !important; }
     @media (prefers-reduced-motion: reduce) { #adminThemeToggle { transition: none !important; } }
+
+    /* Clean Luxury shell — light mode only. */
+    html[data-admin-theme="light"] body,
+    html[data-admin-theme="light"] main { background: #f8f6f3 !important; color: #30263c !important; }
+    html[data-admin-theme="light"] header { background: #fffdfb !important; border-bottom: 1px solid #ebe4ec !important; box-shadow: 0 2px 12px rgba(55,36,69,.035); }
+    html[data-admin-theme="light"] #mainSidebar { background: #fffdfb !important; border-color: #eee7ed !important; box-shadow: 4px 0 22px rgba(55,36,69,.035); }
+    html[data-admin-theme="light"] .glow-gold-title { color: #6d4b2b !important; text-shadow: none !important; }
+    html[data-admin-theme="light"] .sidebar-btn:not(.active) { background: transparent !important; color: #655c6c !important; border-color: transparent !important; box-shadow: none !important; }
+    html[data-admin-theme="light"] .sidebar-btn:not(.active):hover { background: #f5f0f7 !important; color: #503660 !important; }
+    html[data-admin-theme="light"] .sidebar-btn.active { background: #f7e6b7 !important; color: #5d4220 !important; border: 1px solid #ecd18d !important; box-shadow: 0 3px 9px rgba(170,120,38,.08) !important; }
+    html[data-admin-theme="light"] #adminThemeToggle,
+    html[data-admin-theme="light"] header button[onclick="toggleSidebar()"],
+    html[data-admin-theme="light"] header button[onclick="openConfigModal()"] { background: #f6f1f7 !important; color: #644d72 !important; border-color: #e7dfea !important; }
+    html[data-admin-theme="light"] #liveClockBox { background: #f7f3f7 !important; color: #665b70 !important; border-color: #e9e1eb !important; }
+    html[data-admin-theme="light"] #syncBadge { background: #eaf8f1 !important; color: #147b59 !important; border-color: #c9e8d7 !important; }
+    html[data-admin-theme="light"] #mainSidebar a[href="index.html"] { background: #f5f0f7 !important; color: #65576f !important; border-color: #e7dfea !important; }
+    html[data-admin-theme="light"] #supabaseConfigModal > div { background: #fffdfb !important; border-color: #e7dfea !important; color: #30263c !important; }
+    html[data-admin-theme="light"] #supabaseConfigModal h3 { color: #79542b !important; }
+    html[data-admin-theme="light"] #supabaseConfigModal label,
+    html[data-admin-theme="light"] #supabaseConfigModal p { color: #73687a !important; }
+    html[data-admin-theme="light"] #supabaseConfigModal input { background: #faf8fb !important; color: #4d4059 !important; border-color: #e7dfea !important; }
   </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0217]">
@@ -285,7 +306,7 @@
 
     <!-- CONTENT FRAME -->
     <main class="flex-1 h-full w-full overflow-hidden bg-[#0c0217]">
-      <iframe onload="this.contentWindow.postMessage({type:'clt-admin-theme',theme:document.documentElement.getAttribute('data-admin-theme')},location.origin)" name="adminFrame" id="adminFrame" src="page-walkin.html" class="w-full h-full border-none"></iframe>
+      <iframe onload="this.contentWindow.postMessage({type:'clt-admin-theme',theme:document.documentElement.getAttribute('data-admin-theme')},location.origin)" name="adminFrame" id="adminFrame" src="about:blank" data-admin-src="page-walkin.html" class="w-full h-full border-none"></iframe>
     </main>
   </div>
 
@@ -458,17 +479,23 @@
 
     async function adminLogout(isTimeout = false) {
       sessionStorage.removeItem('admin_vip_authenticated');
+      const frameForLogout=document.getElementById('adminFrame');
+      if(frameForLogout) frameForLogout.src='about:blank';
+      const gateForLogout=document.getElementById('secureAdminGate');
+      if(gateForLogout) gateForLogout.style.display='flex';
       // Sign out of the real Supabase Auth session, not only the legacy PIN overlay.
       if (window.cltSecureAdminClient) {
         try { await Promise.race([window.cltSecureAdminClient.auth.signOut({scope:'local'}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),5000))]); } catch(e) { console.warn('Sign-out request:',e); }
       }
       const secureGate=document.getElementById('secureAdminGate');
       if(secureGate) secureGate.style.display='flex';
+      const frame=document.getElementById('adminFrame');
+      if(frame) frame.src='about:blank';
       const securePassword=document.getElementById('secureAdminPassword');
       if(securePassword) securePassword.value='';
       clearTimeout(idleTimer);
       const modal = document.getElementById('pinLockModal');
-      if (modal) modal.classList.remove('hidden');
+      if (modal) modal.classList.add('hidden');
       enteredPin = "";
       updatePinDotsUI();
 
@@ -494,8 +521,11 @@
       }
     }
 
+    let idleListenersInstalled = false;
     function startIdleTimer() {
       resetIdleTimer();
+      if (idleListenersInstalled) return;
+      idleListenersInstalled = true;
       ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(evt => {
         window.addEventListener(evt, resetIdleTimer, { passive: true });
       });
@@ -536,57 +566,83 @@
  const form=document.getElementById('secureAdminForm');
  const submit=form.querySelector('button[type="submit"]');
  function withTimeout(p,ms=12000){return Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),ms))]);}
- let refreshInFlight=null;
- async function performRefresh(){
+ // Require fresh credentials on every full page load; do not auto-approve a saved session.
+ let authorized = false;
+ let verifying = false;
+ const frame = document.getElementById('adminFrame');
+ const navLinks = document.querySelectorAll('a[target="adminFrame"]');
+ const intendedPage = frame?.dataset.adminSrc || 'page-walkin.html';
+ function lockPortal(message = '') {
+   authorized = false;
+   sessionStorage.removeItem('admin_vip_authenticated');
+   gate.style.display = 'flex';
+   if (frame && frame.getAttribute('src') !== 'about:blank') frame.src = 'about:blank';
+   if (message) msg.textContent = message;
+ }
+ // Never let the iframe navigate while locked, even when the menu is clicked.
+ navLinks.forEach(link => link.addEventListener('click', event => {
+   if (!authorized) { event.preventDefault(); lockPortal('กรุณาเข้าสู่ระบบ Admin ก่อน'); }
+ }, true));
+ async function checkAdminPermission() {
+   const {data:{session},error} = await withTimeout(client.auth.getSession(),9000);
+   if (error || !session?.access_token) return {ok:false, message:'ไม่พบเซสชัน กรุณาเข้าสู่ระบบใหม่'};
+   const res = await withTimeout(fetch(url+'/functions/v1/secure-checkin', {
+     method:'POST',
+     headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':key},
+     body:JSON.stringify({action:'check_admin'})
+   }),12000);
+   const data = await res.json().catch(()=>({}));
+   if (!res.ok || data.authorized !== true) return {ok:false, message:res.status===403?'บัญชีนี้ไม่มีสิทธิ์ Admin':res.status===401?'เซสชันไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่':'ตรวจสอบสิทธิ์ไม่สำเร็จ ('+(data.error||res.status)+')'};
+   return {ok:true};
+ }
+ // Sign out the persisted Supabase session BEFORE accepting any login attempt.
+ submit.disabled = true;
+ submit.textContent = 'กำลังเตรียมระบบ…';
+ lockPortal('กรุณาเข้าสู่ระบบทุกครั้งที่เปิดหน้า Admin');
+ (async () => {
    try {
-     const sessionResult=await withTimeout(client.auth.getSession(),9000);
-     const session=sessionResult?.data?.session;
-     if(sessionResult.error||!session){gate.style.display='flex';return false;}
-     const res=await withTimeout(fetch(url+'/functions/v1/secure-checkin',{
-       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':key},
-       body:JSON.stringify({action:'check_admin'})
-     }),12000);
-     let data={};try{data=await res.json()}catch{}
-     if(!res.ok||data.authorized!==true){
-       gate.style.display='flex';
-       msg.textContent=res.status===401?'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่':res.status===403?'บัญชีนี้ยังไม่ได้รับสิทธิ์ Admin':'ตรวจสอบสิทธิ์ไม่สำเร็จ ('+(data.error||res.status)+')';
-       return false;
-     }
-     msg.textContent='';gate.style.display='none';
-     sessionStorage.setItem('admin_vip_authenticated','true');
-     return true;
-   } catch(e){
-     gate.style.display='flex';
-     msg.textContent=e.message==='timeout'?'ระบบตอบสนองช้า กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง':'เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่';
-     return false;
+     await withTimeout(client.auth.signOut({scope:'local'}),9000);
+   } catch(e) {
+     console.warn('Could not clear previous session',e);
+     // Do not permit login before old credentials have been cleared.
+     lockPortal('ไม่สามารถล้างเซสชันเดิมได้ กรุณารีเฟรชหรือตรวจสอบอินเทอร์เน็ต');
+     return;
    }
- }
- function refresh(){
-   if(refreshInFlight)return refreshInFlight;
-   const job=performRefresh();
-   refreshInFlight=job;
-   job.finally(()=>{if(refreshInFlight===job)refreshInFlight=null;});
-   return job;
- }
- // After successful sign-in, wait for any earlier session check to finish,
- // then verify the newly authenticated session (never skip this verification).
- async function refreshAfterLogin(){
-   if(refreshInFlight)await refreshInFlight;
-   return refresh();
- }
- form.addEventListener('submit',async(e)=>{
-   e.preventDefault();
-   if(submit.disabled)return;
-   submit.disabled=true;submit.textContent='กำลังเข้าสู่ระบบ…';msg.textContent='กำลังตรวจสอบบัญชี…';
+   submit.disabled = false;
+   submit.textContent = 'เข้าสู่ระบบอย่างปลอดภัย';
+   msg.textContent = '';
+ })();
+ form.addEventListener('submit',async event => {
+   event.preventDefault();
+   if (submit.disabled || verifying) return;
+   verifying = true;
+   submit.disabled = true;
+   submit.textContent = 'กำลังเข้าสู่ระบบ…';
+   msg.textContent = 'กำลังตรวจสอบบัญชี…';
    try {
-     const {error}=await withTimeout(client.auth.signInWithPassword({email:document.getElementById('secureAdminEmail').value.trim(),password:document.getElementById('secureAdminPassword').value}),12000);
-     if(error){msg.textContent='เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบอีเมลและรหัสผ่าน';return;}
-     msg.textContent='กำลังตรวจสอบสิทธิ์ Admin…';await refreshAfterLogin();
-   } catch(e){msg.textContent=e.message==='timeout'?'เข้าสู่ระบบใช้เวลานานเกินไป กรุณาตรวจสอบอินเทอร์เน็ต':'ไม่สามารถเชื่อมต่อระบบเข้าสู่ระบบได้';}
-   finally{submit.disabled=false;submit.textContent='เข้าสู่ระบบอย่างปลอดภัย';}
+     const {error} = await withTimeout(client.auth.signInWithPassword({
+       email:document.getElementById('secureAdminEmail').value.trim(),
+       password:document.getElementById('secureAdminPassword').value
+     }),12000);
+     if (error) { lockPortal('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); return; }
+     msg.textContent = 'กำลังตรวจสอบสิทธิ์ Admin…';
+     const permission = await checkAdminPermission();
+     if (!permission.ok) { lockPortal(permission.message); return; }
+     authorized = true;
+     sessionStorage.setItem('admin_vip_authenticated','true');
+     msg.textContent = '';
+     gate.style.display = 'none';
+     if (frame && frame.getAttribute('src') === 'about:blank') frame.src = intendedPage;
+     startIdleTimer();
+   } catch(e) {
+     lockPortal(e.message === 'timeout' ? 'ระบบตอบสนองช้า กรุณาลองอีกครั้ง' : 'เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่');
+   } finally {
+     verifying = false;
+     submit.disabled = false;
+     submit.textContent = 'เข้าสู่ระบบอย่างปลอดภัย';
+   }
  });
- window.addEventListener('storage',e=>{if(e.key?.includes('auth-token'))refresh();});
- refresh();
+
 })();
 </script>
 </body>
