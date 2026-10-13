@@ -37,24 +37,26 @@
       <h2 class="text-2xl sm:text-3xl font-extrabold text-[#facc15] tracking-wide">สถิติผู้เข้างาน (Real-time)</h2>
     </div>
 
-    <div class="flex items-center justify-center gap-2.5 mb-8">
+    <div class="flex flex-wrap items-center justify-center gap-2.5 mb-3">
       <button id="btnFilterAll" onclick="setStatsFilter('all')" class="px-5 py-2 rounded-full font-bold text-xs sm:text-sm bg-[#facc15] text-slate-950">⭐ ทั้งหมด</button>
       <button id="btnFilterMorning" onclick="setStatsFilter('morning')" class="px-5 py-2 rounded-full font-medium text-xs sm:text-sm bg-[#1b0a3c] text-purple-200 border border-purple-800">🌻 รอบเช้า</button>
       <button id="btnFilterEvening" onclick="setStatsFilter('evening')" class="px-5 py-2 rounded-full font-medium text-xs sm:text-sm bg-[#1b0a3c] text-purple-200 border border-purple-800">🌙 รอบเย็น</button>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
-      <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-5 text-center">
+    <p id="statsUpdateStatus" role="status" aria-live="polite" class="text-center text-xs text-purple-300 mb-5">กำลังโหลดข้อมูล...</p>
+
+    <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-7">
+      <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-2 sm:p-5 text-center">
         <div class="text-xs text-slate-300">จำนวนทั้งหมด</div>
-        <div id="statBoxTotal" class="text-4xl font-extrabold text-[#facc15] font-digital mt-3">0</div>
+        <div id="statBoxTotal" class="text-2xl sm:text-4xl font-extrabold text-[#facc15] font-digital mt-3">0</div>
       </div>
-      <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-5 text-center">
+      <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-2 sm:p-5 text-center">
         <div class="text-xs text-slate-300">สแกนเข้างานแล้ว</div>
-        <div id="statBoxChecked" class="text-4xl font-extrabold text-white font-digital mt-3">0</div>
+        <div id="statBoxChecked" class="text-2xl sm:text-4xl font-extrabold text-white font-digital mt-3">0</div>
       </div>
-      <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-5 text-center">
+      <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-2 sm:p-5 text-center">
         <div class="text-xs text-slate-300">ยังไม่มา</div>
-        <div id="statBoxRemaining" class="text-4xl font-extrabold text-[#facc15] font-digital mt-3">0</div>
+        <div id="statBoxRemaining" class="text-2xl sm:text-4xl font-extrabold text-[#facc15] font-digital mt-3">0</div>
       </div>
     </div>
 
@@ -78,10 +80,26 @@
     let guestsList = [];
     let currentStatsFilter = 'all';
 
+    let statsLoading = false;
     async function loadStatsData() {
-      const { data } = await supabaseClient.from('guests').select('*');
-      guestsList = data || [];
-      recalculateStatistics();
+      if (statsLoading) return;
+      statsLoading = true;
+      const status = document.getElementById('statsUpdateStatus');
+      try {
+        const { data, error } = await supabaseClient.from('guests')
+          .select('employee_code,full_name,branch,morning_check_in,evening_check_in');
+        if (error) throw error;
+        guestsList = data || [];
+        recalculateStatistics();
+        status.textContent = 'อัปเดตล่าสุด ' + new Date().toLocaleTimeString('th-TH', {timeZone:'Asia/Bangkok'}) + ' น. · อัปเดตอัตโนมัติทุก 10 วินาที';
+        status.classList.remove('text-red-400');
+      } catch (error) {
+        console.error('โหลดสถิติไม่สำเร็จ:', error);
+        status.textContent = 'โหลดสถิติไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อหรือสิทธิ์เข้าถึงข้อมูล';
+        status.classList.add('text-red-400');
+      } finally {
+        statsLoading = false;
+      }
     }
 
     function setStatsFilter(mode) {
@@ -153,6 +171,8 @@
     }
 
     loadStatsData();
+    setInterval(() => { if (!document.hidden) loadStatsData(); }, 10000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStatsData(); });
   </script>
 </body>
 </html>
