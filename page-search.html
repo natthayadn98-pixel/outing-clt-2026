@@ -160,7 +160,7 @@
       <div class="line-employee" id="lineModalEmployee"></div>
       <div id="linePinStep">
         <div class="line-pin-dots" id="linePinDots" aria-label="PIN 4 หลัก"></div>
-        <p class="line-pin-help">🔒 กรุณากรอก PIN 4 หลักของเจ้าหน้าที่</p>
+        <p class="line-pin-help">🔒 กรอก PIN ครบ 4 หลัก ระบบจะตรวจสอบอัตโนมัติ</p>
         <div class="line-keypad" id="lineKeypad"></div>
       </div>
       <div id="lineReasonStep" class="hidden">
@@ -437,6 +437,7 @@
       else if (value === 'submit') return verifyLinePin();
       else if (linePinBuffer.length < 4) linePinBuffer += value;
       lineUpdatePin(); lineModalError('');
+      if (linePinBuffer.length === 4) verifyLinePin();
     }
     async function verifyLinePin() {
       if (!lineModalState || lineModalState.busy) return;
@@ -507,14 +508,18 @@
       lineUpdatePin();lineShowStep('linePinStep');
       document.getElementById('lineUnbindModal').classList.remove('hidden');
     }
-    document.getElementById('lineKeypad').innerHTML=[...'123456789','delete','0','submit'].map(n=>`<button type="button" class="line-key ${n==='delete'?'line-key-danger':n==='submit'?'line-key-primary':''}" onclick="lineKeyPress('${n}')">${n==='delete'?'⌫':n==='submit'?'✓ ยืนยัน':n}</button>`).join('');
+    document.getElementById('lineKeypad').innerHTML=[...'123456789','delete','0','submit'].map(n=>`<button type="button" class="line-key ${n==='delete'?'line-key-danger':n==='submit'?'line-key-primary':''}" onclick="lineKeyPress('${n}')">${n==='delete'?'⌫':n==='submit'?'↵ Enter':n}</button>`).join('');
     document.getElementById('lineReasonOptions').innerHTML=lineReasons.map((r,i)=>`<label class="line-reason"><input type="radio" name="lineReasonChoice" value="${escapeHTML(r)}"><span>${escapeHTML(r)}</span></label>`).join('');
     document.getElementById('lineReasonDetail').addEventListener('input',e=>document.getElementById('lineReasonCount').textContent=e.target.value.length);
     document.getElementById('lineUnbindModal').addEventListener('click',e=>{if(e.target.id==='lineUnbindModal')closeLineModal();});
     document.addEventListener('keydown',e=>{
       if (!lineModalState) return;
-      if (e.key==='Escape'){e.preventDefault();closeLineModal();}
+      if (e.key==='Escape'){e.preventDefault();closeLineModal();return;}
+      if (!document.getElementById('lineReasonStep').classList.contains('hidden') && e.key==='Enter' && e.target.tagName !== 'TEXTAREA'){
+        e.preventDefault();submitLineReason();return;
+      }
       if (!document.getElementById('linePinStep').classList.contains('hidden')){
+        if (lineModalState.busy) { e.preventDefault(); return; }
         if (/^[0-9]$/.test(e.key)){e.preventDefault();lineKeyPress(e.key);}
         else if(e.key==='Backspace'){e.preventDefault();lineKeyPress('delete');}
         else if(e.key==='Enter'){e.preventDefault();lineKeyPress('submit');}
