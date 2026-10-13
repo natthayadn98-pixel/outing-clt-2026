@@ -143,6 +143,44 @@
     html[data-admin-theme="light"] #supabaseConfigModal label,
     html[data-admin-theme="light"] #supabaseConfigModal p { color: #73687a !important; }
     html[data-admin-theme="light"] #supabaseConfigModal input { background: #faf8fb !important; color: #4d4059 !important; border-color: #e7dfea !important; }
+  
+/* CLT Admin Login — readable on mobile and desktop */
+#secureAdminGate input,
+#secureAdminEmail,
+#secureAdminPassword {
+  color-scheme: light !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #172033 !important;
+  -webkit-text-fill-color: #172033 !important;
+  border: 2px solid #d5dbe5 !important;
+  border-radius: 12px;
+  caret-color: #172033 !important;
+  opacity: 1 !important;
+}
+
+#secureAdminGate input::placeholder {
+  color: #697586 !important;
+  -webkit-text-fill-color: #697586 !important;
+  opacity: 1 !important;
+}
+
+#secureAdminGate input:focus {
+  outline: none !important;
+  border-color: #d6a22b !important;
+  box-shadow: 0 0 0 3px rgba(214,162,43,0.18) !important;
+}
+
+/* Fix browser autofill turning fields black */
+#secureAdminGate input:-webkit-autofill,
+#secureAdminGate input:-webkit-autofill:hover,
+#secureAdminGate input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #172033 !important;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  caret-color: #172033 !important;
+}
+
   </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0217]">
