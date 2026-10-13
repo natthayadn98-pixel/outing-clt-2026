@@ -144,140 +144,75 @@
     html[data-admin-theme="light"] #supabaseConfigModal p { color: #73687a !important; }
     html[data-admin-theme="light"] #supabaseConfigModal input { background: #faf8fb !important; color: #4d4059 !important; border-color: #e7dfea !important; }
 
-    /* Mobile header: two tidy rows, no clipped controls or horizontal scrolling. */
-    #cltAdminHeader { min-width: 0; }
-    .clt-header-brand, .clt-header-actions { min-width: 0; }
+    /* Mobile header: compact two-row layout. Desktop styles remain unchanged. */
+    #cltAdminHeader, .clt-header-brand, .clt-header-actions { min-width: 0; }
     @media (max-width: 767px) {
       #cltAdminHeader {
         position: relative;
         display: grid !important;
-        grid-template-columns: minmax(0,1fr) 120px;
-        grid-template-areas: "brand logout" "actions actions";
-        column-gap: 10px;
-        row-gap: 10px;
-        padding: 12px 14px 10px !important;
-        padding-top: max(12px, env(safe-area-inset-top)) !important;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: 40px 40px;
+        gap: 8px !important;
+        padding: 10px 12px !important;
+        padding-top: max(10px, env(safe-area-inset-top, 0px)) !important;
+        box-sizing: border-box;
+        overflow: visible;
       }
-      #cltAdminHeader .clt-header-brand { grid-area: brand; gap: 10px; overflow: hidden; }
-      #cltAdminHeader .clt-header-brand h1 { font-size: 17px !important; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      #cltAdminHeader .clt-header-brand button { flex-shrink: 0; width: 38px; height: 38px; }
-      #cltAdminHeader .clt-header-actions {
-        grid-area: actions;
-        display: flex !important;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        gap: 7px !important;
-        padding-top: 9px;
-        border-top: 1px solid rgba(157,122,196,.20);
+      #cltAdminHeader .clt-header-brand {
+        display: flex; align-items: center; gap: 9px !important;
+        min-width: 0; padding-right: 55px;
       }
-      #cltAdminHeader #liveClockBox { flex: 0 1 auto; min-width: 0; padding: 7px 10px !important; }
-      #cltAdminHeader #syncBadge { flex: 0 0 auto; padding: 7px 10px !important; }
-      #cltAdminHeader #adminThemeToggle,
-      #cltAdminHeader #cltHeaderSettings,
-      #cltAdminHeader #cltHeaderReset { flex: 0 0 auto; width: 36px !important; height: 36px !important; border-radius: 12px !important; }
-      #cltAdminHeader #cltHeaderLogout {
-        position: absolute;
-        top: 12px;
-        right: 14px;
-        z-index: 1;
-        min-height: 38px;
-        padding: 7px 12px !important;
-        font-size: 12px;
-        white-space: nowrap;
+      #cltAdminHeader .clt-header-brand button {
+        width: 38px !important; height: 38px !important;
+        min-width: 38px; flex-shrink: 0;
       }
-      #cltAdminHeader #cltHeaderLogout span:last-child { display: inline !important; }
-      #cltAdminHeader .clt-header-brand { padding-right: 2px; }
-      #cltAdminHeader .clt-header-actions #cltHeaderLogout { display: inline-flex; }
-    }
-    /* Responsive header refinement: visual layout only; auth and data logic untouched. */
-    @media (max-width: 767px) {
-      #cltAdminHeader { grid-template-columns: minmax(0, 1fr) auto !important; }
+      #cltAdminHeader .clt-header-brand h1 {
+        font-size: 17px !important; line-height: 1.2;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        min-width: 0;
+      }
       #cltAdminHeader .clt-header-actions {
         display: grid !important;
-        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) repeat(3, 36px);
-        justify-content: stretch !important;
-        gap: 6px !important;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) repeat(3, 38px);
+        align-items: center; gap: 6px !important;
+        width: 100%; min-width: 0;
       }
       #cltAdminHeader #liveClockBox,
-      #cltAdminHeader #syncBadge { width: 100%; min-width: 0; justify-content: center; white-space: nowrap; padding: 7px 3px !important; }
-      #cltAdminHeader #liveClock { font-size: 11px !important; letter-spacing: 0 !important; }
+      #cltAdminHeader #syncBadge {
+        width: 100%; min-width: 0; height: 38px;
+        justify-content: center; padding: 5px 3px !important;
+        white-space: nowrap; overflow: hidden;
+      }
+      #cltAdminHeader #liveClock,
       #cltAdminHeader #syncText { font-size: 11px !important; letter-spacing: 0 !important; }
-      #cltAdminHeader #adminThemeToggle,
-      #cltAdminHeader #cltHeaderSettings,
-      #cltAdminHeader #cltHeaderReset { width: 36px !important; height: 36px !important; }
-      #cltAdminHeader #cltHeaderLogout { position: absolute; top: 12px; right: 14px; }
-    }
-    @media (max-width: 390px) {
-      #cltAdminHeader .clt-header-actions { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) repeat(3, 32px); gap: 4px !important; }
       #cltAdminHeader #liveClockBox > span:first-child { display: none; }
-      #cltAdminHeader #liveClockBox, #cltAdminHeader #syncBadge { padding: 6px 2px !important; }
       #cltAdminHeader #adminThemeToggle,
       #cltAdminHeader #cltHeaderSettings,
-      #cltAdminHeader #cltHeaderReset { width: 32px !important; height: 34px !important; }
+      #cltAdminHeader #cltHeaderReset {
+        width: 38px !important; height: 38px !important;
+        min-width: 0 !important; border-radius: 12px !important;
+        font-size: 17px !important; justify-self: center;
+      }
+      #cltAdminHeader #cltHeaderLogout {
+        position: absolute !important;
+        right: 12px; top: max(10px, env(safe-area-inset-top, 0px));
+        width: 38px; height: 38px; padding: 0 !important;
+        display: flex !important; justify-content: center; align-items: center;
+        border-radius: 12px !important; font-size: 17px;
+      }
+      #cltAdminHeader #cltHeaderLogout span:last-child { display: none !important; }
     }
     @media (max-width: 370px) {
       #cltAdminHeader { padding-left: 9px !important; padding-right: 9px !important; }
-      #cltAdminHeader #cltHeaderLogout { right: 9px; }
-      #cltAdminHeader .clt-header-actions { gap: 4px !important; }
-      #cltAdminHeader #liveClockBox, #cltAdminHeader #syncBadge { padding: 6px !important; }
-      #cltAdminHeader #adminThemeToggle, #cltAdminHeader #cltHeaderSettings, #cltAdminHeader #cltHeaderReset { width: 32px !important; height: 34px !important; }
-      #cltAdminHeader .clt-header-brand h1 { font-size: 15px !important; }
-    }
-    /* iPhone / mobile: prevent the top controls from overflowing or clipping. */
-    @media (max-width: 767px) {
-      #cltAdminHeader {
-        grid-template-columns: minmax(0, 1fr) auto !important;
-        grid-template-areas: "brand logout" "actions actions" !important;
-        overflow: visible;
-        padding: 10px 12px !important;
-        padding-top: max(10px, env(safe-area-inset-top)) !important;
-      }
-      #cltAdminHeader .clt-header-brand { grid-area: brand; min-width: 0; }
       #cltAdminHeader .clt-header-actions {
-        grid-area: actions;
-        display: grid !important;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) repeat(3, 40px) !important;
-        gap: 6px !important;
-        width: 100%;
-        min-width: 0;
-        padding-top: 8px;
-      }
-      #cltAdminHeader #liveClockBox, #cltAdminHeader #syncBadge {
-        min-width: 0;
-        width: 100%;
-        padding: 7px 5px !important;
-        justify-content: center;
-        overflow: hidden;
-        white-space: nowrap;
-      }
-      #cltAdminHeader #liveClock { font-size: 12px !important; letter-spacing: 0 !important; }
-      #cltAdminHeader #syncText { font-size: 12px !important; }
-      #cltAdminHeader #adminThemeToggle, #cltAdminHeader #cltHeaderSettings, #cltAdminHeader #cltHeaderReset {
-        width: 40px !important; height: 40px !important; min-width: 0 !important;
-        border-radius: 12px !important; font-size: 18px !important;
-      }
-      #cltAdminHeader #cltHeaderLogout {
-        position: static !important;
-        grid-area: logout;
-        justify-self: end;
-        align-self: center;
-        min-height: 38px;
-        padding: 7px 10px !important;
-      }
-      #cltAdminHeader #cltHeaderLogout span:last-child { display: inline !important; }
-    }
-    @media (max-width: 390px) {
-      #cltAdminHeader .clt-header-actions {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) repeat(3, 34px) !important;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) repeat(3, 34px);
         gap: 4px !important;
       }
-      #cltAdminHeader #adminThemeToggle, #cltAdminHeader #cltHeaderSettings, #cltAdminHeader #cltHeaderReset {
-        width: 34px !important; height: 36px !important;
-      }
-      #cltAdminHeader #liveClockBox > span:first-child { display: none; }
-      #cltAdminHeader #liveClock { font-size: 11px !important; }
-      #cltAdminHeader #syncText { font-size: 11px !important; }
+      #cltAdminHeader #adminThemeToggle,
+      #cltAdminHeader #cltHeaderSettings,
+      #cltAdminHeader #cltHeaderReset { width: 34px !important; height: 36px !important; }
+      #cltAdminHeader #cltHeaderLogout { right: 9px; }
+      #cltAdminHeader .clt-header-brand h1 { font-size: 15px !important; }
     }
   </style>
 </head>
