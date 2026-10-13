@@ -256,9 +256,12 @@
   </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4 select-none">
+  <div id="cltStartupScreen" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:99998;background:#14081e;color:#fce7a1;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:Anakotmai,sans-serif">
+    <div><div style="font-size:24px;font-weight:800;margin-bottom:10px">งานเลี้ยงสังสรรค์ ประจำปี 2569</div><div id="cltStartupText" style="font-size:15px;color:#e9d5ff">กำลังยืนยัน LINE และเตรียม QR Code…</div></div>
+  </div>
 
   <!-- ================= SCENE 1: ซองจดหมายปิด ================= -->
-  <div id="envelopeScene" class="envelope-wrapper flex flex-col items-center justify-center">
+  <div id="envelopeScene" class="hidden envelope-wrapper flex-col items-center justify-center">
     <div class="envelope-card" onclick="openEnvelope()">
       <div class="flap-left"></div>
       <div class="flap-right"></div>
@@ -1285,6 +1288,7 @@
         await liff.init({ liffId: LIFF_ID });
         if (!liff.isInClient()) {
           gate.style.display = 'flex'; // External browsers remain blocked.
+          document.getElementById('cltStartupScreen').style.display = 'none';
           return;
         }
         gate.style.display = 'none'; // Do not cover the invitation while checking LINE.
@@ -1297,13 +1301,25 @@
           lineReady = true;
           localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
           await checkExistingLogin();
+          // Already-linked employees go directly to their live QR, without envelope or invitation.
+          if (matchedGuest && !(matchedGuest.morning_check_in && matchedGuest.evening_check_in)) {
+            await openQrPass(matchedGuest);
+          } else {
+            // Both rounds completed: show the existing completion status, not an unusable QR.
+            document.getElementById('letterScene').classList.remove('hidden');
+            document.getElementById('letterScene').classList.add('flex');
+          }
         } else {
           lineEmployeeCode = null;
           lineReady = false;
           resetToUnregisteredUI();
           document.getElementById('btnMainText').textContent = 'กรอกรหัสพนักงาน (PIN 6 หลัก)';
+          // First-time employees must bind their own employee code before any QR can be issued.
+          document.getElementById('letterScene').classList.remove('hidden');
+          document.getElementById('letterScene').classList.add('flex');
         }
         showLineStatus('');
+        document.getElementById('cltStartupScreen').style.display = 'none';
       } catch (error) {
         lineVerified = false;
         lineReady = false;
@@ -1312,11 +1328,14 @@
         // A normal browser must continue seeing the LINE-only blocking screen.
         if (window.liff && liff.isInClient()) {
           gate.style.display = 'none';
+          document.getElementById('letterScene').classList.remove('hidden');
+          document.getElementById('letterScene').classList.add('flex');
           showLineStatus('ยังไม่สามารถยืนยัน LINE ได้ กรุณาลองเปิดใหม่ก่อนรับ QR: ' + error.message, true);
         } else {
           message.style.display = 'block';
           message.textContent = 'กรุณาเปิดผ่านแอป LINE';
         }
+        document.getElementById('cltStartupScreen').style.display = 'none';
       }
     }
     window.addEventListener('DOMContentLoaded', () => {
