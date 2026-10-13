@@ -179,11 +179,49 @@
       toast.className = 'mt-5 p-4 rounded-2xl text-base sm:text-lg font-bold border block bg-rose-950/90 text-rose-200 border-rose-500 shadow-lg';
       toast.textContent = '❌ ' + message;
       playStatusTone('error');
+      hideScanResultLater();
     }
     let gunInputTimer = null;
     let lastScanPayload = '';
     let lastScanAt = 0;
     let cameraStarting = false;
+    // Camera: a QR must leave the camera view before the same code can be scanned again.
+    let cameraHeldQr = '';
+    let cameraLastDetectedAt = 0;
+    let cameraMissingSince = 0;
+    const CAMERA_RELEASE_MS = 850;
+    let resultHideTimer = null;
+    let resultSerial = 0;
+    function hideScanResultLater() {
+      clearTimeout(resultHideTimer);
+      const serial = ++resultSerial;
+      resultHideTimer = setTimeout(() => {
+        if (serial !== resultSerial) return;
+        const toast = document.getElementById('scanResultToast');
+        toast.classList.add('hidden');
+        toast.textContent = '';
+      }, 2000);
+    }
+    function onCameraDecoded(decodedText) {
+      const value = String(decodedText || '').trim();
+      if (!value || currentScanMode !== 'camera') return;
+      cameraLastDetectedAt = Date.now();
+      cameraMissingSince = 0;
+      if (value === cameraHeldQr) return;
+      cameraHeldQr = value;
+      enqueueScan(value, 'camera');
+    }
+    function onCameraDecodeMiss() {
+      if (!cameraHeldQr) return;
+      const now = Date.now();
+      // Ignore intermittent misses while the QR is still being detected.
+      if (now - cameraLastDetectedAt < CAMERA_RELEASE_MS) return;
+      if (!cameraMissingSince) cameraMissingSince = now;
+      if (now - cameraMissingSince >= CAMERA_RELEASE_MS) {
+        cameraHeldQr = '';
+        cameraMissingSince = 0;
+      }
+    }
 
     // 1. เดินเวลานาฬิกาแบบ Real-time
     function tickClock() {
@@ -296,11 +334,11 @@
 
     // 6. ประมวลผลและเช็คอิน (รวมคำสั่งจังหวะเดียว + ตรวจจับ QR สด)
     // USB Fast Scan: buffer rapid scans so the next employee is not dropped during a network request.
-    function enqueueScan(scannedValue) {
+    function enqueueScan(scannedValue, source = 'gun') {
       const value = String(scannedValue || '').trim();
       if (!value) return;
       const now = Date.now();
-      if (value === lastScanPayload && now - lastScanAt < 1300) return;
+      if (source !== 'camera' && value === lastScanPayload && now - lastScanAt < 1300) return;
       if (queuedPayloads.has(value)) return;
       if (scanQueue.length >= MAX_SCAN_QUEUE) {
         showFastScanError('คิวสแกนเต็ม กรุณารอสักครู่แล้วสแกนอีกครั้ง');
@@ -339,6 +377,7 @@
         toast.className='mt-5 p-4 rounded-2xl border block text-center font-bold '+(palette[type]||palette.error);
         toast.textContent=message;
         playStatusTone(type==='success'?'success':type==='warning'?'warning':'error');
+        hideScanResultLater();
       };
       const qr=String(scannedValue||'').trim();
       if(!/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(qr)) {show('❌ QR ไม่ถูกต้อง กรุณาเปิด QR ใหม่ใน LINE','error');return;}
@@ -398,8 +437,8 @@
             aspectRatio: 1.0,
             disableFlip: true
           },
-          (decodedText) => { enqueueScan(decodedText.trim()); },
-          () => {}
+          (decodedText) => { onCameraDecoded(decodedText); },
+          () => { onCameraDecodeMiss(); }
         );
         document.getElementById('startCamBtn').classList.add('hidden');
         document.getElementById('stopCamBtn').classList.remove('hidden');
@@ -413,6 +452,9 @@
     }
 
     async function stopMobileCamera() {
+      cameraHeldQr = '';
+      cameraLastDetectedAt = 0;
+      cameraMissingSince = 0;
       if (!mobileCamScanner) return;
       const scanner = mobileCamScanner;
       mobileCamScanner = null;
