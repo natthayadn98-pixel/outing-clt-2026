@@ -73,9 +73,12 @@
   </section>
 
   <script>
-    const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    function adminDb(){
+      try { if(window.parent && window.parent !== window && window.parent.location.origin === location.origin)
+        return window.parent.cltSecureAdminClient || null; } catch (_) {}
+      return null;
+    }
+        const supabaseClient = adminDb();
 
     let guestsList = [];
     let currentStatsFilter = 'all';
@@ -95,7 +98,7 @@
         status.classList.remove('text-red-400');
       } catch (error) {
         console.error('โหลดสถิติไม่สำเร็จ:', error);
-        status.textContent = 'โหลดสถิติไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อหรือสิทธิ์เข้าถึงข้อมูล';
+        status.textContent = 'โหลดสถิติไม่สำเร็จ: ' + (error.message || error.code || 'ตรวจสอบสิทธิ์เข้าถึงข้อมูล');
         status.classList.add('text-red-400');
       } finally {
         statsLoading = false;
@@ -150,7 +153,7 @@
         card.className = "bg-[#0d0421] border border-purple-800/80 rounded-2xl p-4";
         card.innerHTML = `
           <div class="flex justify-between mb-2">
-            <span class="text-amber-300 font-bold">${branch} (${branchTotal} คน)</span>
+            <span class="text-amber-300 font-bold">${escapeHtml(branch)} (${branchTotal} คน)</span>
             <span class="text-emerald-400 font-digital">${checked} / ${branchTotal} (${percent}%)</span>
           </div>
           <div class="w-full bg-[#1b0a3c] rounded-full h-2">
