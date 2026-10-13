@@ -226,28 +226,56 @@
       }).join('');
     }
 
+    // บันทึกเช็คอินผ่าน Edge Function ที่ตรวจสอบสิทธิ์ Admin เท่านั้น
+    const ADMIN_CHECKIN_URL = SUPABASE_URL + '/functions/v1/admin-manage-checkins';
+    const manualCheckinPending = new Set();
     async function checkInRoundManual(empCode, round) {
+      if (!['morning', 'evening'].includes(round)) return;
+      const code = String(empCode);
+      const key = code + ':' + round;
+      if (manualCheckinPending.has(key)) return;
       const roundName = round === 'morning' ? 'รอบเช้า' : 'รอบเย็น';
-      const updateField = round === 'morning' ? 'morning_check_in' : 'evening_check_in';
-      const cleanTime = getCleanThaiTimeString();
-
+      const guest = guestsList.find(g => String(g.employee_code) === code);
+      if (!guest) return showUnlockNotice('ไม่พบข้อมูลพนักงาน', false);
+      if (guest[round + '_check_in']) return showUnlockNotice('พนักงานนี้เช็คอิน' + roundName + 'แล้ว', false);
+      if (!confirm('ยืนยันเช็คอิน' + roundName + ' ให้ ' + guest.full_name + ' (' + code + ')?')) return;
+      manualCheckinPending.add(key);
       try {
-        const { error } = await supabaseClient
-          .from('guests')
-          .update({ [updateField]: cleanTime })
-          .eq('employee_code', empCode);
-
-        if (error) throw error;
-
-        const idx = guestsList.findIndex(g => g.employee_code === empCode);
-        if (idx !== -1) {
-          guestsList[idx][updateField] = cleanTime;
+        const adminClient = window.parent?.cltSecureAdminClient;
+        if (!adminClient) throw new Error('กรุณาเปิดผ่านหน้า Admin และเข้าสู่ระบบก่อน');
+        const { data: { session }, error: sessionError } = await adminClient.auth.getSession();
+        if (sessionError || !session?.access_token) throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบ Admin ใหม่');
+        const response = await fetch(ADMIN_CHECKIN_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + session.access_token,
+            'apikey': SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({ action: 'checkin', employeeCode: code, round })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const errors = {
+            admin_login_required: 'กรุณาเข้าสู่ระบบ Admin ใหม่',
+            admin_not_authorized: 'บัญชีนี้ไม่มีสิทธิ์ Admin',
+            employee_not_found: 'ไม่พบข้อมูลพนักงาน',
+            already_checked_in: 'พนักงานนี้เช็คอิน' + roundName + 'แล้ว',
+            invalid_action: 'กรุณาอัปเดต Edge Function admin-manage-checkins เวอร์ชันใหม่',
+            origin_not_allowed: 'โดเมนเว็บไซต์ไม่ได้รับอนุญาต',
+            database_error: 'ฐานข้อมูลปฏิเสธคำสั่ง'
+          };
+          throw new Error(errors[result.error] || result.error || 'บันทึกเช็คอินไม่สำเร็จ');
         }
-
+        if (result.guest) {
+          Object.assign(guest, result.guest);
+        }
         handleTabSearch();
-        alert(`บันทึกเช็คอิน ${roundName} สำหรับรหัส "${empCode}" เรียบร้อยแล้ว! (${cleanTime})`);
+        showUnlockNotice('บันทึกเช็คอิน' + roundName + ' ของ ' + guest.full_name + ' สำเร็จ', true);
       } catch (err) {
-        alert('เกิดข้อผิดพลาดในการบันทึกเวลา: ' + err.message);
+        showUnlockNotice('บันทึกเช็คอินไม่สำเร็จ: ' + err.message, false);
+      } finally {
+        manualCheckinPending.delete(key);
       }
     }
 
