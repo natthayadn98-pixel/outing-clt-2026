@@ -268,7 +268,7 @@
       if (!code) return;
       // ไม่ล้างข้อมูลที่ยังมาไม่ครบ เพื่อให้เครื่องยิงที่ส่งช้ากว่าสามารถส่งต่อได้
       // A complete USB scan ends with Enter/Tab. Reject malformed input instead of leaving it in the field.
-      if (!/^CLT1\.\d{6}\.(morning|evening)\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(code)) {
+      if (!/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(code)) {
         if (code.length >= 17) { gunInputEl.value = ''; enqueueScan(code); }
         return;
       }
@@ -341,7 +341,7 @@
         playStatusTone(type==='success'?'success':type==='warning'?'warning':'error');
       };
       const qr=String(scannedValue||'').trim();
-      if(!/^CLT1\.\d{6}\.(morning|evening)\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(qr)) {show('❌ QR ไม่ถูกต้อง กรุณาเปิด QR ใหม่ใน LINE','error');return;}
+      if(!/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(qr)) {show('❌ QR ไม่ถูกต้อง กรุณาเปิด QR ใหม่ใน LINE','error');return;}
       try {
         const session=await supabaseClient.auth.getSession();
         const jwt=session.data?.session?.access_token;
@@ -364,7 +364,13 @@
         }else if(result.error==='wrong_round'||result.status==='outside_hours'){
           show('⚠️ QR ไม่ตรงรอบเวลาเช็คอิน','warning');
         }else if(result.error==='invalid_qr'){
-          show('❌ QR ไม่ถูกต้องหรือถูกแก้ไข','error');
+          show('❌ QR รูปแบบไม่ตรง ('+(result.stage||'invalid_qr')+')','error');
+        }else if(result.error==='invalid_qr_signature'){
+          show('❌ ลายเซ็น QR ไม่ตรง กรุณาตรวจ line-auth และ QR_SIGNING_SECRET','error');
+        }else if(result.error==='database_error'){
+          show('❌ ฐานข้อมูลผิดพลาด: '+(result.stage||'unknown')+' ('+(result.code||'ไม่ทราบรหัส')+')','error');
+        }else if(result.error==='outside_checkin_hours'){
+          show('⚠️ อยู่นอกเวลาเช็คอิน','warning');
         }else {show('❌ ไม่สามารถบันทึกได้ กรุณาตรวจสอบและสแกนใหม่','error');}
       }catch(err){show('❌ อินเทอร์เน็ตขัดข้อง กรุณาสแกนใหม่','error');}
     }
