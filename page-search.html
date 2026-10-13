@@ -64,6 +64,40 @@
   });
 })();
 </script>
+
+  <style>
+    .line-modal-backdrop{position:fixed;inset:0;z-index:9999;background:rgba(18,14,39,.72);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px}
+    .line-modal-backdrop.hidden{display:none}
+    .line-modal{width:min(100%,510px);max-height:min(92dvh,820px);overflow:auto;border-radius:28px;background:linear-gradient(155deg,#f6f0ff,#fff 42%,#f6f3ff);box-shadow:0 30px 90px #110c36a6;color:#2c185b;position:relative;padding:28px 26px 24px;border:1px solid #eee2ff;text-align:center}
+    .line-modal-close{position:absolute;right:15px;top:15px;width:35px;height:35px;border-radius:50%;background:#eee8ff;color:#51319a;font-size:23px;line-height:1}
+    .line-modal-symbol{font-size:53px;margin:0 auto 4px;filter:drop-shadow(0 8px 8px #b99aff70)}
+    .line-modal-title{font-size:23px;font-weight:800;color:#281164;margin-top:5px}
+    .line-modal-subtitle{font-size:13px;color:#8972bd;margin-top:3px}
+    .line-employee{background:#eee8fc;border-left:4px solid #9c4dff;text-align:left;border-radius:14px;padding:13px 16px;margin:18px 0;color:#6535a7;font-size:13px}
+    .line-employee strong{font-size:16px;color:#5722a1}
+    .line-pin-dots{display:flex;justify-content:center;gap:12px;margin:18px auto 10px}
+    .line-pin-dot{height:53px;width:53px;max-width:21%;border:1.5px solid #c9b2ff;border-radius:13px;background:#fff;display:grid;place-items:center;font-size:23px;color:#8b43f7;box-shadow:0 4px 9px #b9a7ea28}
+    .line-pin-help{font-size:12px;color:#9777cb;margin-bottom:14px}
+    .line-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+    .line-key{border:1px solid #ddd0ff;border-radius:12px;background:#fff;padding:10px 6px;font-size:20px;font-weight:800;color:#3e217d;box-shadow:0 3px 7px #baadea33;min-height:49px}
+    .line-key:active{transform:scale(.97)}
+    .line-key-danger{background:#ffeaf0;color:#db336c;border-color:#ffc5d5}
+    .line-key-primary,.line-btn-primary{background:linear-gradient(110deg,#ae3af3,#8055f5);color:white;border:none}
+    .line-key-primary{font-size:15px}
+    .line-key:disabled,.line-btn:disabled{opacity:.5;cursor:wait}
+    .line-reason-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0;text-align:left}
+    .line-reason{display:flex;align-items:center;gap:8px;border:1px solid #ded2f7;background:#fff;border-radius:12px;padding:11px 9px;font-size:12px;color:#50328b;cursor:pointer}
+    .line-reason:has(input:checked){border-color:#9a50f5;background:#f3eaff;box-shadow:0 0 0 1px #9a50f5}
+    .line-reason input{accent-color:#9349ed}
+    .line-detail{display:block;width:100%;min-height:86px;border:1px solid #ded2f7;border-radius:12px;background:#fff;padding:12px;color:#392363;outline:none;resize:vertical;font-size:13px}
+    .line-detail:focus{border-color:#9952ef}
+    .line-btn-row{display:flex;gap:10px;margin-top:17px}
+    .line-btn{flex:1;border-radius:12px;padding:12px 9px;font-weight:700;font-size:14px}
+    .line-btn-secondary{background:#f3effd;color:#4c2c8d;border:1px solid #dfd2f8}
+    .line-error{color:#c02659;font-size:12px;min-height:18px;margin-top:9px}
+    .line-note{font-size:11px;color:#9b82c7;margin-top:16px}
+    @media(max-width:420px){.line-modal{padding:24px 16px 20px}.line-reason-grid{grid-template-columns:1fr}.line-modal-title{font-size:20px}}
+  </style>
 </head>
 <body class="w-full">
 
@@ -113,6 +147,38 @@
         <button id="cltModalCancel" type="button" class="clt-modal-btn clt-modal-cancel">ยกเลิก</button>
         <button id="cltModalConfirm" type="button" class="clt-modal-btn clt-modal-confirm">✓ ยืนยันเช็คอิน</button>
       </div>
+    </div>
+  </div>
+
+
+  <div id="lineUnbindModal" class="line-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="lineModalHeading">
+    <div class="line-modal">
+      <button type="button" class="line-modal-close" onclick="closeLineModal()" aria-label="ปิด">×</button>
+      <div class="line-modal-symbol" id="lineModalIcon">🔐</div>
+      <h3 class="line-modal-title" id="lineModalHeading">กรอก PIN ยืนยันตัวตน</h3>
+      <p class="line-modal-subtitle" id="lineModalSubtitle">เพื่อปลดการผูก LINE พนักงาน</p>
+      <div class="line-employee" id="lineModalEmployee"></div>
+      <div id="linePinStep">
+        <div class="line-pin-dots" id="linePinDots" aria-label="PIN 4 หลัก"></div>
+        <p class="line-pin-help">🔒 กรุณากรอก PIN 4 หลักของเจ้าหน้าที่</p>
+        <div class="line-keypad" id="lineKeypad"></div>
+      </div>
+      <div id="lineReasonStep" class="hidden">
+        <p style="text-align:left;font-weight:700;font-size:13px">เหตุผลในการปลดการผูก LINE <span style="color:#f43f5e">*</span></p>
+        <div class="line-reason-grid" id="lineReasonOptions"></div>
+        <label for="lineReasonDetail" style="display:block;text-align:left;font-size:13px;font-weight:700;margin-bottom:7px">รายละเอียดเพิ่มเติม (ถ้ามี)</label>
+        <textarea id="lineReasonDetail" class="line-detail" maxlength="200" placeholder="เช่น แจ้งเปลี่ยนเบอร์ใหม่ หรือผูก LINE ผิดบัญชี"></textarea>
+        <div style="text-align:right;font-size:11px;color:#a38bc8"><span id="lineReasonCount">0</span>/200</div>
+        <div class="line-btn-row"><button type="button" class="line-btn line-btn-secondary" onclick="closeLineModal()">ยกเลิก</button><button type="button" class="line-btn line-btn-primary" onclick="submitLineReason()">✓ ตรวจสอบและยืนยัน</button></div>
+      </div>
+      <div id="lineFinalStep" class="hidden">
+        <p id="lineFinalMessage" style="background:#f2ecff;padding:17px;border-radius:13px;text-align:left;font-size:13px;line-height:1.8"></p>
+        <p style="font-size:12px;color:#8b72b8;margin-top:12px">ประวัติเช็คอินเช้า–เย็นจะยังคงอยู่ และโทรศัพท์เครื่องเดิมสามารถผูกใหม่ได้</p>
+        <div class="line-btn-row"><button type="button" class="line-btn line-btn-secondary" onclick="backToLineReason()">ย้อนกลับ</button><button type="button" class="line-btn line-btn-primary" id="lineUnbindSubmit" onclick="confirmLineUnbind()">✓ ยืนยันปลดการผูก LINE</button></div>
+      </div>
+      <div id="lineDoneStep" class="hidden"><p style="font-size:14px;color:#6a4a9e;margin:16px 0">ปลดการผูก LINE เรียบร้อยแล้ว โดยไม่ลบประวัติเช็คอิน</p><button type="button" class="line-btn line-btn-primary" style="width:100%" onclick="closeLineModal()">ตกลง</button></div>
+      <p class="line-error" id="lineModalError" role="alert"></p>
+      <p class="line-note">🛡️ ข้อมูลนี้ใช้สำหรับการตรวจสอบของเจ้าหน้าที่เท่านั้น</p>
     </div>
   </div>
 
@@ -266,7 +332,7 @@
     }
     function showCheckinResult(success, guest, roundName, message) {
       document.getElementById('cltModalIcon').textContent = success ? '✅' : '⚠️';
-      document.getElementById('cltModalTitle').textContent = success ? 'เช็คอินสำเร็จ!' : 'เช็คอินไม่สำเร็จ';
+      document.getElementById('cltModalTitle').textContent = success ? 'เช็คอิน' + roundName + 'สำเร็จ!' : 'เช็คอิน' + roundName + 'ไม่สำเร็จ';
       document.getElementById('cltModalTitle').style.color = success ? '#059669' : '#dc2626';
       document.getElementById('cltModalDescription').textContent = success ? 'บันทึกข้อมูลลงทะเบียนเรียบร้อยแล้ว' : 'ระบบยังไม่ได้ยืนยันการบันทึก';
       document.getElementById('cltModalDetails').innerHTML = success
@@ -276,68 +342,59 @@
       document.getElementById('cltModalDone').addEventListener('click', closeCheckinModal);
     }
     async function checkInRoundManual(empCode, round) {
-      if (!['morning', 'evening'].includes(round) || checkinModalActive) return;
+      if (!['morning', 'evening'].includes(round) || checkinModalActive || manualCheckinPending.size) return;
       const code = String(empCode);
       const key = code + ':' + round;
-      if (manualCheckinPending.has(key)) return;
       const roundName = round === 'morning' ? 'รอบเช้า' : 'รอบเย็น';
       const guest = guestsList.find(g => String(g.employee_code) === code);
       if (!guest) return showUnlockNotice('ไม่พบข้อมูลพนักงาน', false);
       if (guest[round + '_check_in']) return showUnlockNotice('พนักงานนี้เช็คอิน' + roundName + 'แล้ว', false);
+      // One click sends the check-in immediately; no confirmation dialog.
+      manualCheckinPending.add(key);
       checkinModalActive = true;
       const modal = document.getElementById('cltCheckinModal');
-      document.getElementById('cltModalIcon').textContent = round === 'morning' ? '☀️' : '🌙';
-      document.getElementById('cltModalTitle').textContent = 'ยืนยันการเช็คอิน';
+      document.getElementById('cltModalIcon').textContent = '⏳';
+      document.getElementById('cltModalTitle').textContent = 'กำลังเช็คอิน' + roundName;
       document.getElementById('cltModalTitle').style.color = '#243047';
-      document.getElementById('cltModalDescription').textContent = 'ตรวจสอบข้อมูลแล้วกดยืนยันเพื่อบันทึก';
-      document.getElementById('cltModalDetails').innerHTML = '<strong>ชื่อ:</strong> ' + escapeHTML(guest.full_name) + '<br><strong>รหัส:</strong> ' + escapeHTML(code) + '<br><strong>สาขา:</strong> ' + escapeHTML(guest.branch || 'สำนักงานใหญ่') + '<br><strong>รอบ:</strong> ' + escapeHTML(roundName);
-      document.getElementById('cltModalActions').innerHTML = '<button id="cltModalCancel" type="button" class="clt-modal-btn clt-modal-cancel">ยกเลิก</button><button id="cltModalConfirm" type="button" class="clt-modal-btn clt-modal-confirm">✓ ยืนยันเช็คอิน</button>';
-      const confirmBtn = document.getElementById('cltModalConfirm');
-      document.getElementById('cltModalCancel').addEventListener('click', closeCheckinModal);
+      document.getElementById('cltModalDescription').textContent = 'กรุณารอสักครู่ ระบบกำลังบันทึกข้อมูล';
+      document.getElementById('cltModalDetails').textContent = guest.full_name + ' (' + code + ')';
+      document.getElementById('cltModalActions').innerHTML = '';
       modal.classList.remove('hidden');
-      confirmBtn.addEventListener('click', async () => {
-        if (manualCheckinPending.has(key)) return;
-        manualCheckinPending.add(key);
-        confirmBtn.disabled = true;
-        document.getElementById('cltModalCancel').disabled = true;
-        confirmBtn.textContent = 'กำลังบันทึก...';
-        try {
-          const adminClient = window.parent?.cltSecureAdminClient;
-          if (!adminClient) throw new Error('กรุณาเปิดผ่านหน้า Admin และเข้าสู่ระบบก่อน');
-          const { data: { session }, error: sessionError } = await adminClient.auth.getSession();
-          if (sessionError || !session?.access_token) throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบ Admin ใหม่');
-          const response = await fetch(ADMIN_CHECKIN_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY },
-            body: JSON.stringify({ action: 'checkin', employeeCode: code, round })
-          });
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            const errors = {
-              admin_login_required: 'กรุณาเข้าสู่ระบบ Admin ใหม่',
-              admin_not_authorized: 'บัญชีนี้ไม่มีสิทธิ์ Admin',
-              employee_not_found: 'ไม่พบข้อมูลพนักงาน',
-              already_checked_in: 'พนักงานนี้เช็คอิน' + roundName + 'แล้ว',
-              invalid_action: 'กรุณาอัปเดต Edge Function admin-manage-checkins',
-              origin_not_allowed: 'โดเมนเว็บไซต์ไม่ได้รับอนุญาต',
-              database_error: 'ฐานข้อมูลปฏิเสธคำสั่ง'
-            };
-            throw new Error(errors[result.error] || result.error || 'บันทึกเช็คอินไม่สำเร็จ');
-          }
-          if (result.guest) Object.assign(guest, result.guest);
-          if (!guest[round + '_check_in']) {
-            // Read back the confirmed check-in state rather than inventing a timestamp.
-            const { data: latest, error: refreshError } = await supabaseClient.from('guests').select('*').eq('employee_code', code).single();
-            if (!refreshError && latest) Object.assign(guest, latest);
-          }
-          handleTabSearch();
-          showCheckinResult(true, guest, roundName);
-        } catch (err) {
-          showCheckinResult(false, guest, roundName, err.message || 'เกิดข้อผิดพลาด');
-        } finally {
-          manualCheckinPending.delete(key);
+      try {
+        const adminClient = window.parent?.cltSecureAdminClient;
+        if (!adminClient) throw new Error('กรุณาเปิดผ่านหน้า Admin และเข้าสู่ระบบก่อน');
+        const { data: { session }, error: sessionError } = await adminClient.auth.getSession();
+        if (sessionError || !session?.access_token) throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบ Admin ใหม่');
+        const response = await fetch(ADMIN_CHECKIN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY },
+          body: JSON.stringify({ action: 'checkin', employeeCode: code, round })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const errors = {
+            admin_login_required: 'กรุณาเข้าสู่ระบบ Admin ใหม่',
+            admin_not_authorized: 'บัญชีนี้ไม่มีสิทธิ์ Admin',
+            employee_not_found: 'ไม่พบข้อมูลพนักงาน',
+            already_checked_in: 'พนักงานนี้เช็คอิน' + roundName + 'แล้ว',
+            invalid_action: 'กรุณาอัปเดต Edge Function admin-manage-checkins',
+            origin_not_allowed: 'โดเมนเว็บไซต์ไม่ได้รับอนุญาต',
+            database_error: 'ฐานข้อมูลปฏิเสธคำสั่ง'
+          };
+          throw new Error(errors[result.error] || result.error || 'บันทึกเช็คอินไม่สำเร็จ');
         }
-      });
+        if (result.guest) Object.assign(guest, result.guest);
+        if (!guest[round + '_check_in']) {
+          const { data: latest, error: refreshError } = await supabaseClient.from('guests').select('*').eq('employee_code', code).single();
+          if (!refreshError && latest) Object.assign(guest, latest);
+        }
+        handleTabSearch();
+        showCheckinResult(true, guest, roundName);
+      } catch (err) {
+        showCheckinResult(false, guest, roundName, err.message || 'เกิดข้อผิดพลาด');
+      } finally {
+        manualCheckinPending.delete(key);
+      }
     }
 
     async function callAdminUnbind(action, pin, employeeCode, reason) {
@@ -357,34 +414,112 @@
       handleTabSearch();
     }
 
-    async function unlockDeviceManual(empCode) {
-      if (unlockInProgress) return;
-      const guest = guestsList.find(g => String(g.employee_code) === String(empCode));
-      if (!guest) return showUnlockNotice('ไม่พบข้อมูลพนักงาน', false);
-      const pin = prompt('กรอก PIN ผู้ดูแล 4 หลักเพื่อปลดการผูก LINE') || '';
-      if (!/^\d{4}$/.test(pin)) return showUnlockNotice('กรุณากรอก PIN 4 หลัก', false);
-      unlockInProgress = true;
-      try {
-        // Verify the admin credential and fetch actual binding status before prompting to unbind.
-        const status = await callAdminUnbind('status', pin, String(empCode));
-        if (!status.linked) {
-          lineBindings.delete(String(empCode));
-          handleTabSearch();
-          return showUnlockNotice('พนักงานนี้ยังไม่ได้ผูก LINE จึงไม่จำเป็นต้องปลด', false);
-        }
-        const reason = prompt(`ปลดการผูก LINE เฉพาะบัญชีนี้\nรหัส: ${guest.employee_code}\nชื่อ: ${guest.full_name}\n\nระบุเหตุผลอย่างน้อย 5 ตัวอักษร`);
-        if (reason === null) return;
-        if (reason.trim().length < 5) return showUnlockNotice('กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร', false);
-        if (!confirm(`ยืนยันปลดการผูก LINE ของ ${guest.full_name} (${guest.employee_code})?\n\nประวัติเช็คอินเช้า–เย็นจะคงอยู่\nบัญชี LINE เดิมหรือใหม่จะสามารถผูกอีกครั้งได้`)) return;
-        const result = await callAdminUnbind('unbind', pin, String(empCode), reason.trim());
-        if (!result.unbound) throw new Error('ไม่พบการผูก LINE ที่ต้องปลด');
-        lineBindings.delete(String(empCode));
-        handleTabSearch();
-        showUnlockNotice(`ปลด LINE ของ ${guest.employee_code} สำเร็จ • ไม่ลบประวัติเช็คอิน`, true);
-      } catch (err) {
-        showUnlockNotice('ปลด LINE ไม่สำเร็จ: ' + err.message, false);
-      } finally { unlockInProgress = false; }
+    const lineReasons = ['เปลี่ยนเบอร์มือถือ','เปลี่ยนบัญชี LINE','โทรศัพท์เครื่องเดิมใช้งานไม่ได้','พนักงานแจ้งขอปลดการผูก','พบปัญหาการสแกน/เช็คอิน','อื่น ๆ (ระบุเพิ่มเติม)'];
+    let lineModalState = null;
+    let linePinBuffer = '';
+    function lineModalError(message) { document.getElementById('lineModalError').textContent = message || ''; }
+    function lineShowStep(step) {
+      ['linePinStep','lineReasonStep','lineFinalStep','lineDoneStep'].forEach(id => document.getElementById(id).classList.toggle('hidden',id !== step));
+      lineModalError('');
     }
+    function closeLineModal() {
+      if (lineModalState?.busy) return;
+      document.getElementById('lineUnbindModal').classList.add('hidden');
+      lineModalState = null;
+      linePinBuffer = '';
+    }
+    function lineUpdatePin() {
+      document.getElementById('linePinDots').innerHTML = Array.from({length:4},(_,i)=>`<span class="line-pin-dot">${i < linePinBuffer.length ? '●' : '•'}</span>`).join('');
+    }
+    function lineKeyPress(value) {
+      if (!lineModalState || lineModalState.busy) return;
+      if (value === 'delete') linePinBuffer = linePinBuffer.slice(0,-1);
+      else if (value === 'submit') return verifyLinePin();
+      else if (linePinBuffer.length < 4) linePinBuffer += value;
+      lineUpdatePin(); lineModalError('');
+    }
+    async function verifyLinePin() {
+      if (!lineModalState || lineModalState.busy) return;
+      if (!/^\d{4}$/.test(linePinBuffer)) return lineModalError('กรุณากรอก PIN ให้ครบ 4 หลัก');
+      lineModalState.busy = true;
+      try {
+        const status = await callAdminUnbind('status', linePinBuffer, lineModalState.code);
+        if (!status.linked) {
+          lineBindings.delete(lineModalState.code); handleTabSearch();
+          linePinBuffer = ''; lineModalState.busy = false; closeLineModal();
+          return showUnlockNotice('พนักงานนี้ยังไม่ได้ผูก LINE จึงไม่จำเป็นต้องปลด',false);
+        }
+        document.getElementById('lineModalIcon').textContent = '📝';
+        document.getElementById('lineModalHeading').textContent = 'ระบุเหตุผลในการปลดการผูก LINE';
+        document.getElementById('lineModalSubtitle').textContent = 'กรุณาเลือกเหตุผลเพื่อบันทึกเป็นประวัติการตรวจสอบ';
+        lineShowStep('lineReasonStep');
+      } catch(err) { linePinBuffer='';lineUpdatePin();lineModalError(err.message); }
+      finally { if (lineModalState) lineModalState.busy = false; }
+    }
+    function submitLineReason() {
+      if (!lineModalState || lineModalState.busy) return;
+      const selected = document.querySelector('input[name="lineReasonChoice"]:checked');
+      const detail = document.getElementById('lineReasonDetail').value.trim();
+      if (!selected) return lineModalError('กรุณาเลือกเหตุผลในการปลดการผูก LINE');
+      if (selected.value === 'อื่น ๆ (ระบุเพิ่มเติม)' && detail.length < 5) return lineModalError('กรุณาระบุรายละเอียดอย่างน้อย 5 ตัวอักษร');
+      const reason = selected.value + (detail ? ' — ' + detail : '');
+      if (reason.length < 5) return lineModalError('กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร');
+      lineModalState.reason = reason;
+      document.getElementById('lineFinalMessage').textContent = `พนักงาน: ${lineModalState.guest.full_name} (${lineModalState.code})\nเหตุผล: ${reason}\n\nยืนยันว่าต้องการปลดการผูก LINE ของพนักงานรายนี้?`;
+      document.getElementById('lineFinalMessage').style.whiteSpace='pre-line';
+      document.getElementById('lineModalIcon').textContent='🔓';
+      document.getElementById('lineModalHeading').textContent='ยืนยันการปลดการผูก LINE';
+      lineShowStep('lineFinalStep');
+    }
+    function backToLineReason() {
+      document.getElementById('lineModalIcon').textContent='📝';
+      document.getElementById('lineModalHeading').textContent='ระบุเหตุผลในการปลดการผูก LINE';
+      lineShowStep('lineReasonStep');
+    }
+    async function confirmLineUnbind() {
+      if (!lineModalState || lineModalState.busy) return;
+      lineModalState.busy = true;
+      const btn = document.getElementById('lineUnbindSubmit'); btn.disabled=true; btn.textContent='กำลังดำเนินการ...';
+      try {
+        const result = await callAdminUnbind('unbind',linePinBuffer,lineModalState.code,lineModalState.reason);
+        if (!result.unbound) throw new Error('ไม่พบการผูก LINE ที่ต้องปลด');
+        const code = lineModalState.code;
+        linePinBuffer=''; lineBindings.delete(code); handleTabSearch();
+        document.getElementById('lineModalIcon').textContent='✅';
+        document.getElementById('lineModalHeading').textContent='ปลดการผูก LINE สำเร็จ!';
+        document.getElementById('lineModalSubtitle').textContent='พนักงานสามารถผูก LINE ใหม่ได้แล้ว';
+        lineShowStep('lineDoneStep');
+        showUnlockNotice(`ปลด LINE ของ ${code} สำเร็จ • ไม่ลบประวัติเช็คอิน`,true);
+      } catch(err) { lineModalError('ปลด LINE ไม่สำเร็จ: '+err.message); }
+      finally { if(lineModalState)lineModalState.busy=false;btn.disabled=false;btn.textContent='✓ ยืนยันปลดการผูก LINE'; }
+    }
+    function unlockDeviceManual(empCode) {
+      if (unlockInProgress || lineModalState) return;
+      const guest = guestsList.find(g=>String(g.employee_code)===String(empCode));
+      if (!guest) return showUnlockNotice('ไม่พบข้อมูลพนักงาน',false);
+      lineModalState={code:String(empCode),guest,busy:false,reason:''}; linePinBuffer='';
+      document.getElementById('lineModalIcon').textContent='🔐';
+      document.getElementById('lineModalHeading').textContent='กรอก PIN ยืนยันตัวตน';
+      document.getElementById('lineModalSubtitle').textContent='เพื่อปลดการผูก LINE พนักงาน';
+      document.getElementById('lineModalEmployee').innerHTML=`👤 <strong>${escapeHTML(guest.full_name)}</strong><div>รหัสพนักงาน: ${escapeHTML(guest.employee_code)}</div><div>🏢 สาขา: ${escapeHTML(guest.branch || 'สำนักงานใหญ่')}</div>`;
+      document.getElementById('lineReasonDetail').value='';document.getElementById('lineReasonCount').textContent='0';
+      document.querySelectorAll('input[name="lineReasonChoice"]').forEach(el=>el.checked=false);
+      lineUpdatePin();lineShowStep('linePinStep');
+      document.getElementById('lineUnbindModal').classList.remove('hidden');
+    }
+    document.getElementById('lineKeypad').innerHTML=[...'123456789','delete','0','submit'].map(n=>`<button type="button" class="line-key ${n==='delete'?'line-key-danger':n==='submit'?'line-key-primary':''}" onclick="lineKeyPress('${n}')">${n==='delete'?'⌫':n==='submit'?'✓ ยืนยัน':n}</button>`).join('');
+    document.getElementById('lineReasonOptions').innerHTML=lineReasons.map((r,i)=>`<label class="line-reason"><input type="radio" name="lineReasonChoice" value="${escapeHTML(r)}"><span>${escapeHTML(r)}</span></label>`).join('');
+    document.getElementById('lineReasonDetail').addEventListener('input',e=>document.getElementById('lineReasonCount').textContent=e.target.value.length);
+    document.getElementById('lineUnbindModal').addEventListener('click',e=>{if(e.target.id==='lineUnbindModal')closeLineModal();});
+    document.addEventListener('keydown',e=>{
+      if (!lineModalState) return;
+      if (e.key==='Escape'){e.preventDefault();closeLineModal();}
+      if (!document.getElementById('linePinStep').classList.contains('hidden')){
+        if (/^[0-9]$/.test(e.key)){e.preventDefault();lineKeyPress(e.key);}
+        else if(e.key==='Backspace'){e.preventDefault();lineKeyPress('delete');}
+        else if(e.key==='Enter'){e.preventDefault();lineKeyPress('submit');}
+      }
+    });
 
     window.addEventListener('DOMContentLoaded', () => {
       loadGuests();
