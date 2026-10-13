@@ -253,6 +253,17 @@
     #qrPassModal.smart-qr-expanded #qrExpandBtn { flex-shrink:0; }
 
     @media (max-height:690px) { .clt-brand img {width:48px;height:42px;} .clt-brand-label{font-size:11px;} #qrPassModal.smart-qr-expanded .clt-brand img{width:55px;height:48px;} }
+
+    /* CLT 2569: celebration overlay, limited to a verified check-in */
+    #successModal { isolation:isolate; overflow:hidden; }
+    #successFireworks { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+    #successModal .clt-success-card { position:relative; z-index:1; max-height:calc(100dvh - 36px); overflow-y:auto; }
+    .clt-welcome-title { color:#f7d58b; font-size:clamp(18px,5vw,23px); font-weight:800; line-height:1.55; text-shadow:0 2px 20px #e9b65b44; margin-bottom:7px; }
+    .clt-success-subtitle { color:#34d399; font-size:19px; font-weight:800; margin-bottom:17px; }
+    .clt-sound-toggle { display:inline-flex; align-items:center; justify-content:center; gap:5px; margin-top:13px; font-size:12px; color:#cbd5e1; padding:7px 10px; border-radius:10px; background:#ffffff0d; border:1px solid #ffffff22; }
+    #successModal[data-mode="binding"] .clt-welcome-title { display:none; }
+    #successModal[data-mode="binding"] .clt-success-subtitle { margin-bottom:16px; }
+    @media (prefers-reduced-motion:reduce) { #successFireworks { display:none; } }
   </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4 select-none">
@@ -503,9 +514,11 @@
   </div>
 
   <!-- ================= MODAL 4: แจ้งลงทะเบียนสำเร็จ ================= -->
-  <div id="successModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="w-full max-w-[340px] rounded-3xl bg-[#131b2e] border-2 border-emerald-500 p-6 shadow-2xl text-white text-center">
-      <h3 id="successTitle" class="text-lg font-bold text-emerald-400 mb-4">ลงทะเบียนเรียบร้อยแล้ว!</h3>
+  <div id="successModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4" data-mode="binding">
+    <canvas id="successFireworks" aria-hidden="true"></canvas>
+    <div class="clt-success-card w-full max-w-[360px] rounded-3xl bg-[#131b2e] border-2 border-emerald-500 p-6 shadow-2xl text-white text-center">
+      <div class="clt-welcome-title">✨ ยินดีต้อนรับสู่งานสังสรรค์ CLT 2569 ✨</div>
+      <h3 id="successTitle" class="clt-success-subtitle">ลงทะเบียนเรียบร้อยแล้ว!</h3>
 
       <div class="p-3.5 rounded-2xl bg-[#0f172a] border border-slate-800 text-left text-xs space-y-2 mb-5">
         <div class="flex items-center gap-2">
@@ -526,6 +539,7 @@
         <span>🎉</span>
         <span id="successButtonLabel">ดูบัตรเข้างาน</span>
       </button>
+      <button type="button" id="celebrationSoundToggle" class="clt-sound-toggle hidden" onclick="toggleCelebrationSound(event)" aria-label="เปิดหรือปิดเสียงฉลอง">🔊 เปิดเสียงฉลอง</button>
     </div>
   </div>
 
@@ -1103,7 +1117,6 @@
               const roundText = justCheckedMorning ? 'รอบเช้า' : 'รอบเย็น';
               showSuccessPopup(updated, 'checkin', roundText);
 
-              playSuccessSound();
             }
           }
         )
@@ -1111,17 +1124,135 @@
     }
 
     let successPopupMode = 'checkin';
+    let lastCelebratedCheckinKey = '';
+    let celebrationSoundEnabled = true;
+    let celebrationAudioContext = null;
+    let fireworksAnimationId = 0;
+    let fireworksStopTimer = 0;
+    let fireworksParticles = [];
+
+    // Mobile browsers may require a direct tap before allowing sound.
+    function getCelebrationAudioContext() {
+      const AudioClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioClass) return null;
+      if (!celebrationAudioContext) celebrationAudioContext = new AudioClass();
+      return celebrationAudioContext;
+    }
+    function unlockCelebrationAudio() {
+      if (!celebrationSoundEnabled) return;
+      try {
+        const ctx = getCelebrationAudioContext();
+        if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+      } catch (e) {}
+    }
+    document.addEventListener('pointerdown', unlockCelebrationAudio, {passive:true});
+    document.addEventListener('keydown', unlockCelebrationAudio);
+
+    function playCelebrationSound() {
+      if (!celebrationSoundEnabled) return;
+      try {
+        const ctx = getCelebrationAudioContext();
+        if (!ctx || ctx.state !== 'running') return;
+        const now = ctx.currentTime;
+        // Two soft sparkling bursts; generated locally, no external audio file.
+        [0, 0.21, 0.45, 0.68].forEach((delay, index) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = index % 2 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime([523.25,659.25,783.99,1046.5][index], now + delay);
+          osc.frequency.exponentialRampToValueAtTime([783.99,987.77,1174.66,1567.98][index], now + delay + 0.16);
+          gain.gain.setValueAtTime(0.0001, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.065, now + delay + 0.018);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.36);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now + delay); osc.stop(now + delay + 0.38);
+        });
+      } catch (e) { /* Silent celebration if audio is blocked. */ }
+    }
+    function toggleCelebrationSound(event) {
+      if (event) event.stopPropagation();
+      celebrationSoundEnabled = !celebrationSoundEnabled;
+      const btn = document.getElementById('celebrationSoundToggle');
+      btn.textContent = celebrationSoundEnabled ? '🔊 เปิดเสียงฉลอง' : '🔇 ปิดเสียงฉลอง';
+      btn.setAttribute('aria-pressed', String(celebrationSoundEnabled));
+      if (celebrationSoundEnabled) { unlockCelebrationAudio(); playCelebrationSound(); }
+    }
+
+    function stopSuccessFireworks() {
+      if (fireworksAnimationId) cancelAnimationFrame(fireworksAnimationId);
+      fireworksAnimationId = 0;
+      clearTimeout(fireworksStopTimer);
+      fireworksParticles = [];
+      const canvas = document.getElementById('successFireworks');
+      if (canvas) { const ctx = canvas.getContext('2d'); if (ctx) ctx.clearRect(0,0,canvas.width,canvas.height); }
+    }
+    function startSuccessFireworks() {
+      stopSuccessFireworks();
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const canvas = document.getElementById('successFireworks');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const scale = Math.min(window.devicePixelRatio || 1, 2);
+      const width = window.innerWidth, height = window.innerHeight;
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+      ctx.setTransform(scale,0,0,scale,0,0);
+      const colors = ['#f4c76e','#ffe6a1','#10b981','#6ee7b7','#ffffff'];
+      const start = performance.now();
+      let burstCount = 0;
+      function burst(x,y) {
+        for (let i=0; i<38; i++) {
+          const angle = (Math.PI*2*i/38) + Math.random()*0.12;
+          const speed = 1.4 + Math.random()*3.1;
+          fireworksParticles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:1,r:1.3+Math.random()*1.9,color:colors[Math.floor(Math.random()*colors.length)]});
+        }
+      }
+      function frame(now) {
+        const elapsed = now-start;
+        if (elapsed < 1700 && burstCount < Math.floor(elapsed/340)+1) {
+          burst(width*(0.2+Math.random()*0.6),height*(0.15+Math.random()*0.35));
+          burstCount++;
+        }
+        ctx.clearRect(0,0,width,height);
+        fireworksParticles = fireworksParticles.filter(p => p.life > 0);
+        for (const p of fireworksParticles) {
+          p.x+=p.vx; p.y+=p.vy; p.vy+=0.035; p.vx*=0.991; p.life-=0.013;
+          ctx.globalAlpha=Math.max(0,p.life);
+          ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+        }
+        ctx.globalAlpha=1;
+        if (elapsed < 2900 && !document.getElementById('successModal').classList.contains('hidden')) {
+          fireworksAnimationId=requestAnimationFrame(frame);
+        } else { stopSuccessFireworks(); }
+      }
+      fireworksAnimationId=requestAnimationFrame(frame);
+    }
+
     function showSuccessPopup(guest, mode, roundText) {
       successPopupMode = mode;
-      document.getElementById('successTitle').textContent = mode === 'binding' ? 'ลงทะเบียนเรียบร้อยแล้ว!' : 'เช็คอินสำเร็จ!';
-      document.getElementById('successButtonLabel').textContent = mode === 'binding' ? 'ดูบัตร QR Code' : 'กลับไปหน้าการ์ดเชิญ';
+      const isCheckin = mode === 'checkin';
+      const modal = document.getElementById('successModal');
+      modal.dataset.mode = isCheckin ? 'checkin' : 'binding';
+      document.getElementById('successTitle').textContent = isCheckin ? '✅ เช็คอินสำเร็จ!' : 'ลงทะเบียนเรียบร้อยแล้ว!';
+      document.getElementById('successButtonLabel').textContent = isCheckin ? 'เชิญเข้าสู่งาน' : 'ดูบัตร QR Code';
       document.getElementById('sName').textContent = guest.full_name || '-';
       document.getElementById('sBranch').textContent = guest.branch || 'สำนักงานใหญ่';
       document.getElementById('sRound').textContent = mode === 'binding'
         ? (getActiveRound() === 'morning' ? 'รอบเช้า' : 'รอบเย็น') : roundText;
-      document.getElementById('successModal').classList.remove('hidden');
+      document.getElementById('celebrationSoundToggle').classList.toggle('hidden', !isCheckin);
+      modal.classList.remove('hidden');
+      if (isCheckin) {
+        const checkinKey = String(guest.employee_code || '') + ':' + String(roundText || '');
+        if (lastCelebratedCheckinKey !== checkinKey) {
+          lastCelebratedCheckinKey = checkinKey;
+          startSuccessFireworks();
+          playCelebrationSound();
+        }
+      } else { stopSuccessFireworks(); }
     }
     function enterPartyPass() {
+      stopSuccessFireworks();
       document.getElementById('successModal').classList.add('hidden');
       checkExistingLogin();
       if (successPopupMode === 'binding' && matchedGuest) {
