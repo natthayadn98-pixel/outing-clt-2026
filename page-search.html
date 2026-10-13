@@ -31,6 +31,21 @@
     ::-webkit-scrollbar-track { background: #0d0421; }
     ::-webkit-scrollbar-thumb { background: #5b21b6; border-radius: 9999px; }
   </style>
+
+  <style>
+    .clt-modal-backdrop { position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(5,10,25,.72); backdrop-filter:blur(7px); }
+    .clt-modal-backdrop.hidden { display:none; }
+    .clt-modal-card { width:min(100%,430px); border-radius:24px; padding:26px 22px; background:#fff; color:#243047; box-shadow:0 24px 90px rgba(0,0,0,.35); text-align:center; border:1px solid #e2e8f0; }
+    .clt-modal-icon { font-size:46px; line-height:1.25; margin-bottom:8px; }
+    .clt-modal-title { font-size:23px; font-weight:800; margin-bottom:9px; }
+    .clt-modal-details { background:#f1f5f9; border-radius:14px; padding:14px; margin:16px 0 20px; text-align:left; font-size:14px; line-height:1.9; overflow-wrap:anywhere; }
+    .clt-modal-actions { display:flex; gap:10px; }
+    .clt-modal-btn { flex:1; min-height:46px; border-radius:12px; padding:10px 12px; font-size:14px; font-weight:800; cursor:pointer; }
+    .clt-modal-btn:disabled { opacity:.6; cursor:wait; }
+    .clt-modal-cancel { background:#f1f5f9; color:#475569; }
+    .clt-modal-confirm { background:#10b981; color:#fff; }
+    .clt-modal-ok { width:100%; background:#10b981; color:#fff; }
+  </style>
   <link rel="stylesheet" href="admin-pages-theme.css" />
 <script>
 (function(){
@@ -86,6 +101,20 @@
       <div class="text-center py-12 text-purple-400/60 text-xs sm:text-sm">พิมพ์รหัสพนักงานหรือชื่อเพื่อค้นหาข้อมูล</div>
     </div>
   </section>
+
+
+  <div id="cltCheckinModal" class="clt-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="cltModalTitle">
+    <div class="clt-modal-card">
+      <div id="cltModalIcon" class="clt-modal-icon">📋</div>
+      <div id="cltModalTitle" class="clt-modal-title">ยืนยันการเช็คอิน</div>
+      <div id="cltModalDescription" class="text-sm text-slate-500">กรุณาตรวจสอบข้อมูลก่อนบันทึก</div>
+      <div id="cltModalDetails" class="clt-modal-details"></div>
+      <div id="cltModalActions" class="clt-modal-actions">
+        <button id="cltModalCancel" type="button" class="clt-modal-btn clt-modal-cancel">ยกเลิก</button>
+        <button id="cltModalConfirm" type="button" class="clt-modal-btn clt-modal-confirm">✓ ยืนยันเช็คอิน</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
@@ -229,8 +258,25 @@
     // บันทึกเช็คอินผ่าน Edge Function ที่ตรวจสอบสิทธิ์ Admin เท่านั้น
     const ADMIN_CHECKIN_URL = SUPABASE_URL + '/functions/v1/admin-manage-checkins';
     const manualCheckinPending = new Set();
+    let checkinModalActive = false;
+    function closeCheckinModal() {
+      if (manualCheckinPending.size) return;
+      document.getElementById('cltCheckinModal').classList.add('hidden');
+      checkinModalActive = false;
+    }
+    function showCheckinResult(success, guest, roundName, message) {
+      document.getElementById('cltModalIcon').textContent = success ? '✅' : '⚠️';
+      document.getElementById('cltModalTitle').textContent = success ? 'เช็คอินสำเร็จ!' : 'เช็คอินไม่สำเร็จ';
+      document.getElementById('cltModalTitle').style.color = success ? '#059669' : '#dc2626';
+      document.getElementById('cltModalDescription').textContent = success ? 'บันทึกข้อมูลลงทะเบียนเรียบร้อยแล้ว' : 'ระบบยังไม่ได้ยืนยันการบันทึก';
+      document.getElementById('cltModalDetails').innerHTML = success
+        ? '<strong>ชื่อ:</strong> ' + escapeHTML(guest.full_name) + '<br><strong>รหัส:</strong> ' + escapeHTML(guest.employee_code) + '<br><strong>รอบ:</strong> ' + escapeHTML(roundName)
+        : escapeHTML(message);
+      document.getElementById('cltModalActions').innerHTML = '<button type="button" id="cltModalDone" class="clt-modal-btn clt-modal-ok">ตกลง</button>';
+      document.getElementById('cltModalDone').addEventListener('click', closeCheckinModal);
+    }
     async function checkInRoundManual(empCode, round) {
-      if (!['morning', 'evening'].includes(round)) return;
+      if (!['morning', 'evening'].includes(round) || checkinModalActive) return;
       const code = String(empCode);
       const key = code + ':' + round;
       if (manualCheckinPending.has(key)) return;
@@ -238,45 +284,60 @@
       const guest = guestsList.find(g => String(g.employee_code) === code);
       if (!guest) return showUnlockNotice('ไม่พบข้อมูลพนักงาน', false);
       if (guest[round + '_check_in']) return showUnlockNotice('พนักงานนี้เช็คอิน' + roundName + 'แล้ว', false);
-      if (!confirm('ยืนยันเช็คอิน' + roundName + ' ให้ ' + guest.full_name + ' (' + code + ')?')) return;
-      manualCheckinPending.add(key);
-      try {
-        const adminClient = window.parent?.cltSecureAdminClient;
-        if (!adminClient) throw new Error('กรุณาเปิดผ่านหน้า Admin และเข้าสู่ระบบก่อน');
-        const { data: { session }, error: sessionError } = await adminClient.auth.getSession();
-        if (sessionError || !session?.access_token) throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบ Admin ใหม่');
-        const response = await fetch(ADMIN_CHECKIN_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + session.access_token,
-            'apikey': SUPABASE_ANON_KEY
-          },
-          body: JSON.stringify({ action: 'checkin', employeeCode: code, round })
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          const errors = {
-            admin_login_required: 'กรุณาเข้าสู่ระบบ Admin ใหม่',
-            admin_not_authorized: 'บัญชีนี้ไม่มีสิทธิ์ Admin',
-            employee_not_found: 'ไม่พบข้อมูลพนักงาน',
-            already_checked_in: 'พนักงานนี้เช็คอิน' + roundName + 'แล้ว',
-            invalid_action: 'กรุณาอัปเดต Edge Function admin-manage-checkins เวอร์ชันใหม่',
-            origin_not_allowed: 'โดเมนเว็บไซต์ไม่ได้รับอนุญาต',
-            database_error: 'ฐานข้อมูลปฏิเสธคำสั่ง'
-          };
-          throw new Error(errors[result.error] || result.error || 'บันทึกเช็คอินไม่สำเร็จ');
+      checkinModalActive = true;
+      const modal = document.getElementById('cltCheckinModal');
+      document.getElementById('cltModalIcon').textContent = round === 'morning' ? '☀️' : '🌙';
+      document.getElementById('cltModalTitle').textContent = 'ยืนยันการเช็คอิน';
+      document.getElementById('cltModalTitle').style.color = '#243047';
+      document.getElementById('cltModalDescription').textContent = 'ตรวจสอบข้อมูลแล้วกดยืนยันเพื่อบันทึก';
+      document.getElementById('cltModalDetails').innerHTML = '<strong>ชื่อ:</strong> ' + escapeHTML(guest.full_name) + '<br><strong>รหัส:</strong> ' + escapeHTML(code) + '<br><strong>สาขา:</strong> ' + escapeHTML(guest.branch || 'สำนักงานใหญ่') + '<br><strong>รอบ:</strong> ' + escapeHTML(roundName);
+      document.getElementById('cltModalActions').innerHTML = '<button id="cltModalCancel" type="button" class="clt-modal-btn clt-modal-cancel">ยกเลิก</button><button id="cltModalConfirm" type="button" class="clt-modal-btn clt-modal-confirm">✓ ยืนยันเช็คอิน</button>';
+      const confirmBtn = document.getElementById('cltModalConfirm');
+      document.getElementById('cltModalCancel').addEventListener('click', closeCheckinModal);
+      modal.classList.remove('hidden');
+      confirmBtn.addEventListener('click', async () => {
+        if (manualCheckinPending.has(key)) return;
+        manualCheckinPending.add(key);
+        confirmBtn.disabled = true;
+        document.getElementById('cltModalCancel').disabled = true;
+        confirmBtn.textContent = 'กำลังบันทึก...';
+        try {
+          const adminClient = window.parent?.cltSecureAdminClient;
+          if (!adminClient) throw new Error('กรุณาเปิดผ่านหน้า Admin และเข้าสู่ระบบก่อน');
+          const { data: { session }, error: sessionError } = await adminClient.auth.getSession();
+          if (sessionError || !session?.access_token) throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบ Admin ใหม่');
+          const response = await fetch(ADMIN_CHECKIN_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_ANON_KEY },
+            body: JSON.stringify({ action: 'checkin', employeeCode: code, round })
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            const errors = {
+              admin_login_required: 'กรุณาเข้าสู่ระบบ Admin ใหม่',
+              admin_not_authorized: 'บัญชีนี้ไม่มีสิทธิ์ Admin',
+              employee_not_found: 'ไม่พบข้อมูลพนักงาน',
+              already_checked_in: 'พนักงานนี้เช็คอิน' + roundName + 'แล้ว',
+              invalid_action: 'กรุณาอัปเดต Edge Function admin-manage-checkins',
+              origin_not_allowed: 'โดเมนเว็บไซต์ไม่ได้รับอนุญาต',
+              database_error: 'ฐานข้อมูลปฏิเสธคำสั่ง'
+            };
+            throw new Error(errors[result.error] || result.error || 'บันทึกเช็คอินไม่สำเร็จ');
+          }
+          if (result.guest) Object.assign(guest, result.guest);
+          if (!guest[round + '_check_in']) {
+            // Read back the confirmed check-in state rather than inventing a timestamp.
+            const { data: latest, error: refreshError } = await supabaseClient.from('guests').select('*').eq('employee_code', code).single();
+            if (!refreshError && latest) Object.assign(guest, latest);
+          }
+          handleTabSearch();
+          showCheckinResult(true, guest, roundName);
+        } catch (err) {
+          showCheckinResult(false, guest, roundName, err.message || 'เกิดข้อผิดพลาด');
+        } finally {
+          manualCheckinPending.delete(key);
         }
-        if (result.guest) {
-          Object.assign(guest, result.guest);
-        }
-        handleTabSearch();
-        showUnlockNotice('บันทึกเช็คอิน' + roundName + ' ของ ' + guest.full_name + ' สำเร็จ', true);
-      } catch (err) {
-        showUnlockNotice('บันทึกเช็คอินไม่สำเร็จ: ' + err.message, false);
-      } finally {
-        manualCheckinPending.delete(key);
-      }
+      });
     }
 
     async function callAdminUnbind(action, pin, employeeCode, reason) {
