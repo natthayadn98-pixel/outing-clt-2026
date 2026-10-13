@@ -224,6 +224,61 @@
       #cltAdminHeader #adminThemeToggle, #cltAdminHeader #cltHeaderSettings, #cltAdminHeader #cltHeaderReset { width: 32px !important; height: 34px !important; }
       #cltAdminHeader .clt-header-brand h1 { font-size: 15px !important; }
     }
+    /* iPhone / mobile: prevent the top controls from overflowing or clipping. */
+    @media (max-width: 767px) {
+      #cltAdminHeader {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        grid-template-areas: "brand logout" "actions actions" !important;
+        overflow: visible;
+        padding: 10px 12px !important;
+        padding-top: max(10px, env(safe-area-inset-top)) !important;
+      }
+      #cltAdminHeader .clt-header-brand { grid-area: brand; min-width: 0; }
+      #cltAdminHeader .clt-header-actions {
+        grid-area: actions;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) repeat(3, 40px) !important;
+        gap: 6px !important;
+        width: 100%;
+        min-width: 0;
+        padding-top: 8px;
+      }
+      #cltAdminHeader #liveClockBox, #cltAdminHeader #syncBadge {
+        min-width: 0;
+        width: 100%;
+        padding: 7px 5px !important;
+        justify-content: center;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      #cltAdminHeader #liveClock { font-size: 12px !important; letter-spacing: 0 !important; }
+      #cltAdminHeader #syncText { font-size: 12px !important; }
+      #cltAdminHeader #adminThemeToggle, #cltAdminHeader #cltHeaderSettings, #cltAdminHeader #cltHeaderReset {
+        width: 40px !important; height: 40px !important; min-width: 0 !important;
+        border-radius: 12px !important; font-size: 18px !important;
+      }
+      #cltAdminHeader #cltHeaderLogout {
+        position: static !important;
+        grid-area: logout;
+        justify-self: end;
+        align-self: center;
+        min-height: 38px;
+        padding: 7px 10px !important;
+      }
+      #cltAdminHeader #cltHeaderLogout span:last-child { display: inline !important; }
+    }
+    @media (max-width: 390px) {
+      #cltAdminHeader .clt-header-actions {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) repeat(3, 34px) !important;
+        gap: 4px !important;
+      }
+      #cltAdminHeader #adminThemeToggle, #cltAdminHeader #cltHeaderSettings, #cltAdminHeader #cltHeaderReset {
+        width: 34px !important; height: 36px !important;
+      }
+      #cltAdminHeader #liveClockBox > span:first-child { display: none; }
+      #cltAdminHeader #liveClock { font-size: 11px !important; }
+      #cltAdminHeader #syncText { font-size: 11px !important; }
+    }
   </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0217]">

@@ -210,6 +210,10 @@
 
     /* Smart QR: คอนทราสต์สูง ขอบว่าง และโหมดขยายสำหรับเครื่องยิง 2D */
     .smart-qr-shell { background:#fff; padding:16px; border-radius:18px; width:fit-content; max-width:100%; margin:14px auto; }
+    /* Hide the white QR panel until a genuine signed QR has been rendered. */
+    .smart-qr-shell:not(.qr-ready) { display:none !important; }
+    .smart-qr-shell.qr-ready { display:block; }
+    #qrLoadingMessage { color:#fef3c7; font-size:12px; margin:12px auto; text-align:center; max-width:280px; }
     #passQrCanvas canvas { display:block !important; max-width:none; image-rendering:pixelated; }
     #passQrCanvas img { display:none !important; }
     #qrPassModal.smart-qr-expanded { padding:0; background:#fff; backdrop-filter:none; }
@@ -472,6 +476,7 @@
       <div class="smart-qr-shell shadow-xl relative overflow-hidden">
         <div id="passQrCanvas" style="max-width:100%;display:flex;align-items:center;justify-content:center"></div>
       </div>
+      <p id="qrLoadingMessage" role="status" aria-live="polite">กำลังเตรียม QR Code…</p>
 
       <div class="w-full bg-purple-950/80 rounded-full h-2 mb-2 overflow-hidden border border-purple-700/50">
         <div id="qrCountdownBar" class="bg-gradient-to-r from-amber-400 to-rose-500 h-2 rounded-full transition-all duration-1000" style="width: 100%;"></div>
@@ -843,6 +848,12 @@
     let qrRequestSequence = 0;
     let qrRequestInFlight = false;
     let qrServerOffsetMs = 0;
+    function setQrReady(ready, message = 'กำลังเตรียม QR Code…') {
+      const shell = document.querySelector('#qrPassModal .smart-qr-shell');
+      const label = document.getElementById('qrLoadingMessage');
+      if (shell) shell.classList.toggle('qr-ready', Boolean(ready));
+      if (label) { label.hidden = Boolean(ready); label.textContent = message; }
+    }
     async function generateDynamicQRCode(guest, renew = false) {
       const container = document.getElementById('passQrCanvas');
       if (!container || !guest || document.getElementById('qrPassModal').classList.contains('hidden')) return;
@@ -854,7 +865,8 @@
       qrRequestInFlight = true;
       const requestId = ++qrRequestSequence;
       qrCurrentPayload = null;
-      container.textContent = 'กำลังสร้าง QR ใหม่…';
+      setQrReady(false, 'กำลังสร้าง QR ใหม่…');
+      container.replaceChildren();
       try {
         const requestStart = Date.now();
         const result = await lineAuthRequest('issue_qr');
@@ -874,7 +886,8 @@
       } catch (err) {
         qrCurrentPayload = null;
         qrExpiresAtMs = 0;
-        container.textContent = 'สร้าง QR ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต (' + String(err.message || 'unknown').slice(0, 70) + ')';
+        container.replaceChildren();
+        setQrReady(false, 'สร้าง QR ไม่สำเร็จ (' + String(err.message || 'unknown').slice(0, 70) + ')');
       } finally { qrRequestInFlight = false; }
     }
     function renderSignedQr(container) {
@@ -883,7 +896,7 @@
       const expanded=document.getElementById('qrPassModal').classList.contains('smart-qr-expanded');
       const qrSize=expanded?Math.max(120,Math.min(340,window.innerWidth-56,Math.max(160,window.innerHeight-440))):Math.max(156,Math.min(272,window.innerWidth-104));
       if (typeof window.QRCode !== 'function') {
-        container.textContent = 'ไม่สามารถโหลดระบบแสดง QR Code ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่';
+        setQrReady(false, 'ไม่สามารถโหลดระบบแสดง QR Code ได้ กรุณาเปิดหน้านี้ใหม่');
         return;
       }
       try {
@@ -906,10 +919,12 @@
         if (img) img.style.setProperty('display', 'none', 'important');
         container.style.width = qrSize + 'px';
         container.style.height = qrSize + 'px';
+        setQrReady(true);
 
       } catch (error) {
         console.error('QR rendering failed:', error);
-        container.textContent='แสดงภาพ QR ไม่สำเร็จ กรุณารีเฟรชหน้าเว็บแล้วลองใหม่';
+        container.replaceChildren();
+        setQrReady(false, 'แสดงภาพ QR ไม่สำเร็จ กรุณารีเฟรชหน้าเว็บแล้วลองใหม่');
       }
     }
 
@@ -942,6 +957,7 @@
       if (qrCurrentPayload && remaining === 0) {
         qrCurrentPayload = null;
         document.getElementById('passQrCanvas').replaceChildren();
+        setQrReady(false, 'กำลังต่ออายุ QR Code…');
       }
       if (!qrCurrentPayload && !qrRequestInFlight && (round === 'morning' || round === 'evening')) {
         void generateDynamicQRCode(guest, true);
@@ -983,6 +999,7 @@
       document.getElementById('qrPassModal').classList.remove('smart-qr-expanded');
       document.getElementById('qrExpandBtn').textContent = '⛶ ขยาย QR เพื่อสแกนง่ายขึ้น';
       document.getElementById('qrPassModal').classList.remove('hidden');
+      setQrReady(false, 'กำลังสร้าง QR Code…');
       // New QR only on opening, expiry or return from a suspended tab.
       qrCurrentPayload = null;
       qrExpiresAtMs = 0;
@@ -1028,6 +1045,7 @@
         // Hide potentially stale QR while backgrounded; resume uses absolute expiry.
         const canvas = document.getElementById('passQrCanvas');
         if (canvas) canvas.replaceChildren();
+        setQrReady(false, 'กำลังเตรียม QR Code…');
       } else {
         const modal = document.getElementById('qrPassModal');
         if (modal && !modal.classList.contains('hidden') && matchedGuest) {
@@ -1046,6 +1064,7 @@
 
     function closeQrPassModal() {
       document.getElementById('qrPassModal').classList.add('hidden');
+      setQrReady(false);
       if (window.qrCheckinPollTimer) clearInterval(window.qrCheckinPollTimer);
       window.qrCheckinPollTimer = null;
       document.getElementById('qrPassModal').classList.remove('smart-qr-expanded');
