@@ -400,7 +400,8 @@
 
       <div class="p-4 overflow-y-auto flex-1">
         <nav class="space-y-1.5 text-xs sm:text-sm">
-          <a href="page-walkin.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn active flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
+          <a href="page-dashboard.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn active flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition"><span>🏠</span><span>0. หน้าหลัก / Dashboard</span></a>
+          <a href="page-walkin.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
             <span class="w-3.5 h-3.5 rounded bg-amber-500/80 inline-block"></span>
             <span>1. สร้าง QR (เพิ่มคน)</span>
           </a>
@@ -442,7 +443,7 @@
 
     <!-- CONTENT FRAME -->
     <main class="flex-1 h-full w-full overflow-hidden bg-[#0c0217]">
-      <iframe onload="this.contentWindow.postMessage({type:'clt-admin-theme',theme:document.documentElement.getAttribute('data-admin-theme')},location.origin)" name="adminFrame" id="adminFrame" src="about:blank" data-admin-src="page-walkin.html" class="w-full h-full border-none"></iframe>
+      <iframe onload="this.contentWindow.postMessage({type:'clt-admin-theme',theme:document.documentElement.getAttribute('data-admin-theme')},location.origin)" name="adminFrame" id="adminFrame" src="about:blank" data-admin-src="page-dashboard.html" class="w-full h-full border-none"></iframe>
     </main>
   </div>
 
@@ -707,7 +708,7 @@
  let verifying = false;
  const frame = document.getElementById('adminFrame');
  const navLinks = document.querySelectorAll('a[target="adminFrame"]');
- const intendedPage = frame?.dataset.adminSrc || 'page-walkin.html';
+ const intendedPage = frame?.dataset.adminSrc || 'page-dashboard.html';
  function lockPortal(message = '') {
    authorized = false;
    sessionStorage.removeItem('admin_vip_authenticated');
