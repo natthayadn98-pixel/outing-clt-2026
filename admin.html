@@ -279,44 +279,23 @@
       #cltAdminHeader #liveClock { font-size: 11px !important; }
       #cltAdminHeader #syncText { font-size: 11px !important; }
     }
-
-    /* Green / white minimalist Supabase login — no leaves, no external images. */
-    #secureAdminGate {
-      background: radial-gradient(circle at 12% 15%, rgba(74,184,143,.17), transparent 33%),
-                  radial-gradient(circle at 88% 85%, rgba(16,125,93,.12), transparent 36%),
-                  linear-gradient(145deg,#f8fffb 0%,#e9f7ef 55%,#d9f1e7 100%) !important;
-      isolation:isolate; overflow-y:auto; overflow-x:hidden;
-    }
-    #secureAdminGate::before,#secureAdminGate::after {content:"";position:absolute;z-index:-1;pointer-events:none;border:1px solid rgba(33,143,104,.13);border-radius:50%;}
-    #secureAdminGate::before {width:min(72vw,720px);aspect-ratio:1;top:-39%;right:-17%;box-shadow:0 0 0 75px rgba(255,255,255,.16),0 0 0 145px rgba(20,140,95,.035);}
-    #secureAdminGate::after {width:min(60vw,570px);aspect-ratio:1;bottom:-44%;left:-15%;box-shadow:0 0 0 60px rgba(255,255,255,.19);}
-    #secureAdminForm {position:relative;max-width:420px !important;padding:clamp(24px,5vw,38px) !important;gap:14px !important;border:1px solid #d8eee3;border-radius:28px !important;box-shadow:0 24px 75px rgba(23,91,67,.12),0 4px 14px rgba(23,91,67,.045);background:rgba(255,255,255,.97) !important;}
-    .clt-login-mark {width:60px;height:60px;margin:0 auto 2px;display:grid;place-items:center;border-radius:20px;background:linear-gradient(135deg,#e3f8eb,#c9eddb);color:#147a56;font-size:28px;box-shadow:inset 0 0 0 1px #b9e4d0;}
-    #secureAdminForm h2 {color:#153d30;font-size:23px !important;letter-spacing:-.4px;}
-    #secureAdminForm .clt-login-subtitle {color:#688174;line-height:1.6;}
-    #secureAdminForm label {font-size:13px;font-weight:700;color:#375c4c;display:block;margin-bottom:5px;}
-    #secureAdminForm input {display:block;width:100%;background:#f8fcfa !important;border:1px solid #d3e5dc !important;color:#1a4333;border-radius:13px !important;padding:13px 14px !important;outline:none;transition:border-color .2s,box-shadow .2s;}
-    #secureAdminForm input:focus {border-color:#219d6d !important;box-shadow:0 0 0 3px rgba(33,157,109,.12);}
-    #secureAdminForm button[type=submit] {background:linear-gradient(110deg,#16845d,#0d6f4c) !important;color:#fff !important;border-radius:13px !important;padding:14px !important;box-shadow:0 7px 17px rgba(14,117,78,.19);transition:transform .15s,filter .15s;}
-    #secureAdminForm button[type=submit]:hover:not(:disabled) {filter:brightness(1.07);transform:translateY(-1px);}
-    #secureAdminForm button[type=submit]:disabled {opacity:.6;cursor:wait;}
-    #secureAdminError:not(:empty) {background:#fff1f1;border:1px solid #f7cece;padding:10px;border-radius:11px;}
-    .clt-login-footer {font-size:11px;color:#849c90;text-align:center;margin-top:4px;}
-    @media(max-width:480px){#secureAdminGate {padding:18px !important;}#secureAdminForm{border-radius:22px !important;}}
   </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0217]">
 
-  <div id="secureAdminGate" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px">
-    <form id="secureAdminForm" style="width:100%;max-width:420px;background:#fff;color:#111827;border-radius:28px;padding:32px;display:grid;gap:14px">
-      <div class="clt-login-mark" aria-hidden="true">🔐</div>
-      <h2 style="font-weight:800;text-align:center">CLT Admin Portal</h2>
-      <p class="clt-login-subtitle" style="font-size:13px;text-align:center">เข้าสู่ระบบจัดการงานเลี้ยงสังสรรค์ 2569<br>สำหรับผู้ดูแลระบบที่ได้รับอนุญาต</p>
-      <div><label for="secureAdminEmail">อีเมลผู้ดูแลระบบ</label><input id="secureAdminEmail" type="email" required autocomplete="username" placeholder="admin@company.com" /></div>
-      <div><label for="secureAdminPassword">รหัสผ่าน</label><input id="secureAdminPassword" type="password" required autocomplete="current-password" placeholder="กรอกรหัสผ่าน" /></div>
-      <button type="submit" style="font-weight:bold">เข้าสู่ระบบอย่างปลอดภัย →</button>
-      <p id="secureAdminError" role="alert" aria-live="polite" style="font-size:12px;color:#b91c1c;text-align:center"></p>
-      <p class="clt-login-footer">🔒 Supabase Authentication · CLT VIP Party Connect</p>
+  <div id="secureAdminBoot" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:10000;background:#f4fbf7;display:flex;align-items:center;justify-content:center;color:#27634b;font-weight:700;font-size:15px"><div style="text-align:center"><div style="width:34px;height:34px;border:3px solid #d6eee0;border-top-color:#279767;border-radius:50%;animation:cltBootSpin .8s linear infinite;margin:0 auto 14px"></div>กำลังเชื่อมต่อระบบ…</div></div>
+  <style>@keyframes cltBootSpin{to{transform:rotate(360deg)}}</style>
+  <div id="secureAdminGate" style="position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at 15% 15%,#d4f2e1 0,transparent 34%),radial-gradient(circle at 90% 85%,#d9f0e7 0,transparent 32%),linear-gradient(145deg,#f9fdfb,#eaf5ef);display:none;align-items:center;justify-content:center;padding:20px">
+    <form id="secureAdminForm" style="width:100%;max-width:420px;background:#fff;color:#17382b;border:1px solid #d9eae0;border-radius:26px;padding:clamp(24px,5vw,36px);display:grid;gap:16px;box-shadow:0 24px 70px rgba(18,91,60,.13)">
+      <div style="margin:auto;background:#e7f6ec;color:#16814d;border:1px solid #cce9d6;width:62px;height:62px;border-radius:20px;display:grid;place-items:center;font-size:28px">🔐</div>
+       <h2 style="font-weight:800;font-size:23px;text-align:center;color:#165c3a">CLT Admin</h2>
+       <p style="text-align:center;font-size:14px;color:#54806b;margin-top:-14px">VIP Party Connect · เข้าสู่ระบบ</p>
+      <p style="font-size:13px;text-align:center;color:#647d70">สำหรับผู้ดูแลระบบที่ได้รับอนุญาตเท่านั้น</p>
+      <input id="secureAdminEmail" type="email" required autocomplete="username" placeholder="อีเมล Admin" style="border:1px solid #d4e6db;background:#f9fcfa;border-radius:12px;padding:13px;font-size:16px;outline-color:#28a96b;color:#17382b" />
+      <input id="secureAdminPassword" type="password" required autocomplete="current-password" placeholder="รหัสผ่าน" style="border:1px solid #d4e6db;background:#f9fcfa;border-radius:12px;padding:13px;font-size:16px;outline-color:#28a96b;color:#17382b" />
+      <button type="submit" style="background:linear-gradient(100deg,#168b55,#28ad72);color:white;padding:14px;border-radius:12px;font-weight:800;box-shadow:0 8px 18px rgba(21,135,82,.18)">เข้าสู่ระบบอย่างปลอดภัย</button>
+      <p id="secureAdminError" role="alert" style="font-size:13px;color:#b91c1c;text-align:center;line-height:1.7"></p>
+       <p style="font-size:11px;text-align:center;color:#789486;border-top:1px solid #e8f0ea;padding-top:14px">🔒 รีเฟรชได้โดยไม่ต้องเข้าสู่ระบบใหม่ · ออกจากระบบเมื่อไม่มีการใช้งาน 10 นาที</p>
     </form>
   </div>
   <!-- ================= PIN LOCK SCREEN OVERLAY ================= -->
@@ -426,7 +405,8 @@
 
       <div class="p-4 overflow-y-auto flex-1">
         <nav class="space-y-1.5 text-xs sm:text-sm">
-          <a href="page-walkin.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn active flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
+          <a href="page-dashboard.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn active flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition"><span>🏠</span><span>0. หน้าหลัก / Dashboard</span></a>
+          <a href="page-walkin.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
             <span class="w-3.5 h-3.5 rounded bg-amber-500/80 inline-block"></span>
             <span>1. สร้าง QR (เพิ่มคน)</span>
           </a>
@@ -468,7 +448,7 @@
 
     <!-- CONTENT FRAME -->
     <main class="flex-1 h-full w-full overflow-hidden bg-[#0c0217]">
-      <iframe onload="this.contentWindow.postMessage({type:'clt-admin-theme',theme:document.documentElement.getAttribute('data-admin-theme')},location.origin)" name="adminFrame" id="adminFrame" src="about:blank" data-admin-src="page-walkin.html" class="w-full h-full border-none"></iframe>
+      <iframe onload="this.contentWindow.postMessage({type:'clt-admin-theme',theme:document.documentElement.getAttribute('data-admin-theme')},location.origin)" name="adminFrame" id="adminFrame" src="about:blank" data-admin-src="page-dashboard.html" class="w-full h-full border-none"></iframe>
     </main>
   </div>
 
@@ -547,16 +527,15 @@
 
     async function checkSupabaseConnection() {
       const syncText = document.getElementById('syncText');
-      if (!syncText || !window.cltSecureAdminClient) return;
-      try {
-        const {data:{session}}=await window.cltSecureAdminClient.auth.getSession();
-        if (!session?.access_token) { syncText.textContent='รอเข้าสู่ระบบ'; return; }
-        const res=await fetch(SUPABASE_URL+'/functions/v1/secure-checkin',{
-          method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+session.access_token},
-          body:JSON.stringify({action:'check_admin'})
-        });
-        syncText.textContent=res.ok?'Online':'Error';
-      } catch (_) { syncText.textContent='Offline'; }
+      if (window.supabase) {
+        try {
+          const client = window.cltSecureAdminClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          const { error } = await client.from('guests').select('employee_code').limit(1);
+          syncText.textContent = !error ? "Online" : "Error";
+        } catch (e) {
+          syncText.textContent = "Offline";
+        }
+      }
     }
 
     function refreshCurrentFrameData() {
@@ -640,68 +619,64 @@
       }
     }
 
+    const LAST_ACTIVITY_KEY = 'clt_admin_last_activity_v2';
+    let lastActivityWrite = 0;
+    function noteAdminActivity() {
+      if (sessionStorage.getItem('admin_vip_authenticated') !== 'true') return;
+      const now = Date.now();
+      if (now - lastActivityWrite < 1000) return;
+      lastActivityWrite = now;
+      try { localStorage.setItem(LAST_ACTIVITY_KEY, String(now)); } catch (_) {}
+    }
+    function getLastActivity() {
+      try { return Number(localStorage.getItem(LAST_ACTIVITY_KEY)) || 0; } catch (_) { return 0; }
+    }
     async function adminLogout(isTimeout = false) {
       sessionStorage.removeItem('admin_vip_authenticated');
-      const frameForLogout=document.getElementById('adminFrame');
-      if(frameForLogout) frameForLogout.src='about:blank';
-      const gateForLogout=document.getElementById('secureAdminGate');
-      if(gateForLogout) gateForLogout.style.display='flex';
-      // Sign out of the real Supabase Auth session, not only the legacy PIN overlay.
-      if (window.cltSecureAdminClient) {
-        try { await Promise.race([window.cltSecureAdminClient.auth.signOut({scope:'local'}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),5000))]); } catch(e) { console.warn('Sign-out request:',e); }
-      }
-      const secureGate=document.getElementById('secureAdminGate');
-      if(secureGate) secureGate.style.display='flex';
-      const frame=document.getElementById('adminFrame');
-      if(frame) frame.src='about:blank';
-      const securePassword=document.getElementById('secureAdminPassword');
-      if(securePassword) securePassword.value='';
-      clearInterval(idleTimer);
       try { localStorage.removeItem(LAST_ACTIVITY_KEY); } catch (_) {}
-      const modal = document.getElementById('pinLockModal');
-      if (modal) modal.classList.add('hidden');
-      enteredPin = "";
-      updatePinDotsUI();
-
-      const errText = document.getElementById('pinErrorText');
-      if (errText) errText.classList.add('hidden');
-
-      const timeoutNotice = document.getElementById('pinTimeoutNotice');
-      if (timeoutNotice) {
-        if (isTimeout) {
-          timeoutNotice.classList.remove('hidden');
-        } else {
-          timeoutNotice.classList.add('hidden');
-        }
-      }
-      const loginNotice=document.getElementById('secureAdminError');
-      if (loginNotice && isTimeout) loginNotice.textContent='⚠️ ไม่มีการใช้งานเกิน 10 นาที ระบบออกจากระบบอัตโนมัติ กรุณาเข้าสู่ระบบอีกครั้ง';
-    }
-
-    const LAST_ACTIVITY_KEY = 'clt_admin_last_activity_v2';
-    let idleListenersInstalled = false;
-    function readLastActivity() { try { return Number(localStorage.getItem(LAST_ACTIVITY_KEY)) || 0; } catch (_) { return 0; } }
-    function recordAdminActivity() {
-      if (sessionStorage.getItem('admin_vip_authenticated') !== 'true') return;
-      try { localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now())); } catch (_) {}
-    }
-    function resetIdleTimer() { recordAdminActivity(); }
-    function startIdleTimer(preservePrevious = false) {
-      if (!preservePrevious || !readLastActivity()) recordAdminActivity();
-      clearInterval(idleTimer);
-      idleTimer = setInterval(() => {
-        if (sessionStorage.getItem('admin_vip_authenticated') !== 'true') return;
-        const last = readLastActivity();
-        if (last && Date.now() - last >= IDLE_TIMEOUT_LIMIT) adminLogout(true);
-      }, 5000);
-      if (idleListenersInstalled) return;
-      idleListenersInstalled = true;
-      ['pointerdown','keydown','touchstart','scroll'].forEach(evt => window.addEventListener(evt,recordAdminActivity,{passive:true}));
+      clearTimeout(idleTimer);
       const frame = document.getElementById('adminFrame');
-      const hookFrame = () => {
-        try { ['pointerdown','keydown','touchstart','scroll'].forEach(evt => frame.contentWindow.addEventListener(evt,recordAdminActivity,{passive:true})); } catch (_) {}
-      };
-      if (frame) { frame.addEventListener('load',hookFrame); hookFrame(); }
+      if (frame) frame.src = 'about:blank';
+      const gate = document.getElementById('secureAdminGate');
+      if (gate) gate.style.display = 'flex';
+      const boot = document.getElementById('secureAdminBoot');
+      if (boot) boot.style.display = 'none';
+      const password = document.getElementById('secureAdminPassword');
+      if (password) password.value = '';
+      const error = document.getElementById('secureAdminError');
+      if (error) error.textContent = isTimeout ? '⏰ ไม่มีการใช้งานเกิน 10 นาที ระบบออกจากระบบอัตโนมัติ กรุณาเข้าสู่ระบบอีกครั้ง' : '';
+      if (window.cltSecureAdminClient) {
+        try { await window.cltSecureAdminClient.auth.signOut({scope:'local'}); }
+        catch (e) { console.warn('Sign-out failed:', e); }
+      }
+    }
+    function resetIdleTimer() {
+      if (sessionStorage.getItem('admin_vip_authenticated') !== 'true') return;
+      clearTimeout(idleTimer);
+      const elapsed = Date.now() - getLastActivity();
+      if (elapsed >= IDLE_TIMEOUT_LIMIT) { adminLogout(true); return; }
+      idleTimer = setTimeout(() => adminLogout(true), IDLE_TIMEOUT_LIMIT - elapsed);
+    }
+    let idleListenersInstalled = false;
+    function startIdleTimer() {
+      if (!idleListenersInstalled) {
+        idleListenersInstalled = true;
+        const activity = () => { noteAdminActivity(); resetIdleTimer(); };
+        ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(evt =>
+          window.addEventListener(evt, activity, {passive:true}));
+        const iframe = document.getElementById('adminFrame');
+        iframe?.addEventListener('load', () => {
+          try {
+            const child = iframe.contentWindow;
+            ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(evt =>
+              child.addEventListener(evt, activity, {passive:true}));
+          } catch (_) { /* iframe may be cross-origin */ }
+        });
+        window.addEventListener('storage', e => {
+          if (e.key === LAST_ACTIVITY_KEY) resetIdleTimer();
+        });
+      }
+      resetIdleTimer();
     }
 
     window.addEventListener('keydown', (e) => {
@@ -712,7 +687,6 @@
         else if (e.key === 'Enter') verifyAdminPin();
       }
     });
-
 
 
     setInterval(() => {
@@ -731,6 +705,12 @@
  const client=window.supabase.createClient(url,key,{auth:{autoRefreshToken:true,persistSession:true}});
  window.cltSecureAdminClient=client;
  const gate=document.getElementById('secureAdminGate');
+ const boot=document.getElementById('secureAdminBoot');
+ const LAST_PAGE_KEY='clt_admin_last_page_v1';
+ const allowedPages=new Set(['page-dashboard.html','page-walkin.html','page-cloud.html','page-search.html','page-scanner.html','page-checked-list.html','page-stats.html']);
+ const getSavedPage=()=>{let saved='';try{saved=sessionStorage.getItem(LAST_PAGE_KEY)||''}catch(_){}return allowedPages.has(saved)?saved:'page-dashboard.html'};
+ function openSavedPage(){const page=getSavedPage();if(frame&&frame.getAttribute('src')!==page)frame.src=page;navLinks.forEach(link=>link.classList.toggle('active',link.getAttribute('href')===page));}
+ function finishBoot(){if(boot)boot.style.display='none';}
  const msg=document.getElementById('secureAdminError');
  const form=document.getElementById('secureAdminForm');
  const submit=form.querySelector('button[type="submit"]');
@@ -740,17 +720,20 @@
  let verifying = false;
  const frame = document.getElementById('adminFrame');
  const navLinks = document.querySelectorAll('a[target="adminFrame"]');
- const intendedPage = frame?.dataset.adminSrc || 'page-walkin.html';
+ const intendedPage = frame?.dataset.adminSrc || 'page-dashboard.html';
  function lockPortal(message = '') {
    authorized = false;
    sessionStorage.removeItem('admin_vip_authenticated');
    gate.style.display = 'flex';
+   finishBoot();
    if (frame && frame.getAttribute('src') !== 'about:blank') frame.src = 'about:blank';
    if (message) msg.textContent = message;
  }
  // Never let the iframe navigate while locked, even when the menu is clicked.
  navLinks.forEach(link => link.addEventListener('click', event => {
-   if (!authorized) { event.preventDefault(); lockPortal('กรุณาเข้าสู่ระบบ Admin ก่อน'); }
+   if (!authorized) { event.preventDefault(); lockPortal('กรุณาเข้าสู่ระบบ Admin ก่อน'); return; }
+   const page=link.getAttribute('href');
+   if(allowedPages.has(page)){try{sessionStorage.setItem(LAST_PAGE_KEY,page)}catch(_){}}
  }, true));
  async function checkAdminPermission() {
    const {data:{session},error} = await withTimeout(client.auth.getSession(),9000);
@@ -764,36 +747,36 @@
    if (!res.ok || data.authorized !== true) return {ok:false, message:res.status===403?'บัญชีนี้ไม่มีสิทธิ์ Admin':res.status===401?'เซสชันไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่':'ตรวจสอบสิทธิ์ไม่สำเร็จ ('+(data.error||res.status)+')'};
    return {ok:true};
  }
-  // Restore only an unexpired Supabase session, then verify admin permission server-side.
-  submit.disabled = true;
-  submit.textContent = 'กำลังตรวจสอบเซสชัน…';
-  lockPortal();
-  (async () => {
-    try {
-      const last = readLastActivity();
-      const {data:{session}} = await withTimeout(client.auth.getSession(),9000);
-      if (session?.access_token && (!last || Date.now()-last >= IDLE_TIMEOUT_LIMIT)) {
-        await withTimeout(client.auth.signOut({scope:'local'}),9000);
-        lockPortal('⚠️ ไม่มีการใช้งานเกิน 10 นาที ระบบออกจากระบบอัตโนมัติ กรุณาเข้าสู่ระบบอีกครั้ง');
-      } else if (session?.access_token) {
-        const permission = await checkAdminPermission();
-        if (permission.ok) {
-          authorized = true;
-          sessionStorage.setItem('admin_vip_authenticated','true');
-          gate.style.display='none';
-          msg.textContent='';
-          if (frame && frame.getAttribute('src')==='about:blank') frame.src=intendedPage;
-          startIdleTimer(true);
-          checkSupabaseConnection();
-        } else lockPortal(permission.message);
-      }
-    } catch (e) {
-      lockPortal('ตรวจสอบเซสชันไม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง');
-    } finally {
-      submit.disabled = false;
-      submit.textContent = 'เข้าสู่ระบบอย่างปลอดภัย →';
-    }
-  })();
+ // Restore the existing Supabase session after refresh, but always recheck admin permission.
+ submit.disabled = true;
+ submit.textContent = 'กำลังตรวจสอบเซสชัน…';
+ (async () => {
+   try {
+     const {data:{session},error} = await withTimeout(client.auth.getSession(),9000);
+     if (error || !session?.access_token) { lockPortal(''); return; }
+     const last = getLastActivity();
+     if (!last || Date.now() - last >= IDLE_TIMEOUT_LIMIT || last > Date.now() + 60000) {
+       await client.auth.signOut({scope:'local'});
+       try { localStorage.removeItem(LAST_ACTIVITY_KEY); } catch (_) {}
+       lockPortal('⏰ ไม่มีการใช้งานเกิน 10 นาที กรุณาเข้าสู่ระบบอีกครั้ง');
+       return;
+     }
+     const permission = await checkAdminPermission();
+     if (!permission.ok) { lockPortal(permission.message); return; }
+     authorized = true;
+     sessionStorage.setItem('admin_vip_authenticated','true');
+     gate.style.display = 'none';
+     openSavedPage();
+     finishBoot();
+     startIdleTimer();
+   } catch(e) {
+     lockPortal('ตรวจสอบเซสชันไม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง');
+   } finally {
+     finishBoot();
+     submit.disabled = false;
+     submit.textContent = 'เข้าสู่ระบบอย่างปลอดภัย';
+   }
+ })();
  form.addEventListener('submit',async event => {
    event.preventDefault();
    if (submit.disabled || verifying) return;
@@ -814,7 +797,9 @@
      sessionStorage.setItem('admin_vip_authenticated','true');
      msg.textContent = '';
      gate.style.display = 'none';
-     if (frame && frame.getAttribute('src') === 'about:blank') frame.src = intendedPage;
+     openSavedPage();
+     finishBoot();
+     noteAdminActivity();
      startIdleTimer();
    } catch(e) {
      lockPortal(e.message === 'timeout' ? 'ระบบตอบสนองช้า กรุณาลองอีกครั้ง' : 'เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่');
