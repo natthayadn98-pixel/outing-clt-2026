@@ -477,7 +477,7 @@
       </div>
       
       <div class="smart-qr-footer flex items-center justify-between text-[11px] text-gray-300 px-1 mb-4">
-        <span>QR ถาวร: <b id="qrTimerText" class="text-amber-300 font-digital text-xs">ใช้งานได้ตลอดงาน</b></span>
+        <span>QR หมดอายุใน: <b id="qrTimerText" class="text-amber-300 font-digital text-xs">45 วินาที</b></span>
         <span class="font-digital text-emerald-400">⏰ <span id="passLiveClock">00:00:00</span></span>
       </div>
 
@@ -838,36 +838,43 @@
       alert(roundNotice(round));
     }
 
-    // One QR payload per 45-second validity window. Resizing NEVER renews it.
+    // Signed CLT1 QR expires 45 seconds after SERVER issuance.
     let qrRequestSequence = 0;
     let qrRequestInFlight = false;
+    let qrServerOffsetMs = 0;
     async function generateDynamicQRCode(guest, renew = false) {
       const container = document.getElementById('passQrCanvas');
-      if (!container || !guest) return;
-      if (qrCurrentPayload) {
-        renderSignedQr(container); return;
-      }
-      if(qrRequestInFlight) return;
-      qrRequestInFlight=true;
-      const requestId=++qrRequestSequence;
-      container.textContent='กำลังสร้าง QR ที่ปลอดภัย…';
-      try {
-        const result=await lineAuthRequest('issue_qr');
-        if(requestId!==qrRequestSequence || document.getElementById('qrPassModal').classList.contains('hidden')) return;
-        // line-auth issues permanent CLT2 tokens. Reject malformed responses,
-        // but never reject them for having no expiry timestamp.
-        if (!result || typeof result.qr !== 'string' ||
-            !/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(result.qr)) {
-          throw new Error('invalid_qr_response');
-        }
-        qrCurrentPayload=result.qr;
-        qrIssuedAtMs=Date.now();
-        qrExpiresAtMs=Number.POSITIVE_INFINITY;
+      if (!container || !guest || document.getElementById('qrPassModal').classList.contains('hidden')) return;
+      if (qrCurrentPayload && !renew && Date.now() + qrServerOffsetMs < qrExpiresAtMs) {
         renderSignedQr(container);
-      } catch(err) {
-        qrCurrentPayload=null;
-        container.textContent=err.message==='already_checked_in'?'เช็คอินรอบนี้แล้ว':'สร้าง QR ไม่สำเร็จ ('+String(err.message || 'unknown').slice(0,100)+')';
-      } finally { qrRequestInFlight=false; }
+        return;
+      }
+      if (qrRequestInFlight) return;
+      qrRequestInFlight = true;
+      const requestId = ++qrRequestSequence;
+      qrCurrentPayload = null;
+      container.textContent = 'กำลังสร้าง QR ใหม่…';
+      try {
+        const requestStart = Date.now();
+        const result = await lineAuthRequest('issue_qr');
+        const requestEnd = Date.now();
+        if (requestId !== qrRequestSequence || document.getElementById('qrPassModal').classList.contains('hidden')) return;
+        if (!result || typeof result.qr !== 'string' ||
+            !/^CLT1\.\d{6}\.(morning|evening)\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(result.qr) ||
+            !result.expiresAt || !result.serverTime) throw new Error('invalid_qr_response');
+        // Server time + half RTT estimate avoids relying on the employee phone clock.
+        qrServerOffsetMs = Date.parse(result.serverTime) - ((requestStart + requestEnd) / 2);
+        qrExpiresAtMs = Date.parse(result.expiresAt);
+        if (!Number.isFinite(qrExpiresAtMs) || qrExpiresAtMs <= Date.now() + qrServerOffsetMs) throw new Error('qr_expired');
+        qrCurrentPayload = result.qr;
+        qrIssuedAtMs = qrExpiresAtMs - QR_LIFETIME_SECONDS * 1000;
+        renderSignedQr(container);
+        updateTimerUI(Math.max(0, Math.ceil((qrExpiresAtMs - Date.now() - qrServerOffsetMs) / 1000)));
+      } catch (err) {
+        qrCurrentPayload = null;
+        qrExpiresAtMs = 0;
+        container.textContent = 'สร้าง QR ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต (' + String(err.message || 'unknown').slice(0, 70) + ')';
+      } finally { qrRequestInFlight = false; }
     }
     function renderSignedQr(container) {
       if(!qrCurrentPayload) return;
@@ -915,13 +922,22 @@
       } finally { qrStatusPolling = false; }
     }
     function syncQrClock(guest, expectedRound) {
-      const modal=document.getElementById('qrPassModal');
+      const modal = document.getElementById('qrPassModal');
       if (!modal || modal.classList.contains('hidden')) return;
-      const liveClock=document.getElementById('passLiveClock');
-      if (liveClock) liveClock.textContent=new Intl.DateTimeFormat('en-GB', {timeZone:EVENT_TIMEZONE,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date());
-      const label=document.getElementById('qrRoundLabel');
-      const round=getActiveRound();
-      if(label)label.textContent=round==='morning'?'🌅 ใช้เช็คอินรอบเช้า':round==='evening'?'🌙 ใช้เช็คอินรอบเย็น':'🔒 QR ถาวร • รอเวลาเช็คอิน';
+      const liveClock = document.getElementById('passLiveClock');
+      if (liveClock) liveClock.textContent = new Intl.DateTimeFormat('en-GB', {timeZone:EVENT_TIMEZONE,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date(Date.now() + qrServerOffsetMs));
+      const label = document.getElementById('qrRoundLabel');
+      const round = getActiveRound();
+      if (label) label.textContent = round === 'morning' ? '🌅 ใช้เช็คอินรอบเช้า' : round === 'evening' ? '🌙 ใช้เช็คอินรอบเย็น' : '🔒 ยังไม่อยู่ในเวลาเช็คอิน';
+      const remaining = qrExpiresAtMs ? Math.max(0, Math.ceil((qrExpiresAtMs - Date.now() - qrServerOffsetMs) / 1000)) : 0;
+      updateTimerUI(remaining);
+      if (qrCurrentPayload && remaining === 0) {
+        qrCurrentPayload = null;
+        document.getElementById('passQrCanvas').replaceChildren();
+      }
+      if (!qrCurrentPayload && !qrRequestInFlight && (round === 'morning' || round === 'evening')) {
+        void generateDynamicQRCode(guest, true);
+      }
     }
 
     // Always re-read current session state before showing a new QR.
@@ -961,6 +977,7 @@
       document.getElementById('qrPassModal').classList.remove('hidden');
       // New QR only on opening, expiry or return from a suspended tab.
       qrCurrentPayload = null;
+      qrExpiresAtMs = 0;
       generateDynamicQRCode(guest, true);
       updateTimerUI(QR_LIFETIME_SECONDS);
       if (qrTimerInterval) clearInterval(qrTimerInterval);
@@ -973,11 +990,8 @@
     function updateTimerUI(sec) {
       const timerText = document.getElementById('qrTimerText');
       const progressBar = document.getElementById('qrCountdownBar');
-      const liveClock = document.getElementById('passLiveClock');
-
-      if (timerText) timerText.textContent = 'ใช้งานได้ตลอดงาน';
-      if (progressBar) progressBar.style.width = '100%';
-      if (liveClock) liveClock.textContent = new Intl.DateTimeFormat('en-GB', {timeZone: EVENT_TIMEZONE, hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'}).format(new Date());
+      if (timerText) timerText.textContent = `${Math.max(0, sec)} วินาที`;
+      if (progressBar) progressBar.style.width = `${Math.max(0, Math.min(100, sec / QR_LIFETIME_SECONDS * 100))}%`;
     }
 
     // Browser ไม่อนุญาตให้เว็บบังคับความสว่างจอ: ใช้พื้นขาวและขยาย QR แทน
@@ -1010,8 +1024,10 @@
         const modal = document.getElementById('qrPassModal');
         if (modal && !modal.classList.contains('hidden') && matchedGuest) {
           const round = getActiveRound();
-          generateDynamicQRCode(matchedGuest, false);
-          updateTimerUI(QR_LIFETIME_SECONDS);
+          // Force a new server-issued token on returning to the foreground.
+          qrCurrentPayload = null;
+          qrExpiresAtMs = 0;
+          generateDynamicQRCode(matchedGuest, true);
         }
       }
     });
