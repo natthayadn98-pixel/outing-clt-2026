@@ -210,7 +210,8 @@
 
     /* Smart QR: คอนทราสต์สูง ขอบว่าง และโหมดขยายสำหรับเครื่องยิง 2D */
     .smart-qr-shell { background:#fff; padding:16px; border-radius:18px; width:fit-content; max-width:100%; margin:14px auto; }
-    #passQrCanvas canvas, #passQrCanvas img { display:block; max-width:100%; height:auto !important; image-rendering:pixelated; }
+    #passQrCanvas canvas { display:block !important; max-width:none; image-rendering:pixelated; }
+    #passQrCanvas img { display:none !important; }
     #qrPassModal.smart-qr-expanded { padding:0; background:#fff; backdrop-filter:none; }
     #qrPassModal.smart-qr-expanded .smart-qr-card { background:#fff; color:#111827; border:0; border-radius:0; width:100%; height:100dvh; max-width:none; padding:18px 12px; display:flex; flex-direction:column; justify-content:center; box-shadow:none; }
     #qrPassModal.smart-qr-expanded .smart-qr-shell { margin:16px auto; padding:16px; }
@@ -889,16 +890,23 @@
         new QRCode(container,{text:qrCurrentPayload,width:qrSize,height:qrSize,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
         const rendered = container.querySelector('canvas, img, table');
         if (!rendered) throw new Error('qr_render_empty');
-        for (const el of container.querySelectorAll('canvas,img')) {
-          el.style.width=qrSize+'px'; el.style.height=qrSize+'px';
-          el.style.display='block'; el.style.visibility='visible'; el.style.opacity='1';
+        // QRCode.js may hide its canvas while creating an IMG data URL.
+        // On some iOS in-app browsers that IMG never becomes drawable.
+        // Display the actual canvas directly; do not rely on the generated IMG.
+        const canvas = container.querySelector('canvas');
+        const img = container.querySelector('img');
+        if (canvas) {
+          canvas.style.setProperty('display', 'block', 'important');
+          canvas.style.setProperty('visibility', 'visible', 'important');
+          canvas.style.setProperty('opacity', '1', 'important');
+          canvas.style.width = qrSize + 'px';
+          canvas.style.height = qrSize + 'px';
+          canvas.style.maxWidth = 'none';
         }
-        // Some in-app browsers defer QRCode.js image creation until the next frame.
-        requestAnimationFrame(() => {
-          const img=container.querySelector('img');
-          const canvas=container.querySelector('canvas');
-          if (img && canvas && (!img.complete || !img.naturalWidth)) img.style.display='none';
-        });
+        if (img) img.style.setProperty('display', 'none', 'important');
+        container.style.width = qrSize + 'px';
+        container.style.height = qrSize + 'px';
+
       } catch (error) {
         console.error('QR rendering failed:', error);
         container.textContent='แสดงภาพ QR ไม่สำเร็จ กรุณารีเฟรชหน้าเว็บแล้วลองใหม่';
