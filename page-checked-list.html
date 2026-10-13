@@ -3,11 +3,25 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
 <style>
 *{box-sizing:border-box;font-family:Anakotmai,system-ui,sans-serif}body{margin:0;background:#f3f8f6;color:#173b32;padding:24px 14px}.panel{max-width:950px;margin:auto;background:white;border:1px solid #dcece5;border-radius:24px;padding:clamp(16px,3vw,30px);box-shadow:0 14px 35px #174b3210}h1{margin:0;color:#176749;font-size:clamp(21px,3vw,29px)}.sub{font-size:13px;color:#71847d;margin:4px 0 24px}.top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid #e5efe9;padding-bottom:15px}.count{font-weight:700;color:#23664c}.items{display:grid;gap:12px;margin-top:16px}.item{border:1px solid #e1eee7;border-radius:16px;background:#fbfefd;padding:15px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.name{font-weight:700}.details{font-size:12px;color:#63766d;margin-top:5px}.buttons{display:flex;gap:7px;flex-wrap:wrap}button{border:0;border-radius:11px;padding:9px 14px;cursor:pointer;font-weight:700;background:#e5f3eb;color:#196648}button:hover{filter:brightness(.97)}button:disabled{opacity:.45;cursor:wait}.danger{background:#fff0f0;color:#bc2846}.primary{background:#17845c;color:white}.message{font-size:13px;min-height:25px;margin-top:10px}.message.error{color:#b91c1c}.message.ok{color:#087747}.muted{color:#74877d;text-align:center;padding:32px}dialog{border:1px solid #d7e7de;border-radius:20px;padding:24px;max-width:min(420px,calc(100vw - 24px));width:100%;box-shadow:0 25px 80px #10271f40}dialog::backdrop{background:#071e16a8}.field{display:grid;gap:5px;margin:14px 0;font-size:13px}.field input{width:100%;border:1px solid #cbded3;border-radius:10px;padding:10px;font-size:15px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}#clearAll{font-size:12px}@media(max-width:600px){body{padding:12px 8px}.item{align-items:stretch}.buttons{width:100%}.buttons button{flex:1}}
+
+/* Luxury Purple confirmation for bulk check-in reset */
+#bulkDialog,#bulkSuccess{border:0;padding:0;max-width:min(470px,calc(100vw - 28px));width:100%;border-radius:25px;overflow:hidden;background:#fff;color:#2d1768;box-shadow:0 30px 100px #1b123a70}
+#bulkDialog::backdrop,#bulkSuccess::backdrop{background:rgba(24,18,51,.64);backdrop-filter:blur(5px)}
+.lp-top{padding:25px 25px 16px;text-align:center;background:radial-gradient(circle at 50% 0%,#dfc7ff 0%,#f5efff 60%,#fff 100%)}
+.lp-icon{font-size:46px;line-height:1.2;display:block;margin-bottom:8px}.lp-title{font-size:22px;font-weight:800;color:#2c146c;margin:0}.lp-sub{font-size:13px;color:#7962ad;margin:5px 0 0}
+.lp-body{padding:18px 24px 24px}.lp-summary{padding:15px 16px;background:#f6f1ff;border-left:4px solid #994df2;border-radius:14px;color:#42228c;font-size:14px;line-height:1.8}
+.lp-warning{margin:14px 0 0;color:#ad3457;font-size:13px;line-height:1.7}.lp-actions{display:flex;gap:10px;margin-top:21px}.lp-actions button{flex:1;padding:13px 12px;border-radius:12px;font-size:14px}.lp-cancel{background:#f6f4ff;color:#4d368a;border:1px solid #ded4ff}.lp-confirm{background:linear-gradient(110deg,#ad49f7,#7944f5);color:#fff}.lp-confirm:disabled{opacity:.6}.lp-success-icon{font-size:55px;display:block;margin-bottom:10px}.lp-success-text{text-align:center;padding:12px 22px 28px;color:#197c51;font-size:14px}
 </style></head><body>
 <section class="panel"><h1>📋 รายชื่อผู้ที่เช็คอินแล้ว</h1><p class="sub">ตรวจสอบและจัดการเวลาเช็คอินของพนักงาน • แสดงเวลาประเทศไทย</p>
 <div class="top"><div class="count">ผู้เช็คอินแล้วทั้งหมด <span id="count">—</span> คน</div><div class="buttons"><button id="refresh">↻ รีเฟรช</button><button class="danger" id="clearAll">🗑 ล้างเวลาทุกคน</button></div></div>
 <div id="message" class="message" role="status" aria-live="polite"></div><div id="list" class="items"><div class="muted">กำลังโหลดข้อมูล…</div></div></section>
 <dialog id="editDialog"><h2 style="margin:0;color:#176749">✏️ แก้ไขเวลาเช็คอิน</h2><p id="editName" class="sub"></p><label class="field">รอบเช้า (เวลาไทย)<input type="datetime-local" step="1" id="morning"></label><label class="field">รอบเย็น (เวลาไทย)<input type="datetime-local" step="1" id="evening"></label><small style="color:#71847d">เว้นว่างเพื่อล้างเวลาของรอบนั้น</small><div class="modal-actions"><button id="cancel">ยกเลิก</button><button class="primary" id="save">บันทึก</button></div></dialog>
+
+<dialog id="bulkDialog" aria-labelledby="bulkTitle">
+  <div class="lp-top"><span class="lp-icon">🗂️✨</span><h2 class="lp-title" id="bulkTitle">ตรวจสอบก่อนล้างเวลาเช็คอิน</h2><p class="lp-sub">กรุณาตรวจสอบข้อมูลก่อนดำเนินการ</p></div>
+  <div class="lp-body"><div class="lp-summary">👥 พนักงานที่เช็คอินแล้ว: <strong id="bulkCount">—</strong> คน<br>☀️ รอบเช้า: ล้างเวลาเช็คอิน<br>🌙 รอบเย็น: ล้างเวลาเช็คอิน</div><p class="lp-warning">⚠️ การดำเนินการนี้จะล้างเวลาเช็คอินของพนักงานทุกคนทั้งสองรอบ ไม่ใช่การปลด LINE และไม่ลบรายชื่อพนักงาน</p><div class="lp-actions"><button type="button" class="lp-cancel" id="bulkCancel">✕ ยกเลิก</button><button type="button" class="lp-confirm" id="bulkConfirm">✓ ยืนยันล้างเวลาทั้งหมด</button></div></div>
+</dialog>
+<dialog id="bulkSuccess" aria-labelledby="bulkSuccessTitle"><div class="lp-top"><span class="lp-success-icon">✅✨</span><h2 class="lp-title" id="bulkSuccessTitle" style="color:#168454">ล้างเวลาเช็คอินสำเร็จ!</h2><p class="lp-sub">ระบบบันทึกการเปลี่ยนแปลงเรียบร้อยแล้ว</p></div><div class="lp-success-text" id="bulkSuccessText" role="status"></div></dialog>
 <script>
 const URL='https://ycljxlywewigwxovdnyj.supabase.co/functions/v1/admin-manage-checkins';
 const $=id=>document.getElementById(id);let rows=[],editing=null,busy=false;
@@ -32,6 +46,25 @@ async function load(quiet=false){if(busy)return;busy=true;$('refresh').disabled=
 async function clearOne(g,round){if(busy||!confirm(`ยืนยันล้างเวลารอบ${round==='morning'?'เช้า':'เย็น'}ของ ${g.full_name} (${g.employee_code})?`))return;busy=true;try{await request('clear',{employeeCode:g.employee_code,round});notice('ล้างเวลาเรียบร้อย','ok')}catch(e){notice(e.message,'error')}finally{busy=false;await load(true)}}
 $('refresh').onclick=load;$('cancel').onclick=()=>$('editDialog').close();
 $('save').onclick=async()=>{if(!editing||busy)return;busy=true;$('save').disabled=true;try{await request('edit',{employeeCode:editing.employee_code,morning:$('morning').value||null,evening:$('evening').value||null});$('editDialog').close();notice('บันทึกเวลาเรียบร้อย','ok')}catch(e){notice(e.message,'error');alert(e.message)}finally{busy=false;$('save').disabled=false;await load(true)}};
-$('clearAll').onclick=async()=>{if(busy)return;if(!confirm('คำเตือน: จะล้างเวลาเช็คอินทั้งรอบเช้าและเย็นของพนักงานทุกคน ยืนยันหรือไม่?'))return;const input=prompt('เพื่อยืนยันอีกครั้ง พิมพ์คำว่า ล้างทั้งหมด');if(input!=='ล้างทั้งหมด')return;busy=true;$('clearAll').disabled=true;try{const result=await request('clear_all',{confirm:'CLEAR_ALL_CHECKINS'});notice(`ล้างเวลาแล้ว ${result.count} คน`,'ok')}catch(e){notice(e.message,'error')}finally{busy=false;$('clearAll').disabled=false;await load(true)}};
+let bulkSuccessTimer;
+$('clearAll').onclick=()=>{if(busy)return;$('bulkCount').textContent=rows.length;$('bulkDialog').showModal()};
+$('bulkCancel').onclick=()=>{if(!busy)$('bulkDialog').close()};
+$('bulkDialog').addEventListener('cancel',event=>{if(busy)event.preventDefault()});
+$('bulkConfirm').onclick=async()=>{
+  if(busy)return;
+  busy=true;$('bulkConfirm').disabled=true;$('bulkCancel').disabled=true;$('clearAll').disabled=true;
+  $('bulkConfirm').textContent='กำลังล้างข้อมูล…';
+  try{
+    const result=await request('clear_all',{confirm:'CLEAR_ALL_CHECKINS'});
+    $('bulkDialog').close();
+    const count=Number.isFinite(Number(result.count))?Number(result.count):null;
+    $('bulkSuccessText').textContent=count===null?'ล้างเวลาเช็คอินทั้งสองรอบเรียบร้อยแล้ว':`ล้างเวลาเช็คอินแล้ว ${count} คน`;
+    notice('ล้างเวลาเช็คอินเรียบร้อยแล้ว','ok');
+    clearTimeout(bulkSuccessTimer);$('bulkSuccess').showModal();
+    bulkSuccessTimer=setTimeout(()=>{if($('bulkSuccess').open)$('bulkSuccess').close()},2500);
+    await load(true);
+  }catch(e){notice(e.message,'error');$('bulkDialog').close()}
+  finally{busy=false;$('bulkConfirm').disabled=false;$('bulkCancel').disabled=false;$('clearAll').disabled=false;$('bulkConfirm').textContent='✓ ยืนยันล้างเวลาทั้งหมด'}
+};
 load();
 </script></body></html>
