@@ -257,8 +257,8 @@
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4 select-none">
 
-  <!-- ================= SCENE 1: ซองจดหมายปิด (เก็บไว้เป็นส่วนหนึ่งของดีไซน์เดิม) ================= -->
-  <div id="envelopeScene" class="hidden envelope-wrapper flex flex-col items-center justify-center">
+  <!-- ================= SCENE 1: ซองจดหมายปิด ================= -->
+  <div id="envelopeScene" class="envelope-wrapper flex flex-col items-center justify-center">
     <div class="envelope-card" onclick="openEnvelope()">
       <div class="flap-left"></div>
       <div class="flap-right"></div>
@@ -287,7 +287,7 @@
   </div>
 
   <!-- ================= SCENE 2: การ์ดเชิญจดหมาย ================= -->
-  <div id="letterScene" class="flex w-full max-w-sm flex-col items-center transition-all duration-500" >
+  <div id="letterScene" class="hidden w-full max-w-sm flex-col items-center transition-all duration-500" >
     <div class="w-full rounded-3xl letter-paper p-6 sm:p-7 relative border border-[#e5dec9] cursor-pointer" onclick="handleLetterCardTap(event)">
       
       <button type="button" onclick="closeToEnvelope()" aria-label="ปิดจดหมายและกลับไปหน้าซอง" class="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-[#f2e8e4] text-[#881337] hover:bg-[#ead7d0] font-bold text-xl shadow-sm" style="z-index:2">×</button>
@@ -483,7 +483,7 @@
       </div>
       
       <div class="smart-qr-footer flex items-center justify-between text-[11px] text-gray-300 px-1 mb-4">
-        <span>QR หมดอายุใน: <b id="qrTimerText" class="text-amber-300 font-digital text-xs">45 วินาที</b></span>
+        <span>รีเซ็ตตัวนับใน: <b id="qrTimerText" class="text-amber-300 font-digital text-xs">45 วินาที</b></span>
         <span class="font-digital text-emerald-400">⏰ <span id="passLiveClock">00:00:00</span></span>
       </div>
 
@@ -528,8 +528,6 @@
       </button>
     </div>
   </div>
-
-  <div id="initialPassLoading" style="position:fixed;inset:0;z-index:99998;background:#150207;color:#fef3c7;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font-weight:700">กำลังเปิดบัตรเข้างาน…</div>
 
   <!-- LINE LIFF gate — external browser is blocked; invitation remains intact underneath -->
   <div id="lineAccessGate" style="position:fixed;inset:0;z-index:99999;background:#0b1121;color:#fff;display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif">
@@ -597,10 +595,9 @@
     }
 
     function closeToEnvelope() {
-      // No introductory envelope: keep the original invitation visible.
-      document.getElementById('envelopeScene').classList.add('hidden');
-      document.getElementById('letterScene').classList.remove('hidden');
-      document.getElementById('letterScene').classList.add('flex');
+      document.getElementById('letterScene').classList.add('hidden');
+      document.getElementById('letterScene').classList.remove('flex');
+      document.getElementById('envelopeScene').classList.remove('hidden');
     }
 
     function openPinModal() {
@@ -847,7 +844,7 @@
       alert(roundNotice(round));
     }
 
-    // Signed CLT1 QR expires 45 seconds after SERVER issuance.
+    // CLT2: stable server-signed QR; 45-second timer is visual only.
     let qrRequestSequence = 0;
     let qrRequestInFlight = false;
     let qrServerOffsetMs = 0;
@@ -857,40 +854,25 @@
       if (shell) shell.classList.toggle('qr-ready', Boolean(ready));
       if (label) { label.hidden = Boolean(ready); label.textContent = message; }
     }
-    async function generateDynamicQRCode(guest, renew = false) {
+    async function generateDynamicQRCode(guest) {
       const container = document.getElementById('passQrCanvas');
       if (!container || !guest || document.getElementById('qrPassModal').classList.contains('hidden')) return;
-      if (qrCurrentPayload && (/^CLT2\./.test(qrCurrentPayload) || Date.now() + qrServerOffsetMs < qrExpiresAtMs)) {
-        renderSignedQr(container);
-        return;
-      }
+      if (qrCurrentPayload) { renderSignedQr(container); return; }
       if (qrRequestInFlight) return;
       qrRequestInFlight = true;
       const requestId = ++qrRequestSequence;
-      qrCurrentPayload = null;
-      setQrReady(false, 'กำลังสร้าง QR ใหม่…');
-      container.replaceChildren();
+      setQrReady(false, 'กำลังโหลด QR ประจำตัว…');
       try {
-        const requestStart = Date.now();
         const result = await lineAuthRequest('issue_qr');
-        const requestEnd = Date.now();
         if (requestId !== qrRequestSequence || document.getElementById('qrPassModal').classList.contains('hidden')) return;
         if (!result || typeof result.qr !== 'string' ||
-            !(/^(CLT1\.\d{6}\.(morning|evening)\.\d{10}|CLT2\.\d{6}\.\d+)\.[A-Za-z0-9_-]{43}$/.test(result.qr))) throw new Error('invalid_qr_response');
-        // Server time + half RTT estimate avoids relying on the employee phone clock.
-        const isPermanent = result.permanent === true && result.qr.startsWith('CLT2.');
-        qrServerOffsetMs = result.serverTime ? Date.parse(result.serverTime) - ((requestStart + requestEnd) / 2) : 0;
-        qrExpiresAtMs = isPermanent ? 0 : Date.parse(result.expiresAt);
-        if (!isPermanent && (!Number.isFinite(qrExpiresAtMs) || qrExpiresAtMs <= Date.now() + qrServerOffsetMs)) throw new Error('qr_expired');
+            !/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(result.qr)) {
+          throw new Error('line-auth ไม่ได้ส่ง CLT2 กลับมา');
+        }
         qrCurrentPayload = result.qr;
-        qrIssuedAtMs = isPermanent ? Date.now() : qrExpiresAtMs - QR_LIFETIME_SECONDS * 1000;
         renderSignedQr(container);
-        updateTimerUI(isPermanent ? QR_LIFETIME_SECONDS : Math.max(0, Math.ceil((qrExpiresAtMs - Date.now() - qrServerOffsetMs) / 1000)));
       } catch (err) {
-        qrCurrentPayload = null;
-        qrExpiresAtMs = 0;
-        container.replaceChildren();
-        setQrReady(false, 'สร้าง QR ไม่สำเร็จ (' + String(err.message || 'unknown').slice(0, 70) + ')');
+        setQrReady(false, 'สร้าง QR ไม่สำเร็จ: ' + String(err.message || 'unknown').slice(0, 90));
       } finally { qrRequestInFlight = false; }
     }
     function renderSignedQr(container) {
@@ -951,23 +933,12 @@
       const modal = document.getElementById('qrPassModal');
       if (!modal || modal.classList.contains('hidden')) return;
       const liveClock = document.getElementById('passLiveClock');
-      if (liveClock) liveClock.textContent = new Intl.DateTimeFormat('en-GB', {timeZone:EVENT_TIMEZONE,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date(Date.now() + qrServerOffsetMs));
+      if (liveClock) liveClock.textContent = new Intl.DateTimeFormat('en-GB', {timeZone:EVENT_TIMEZONE,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date());
       const label = document.getElementById('qrRoundLabel');
       const round = getActiveRound();
       if (label) label.textContent = round === 'morning' ? '🌅 ใช้เช็คอินรอบเช้า' : round === 'evening' ? '🌙 ใช้เช็คอินรอบเย็น' : '🔒 ยังไม่อยู่ในเวลาเช็คอิน';
-      const permanentQr = Boolean(qrCurrentPayload && qrCurrentPayload.startsWith('CLT2.'));
-      const remaining = permanentQr ? QR_LIFETIME_SECONDS - (Math.floor((Date.now() - qrIssuedAtMs) / 1000) % QR_LIFETIME_SECONDS) : qrExpiresAtMs ? Math.max(0, Math.ceil((qrExpiresAtMs - Date.now() - qrServerOffsetMs) / 1000)) : 0;
-      const timerLabel = document.getElementById('qrTimerText');
-      if (timerLabel && permanentQr) timerLabel.parentElement.firstChild.textContent = 'QR ใช้งานได้ตลอดงาน • นับถอยหลัง: ';
-      updateTimerUI(remaining);
-      if (qrCurrentPayload && !permanentQr && remaining === 0) {
-        qrCurrentPayload = null;
-        document.getElementById('passQrCanvas').replaceChildren();
-        setQrReady(false, 'กำลังต่ออายุ QR Code…');
-      }
-      if (!qrCurrentPayload && !qrRequestInFlight) {
-        void generateDynamicQRCode(guest, true);
-      }
+      // Countdown loops without modifying the signed QR payload.
+      updateTimerUI(QR_LIFETIME_SECONDS - Math.floor(Date.now() / 1000) % QR_LIFETIME_SECONDS);
     }
 
     // Always re-read current session state before showing a new QR.
@@ -1006,10 +977,8 @@
       document.getElementById('qrExpandBtn').textContent = '⛶ ขยาย QR เพื่อสแกนง่ายขึ้น';
       document.getElementById('qrPassModal').classList.remove('hidden');
       setQrReady(false, 'กำลังสร้าง QR Code…');
-      // New QR only on opening, expiry or return from a suspended tab.
-      qrCurrentPayload = null;
-      qrExpiresAtMs = 0;
-      generateDynamicQRCode(guest, true);
+      // Preserve the same QR payload when opening the card again.
+      generateDynamicQRCode(guest);
       updateTimerUI(QR_LIFETIME_SECONDS);
       if (qrTimerInterval) clearInterval(qrTimerInterval);
       qrTimerInterval = setInterval(() => syncQrClock(guest, round), 250);
@@ -1048,22 +1017,12 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') {
         releaseQrWakeLock();
-        // Hide potentially stale QR while backgrounded; resume uses absolute expiry.
-        const canvas = document.getElementById('passQrCanvas');
-        if (canvas) canvas.replaceChildren();
-        setQrReady(false, 'กำลังเตรียม QR Code…');
+        // Keep the stable CLT2 QR available when returning to LINE.
       } else {
         const modal = document.getElementById('qrPassModal');
         if (modal && !modal.classList.contains('hidden') && matchedGuest) {
           const round = getActiveRound();
-          // Restore the same permanent QR when returning from background.
-          if (qrCurrentPayload && qrCurrentPayload.startsWith('CLT2.')) {
-            renderSignedQr(document.getElementById('passQrCanvas'));
-          } else {
-            qrCurrentPayload = null;
-            qrExpiresAtMs = 0;
-            generateDynamicQRCode(matchedGuest, true);
-          }
+          generateDynamicQRCode(matchedGuest);
         }
       }
     });
@@ -1073,9 +1032,6 @@
     });
 
     function closeQrPassModal() {
-      document.getElementById('envelopeScene').classList.add('hidden');
-      document.getElementById('letterScene').classList.remove('hidden');
-      document.getElementById('letterScene').classList.add('flex');
       document.getElementById('qrPassModal').classList.add('hidden');
       setQrReady(false);
       if (window.qrCheckinPollTimer) clearInterval(window.qrCheckinPollTimer);
@@ -1085,8 +1041,7 @@
       if (qrTimerInterval) clearInterval(qrTimerInterval);
       qrTimerInterval = null;
       ++qrRequestSequence;
-      qrCurrentPayload = null;
-      qrExpiresAtMs = 0;
+      // Keep QR in memory until page reload; line-auth issues the same CLT2 on reload.
     }
 
     // ฟังก์ชัน Realtime: ดักฟังเมื่อแอดมินกด "ปลดล็อก" หรือสแกนเช็คอินสำเร็จ
@@ -1293,7 +1248,6 @@
     async function initLineAccess() {
       const gate = document.getElementById('lineAccessGate');
       const message = document.getElementById('lineGateMessage');
-      const initialLoading = document.getElementById('initialPassLoading');
       try {
         if (!window.liff) throw new Error('โหลด LINE LIFF SDK ไม่สำเร็จ');
         await liff.init({ liffId: LIFF_ID });
@@ -1311,8 +1265,6 @@
           lineReady = true;
           localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
           await checkExistingLogin();
-          // Keep the invitation card visible. The linked employee can open their QR
-          // with the existing card button without re-entering their employee PIN.
         } else {
           lineEmployeeCode = null;
           lineReady = false;
@@ -1333,15 +1285,10 @@
           message.style.display = 'block';
           message.textContent = 'กรุณาเปิดผ่านแอป LINE';
         }
-      } finally {
-        if (initialLoading) initialLoading.style.display = 'none';
       }
     }
     window.addEventListener('DOMContentLoaded', () => {
-      if (/\bLine\//i.test(navigator.userAgent)) {
-        document.getElementById('lineAccessGate').style.display = 'none';
-        // Show the invitation immediately; LINE verification runs behind the card.
-      }
+      if (/\bLine\//i.test(navigator.userAgent)) document.getElementById('lineAccessGate').style.display = 'none';
       initSupabase();
       initLineAccess();
       refreshTimeAccessNotice();

@@ -349,7 +349,8 @@
         const response=await fetch(SUPABASE_URL+'/functions/v1/secure-checkin',{
           method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+jwt,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({qr})
         });
-        const result=await response.json();
+        const responseText=await response.text();
+        let result; try { result=JSON.parse(responseText); } catch (_) { show('❌ secure-checkin ตอบกลับ HTTP '+response.status+': '+responseText.slice(0,120),'error'); return; }
         if(result.status==='success'){
           totalSuccessfulScans++;updateQueueIndicator();
           show(`✅ เช็คอินสำเร็จ: ${result.fullName} (${result.employeeCode}) เวลา ${result.time} น.`,'success');
@@ -371,7 +372,7 @@
           show('❌ ฐานข้อมูลผิดพลาด: '+(result.stage||'unknown')+' ('+(result.code||'ไม่ทราบรหัส')+')','error');
         }else if(result.error==='outside_checkin_hours'){
           show('⚠️ อยู่นอกเวลาเช็คอิน','warning');
-        }else {show('❌ ไม่สามารถบันทึกได้ กรุณาตรวจสอบและสแกนใหม่','error');}
+        }else {show('❌ เช็คอินไม่สำเร็จ (HTTP '+response.status+'): '+String(result.error || result.message || result.status || 'unknown').slice(0,100),'error');}
       }catch(err){show('❌ อินเทอร์เน็ตขัดข้อง กรุณาสแกนใหม่','error');}
     }
 
