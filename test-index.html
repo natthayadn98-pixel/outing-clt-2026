@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>TEST MODE | การ์ดเชิญงานเลี้ยงสังสรรค์ 2569</title>
+
+  <!-- Favicon ปฏิทิน 3D -->
+  <link rel="icon" type="image/png" href="calendar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Anakotmai Web Font CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <!-- QRCode.js สำหรับสร้าง QR ในเครื่อง -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <style>
+    * {
+      font-family: 'Anakotmai', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .font-digital {
+      font-family: 'Anakotmai', monospace;
+      letter-spacing: 1px;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #3a0614 0%, #150207 70%, #0a0104 100%);
+      min-height: 100vh;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* ซองจดหมาย 3D */
+    .envelope-wrapper {
+      perspective: 1000px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .envelope-card {
+      position: relative;
+      width: 330px;
+      height: 220px;
+      background: linear-gradient(135deg, #a31c2e 0%, #801221 50%, #5e0b17 100%);
+      border-radius: 8px;
+      box-shadow: 
+        0 25px 45px rgba(0, 0, 0, 0.85),
+        0 0 35px rgba(163, 28, 46, 0.25),
+        inset 0 0 15px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .envelope-card:active {
+      transform: scale(0.97);
+    }
+
+    .flap-left {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 0;
+      border-top: 110px solid transparent;
+      border-bottom: 110px solid transparent;
+      border-left: 165px solid #8e1525;
+      filter: drop-shadow(4px 0 10px rgba(0, 0, 0, 0.4));
+      z-index: 1;
+    }
+
+    .flap-right {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 0;
+      height: 0;
+      border-top: 110px solid transparent;
+      border-bottom: 110px solid transparent;
+      border-right: 165px solid #7c111f;
+      filter: drop-shadow(-4px 0 10px rgba(0, 0, 0, 0.4));
+      z-index: 1;
+    }
+
+    .flap-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 0;
+      border-left: 165px solid transparent;
+      border-right: 165px solid transparent;
+      border-bottom: 125px solid #991829;
+      filter: drop-shadow(0 -5px 12px rgba(0, 0, 0, 0.45));
+      z-index: 2;
+    }
+
+    .flap-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 0;
+      border-left: 165px solid transparent;
+      border-right: 165px solid transparent;
+      border-top: 125px solid #aa1d30;
+      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+      z-index: 3;
+    }
+
+    .envelope-title {
+      color: #f7e1b5;
+      font-weight: 700;
+      font-size: 19px;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), 0 0 12px rgba(247, 225, 181, 0.4);
+    }
+
+    .envelope-subtitle {
+      color: #dfba87;
+      font-size: 11px;
+      font-weight: 400;
+      margin-top: 2px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    .envelope-quote {
+      color: #dfba87;
+      font-size: 10px;
+      font-style: italic;
+      font-family: 'Anakotmai', Georgia, serif;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+      opacity: 0.9;
+    }
+
+    /* ตราครั่งประทับหัวใจ 3D */
+    .wax-seal-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #a81c2d 0%, #680d19 65%, #38040b 100%);
+      box-shadow: 
+        0 8px 18px rgba(0, 0, 0, 0.75),
+        inset 0 3px 5px rgba(255, 255, 255, 0.35),
+        inset 0 -4px 6px rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      border: 2px solid rgba(136, 19, 55, 0.5);
+    }
+
+    .wax-seal-inner {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #c4273b 0%, #7d101d 75%, #42060e 100%);
+      box-shadow: 
+        inset 0 2px 4px rgba(255, 255, 255, 0.4),
+        inset 0 -2px 5px rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wax-seal-heart {
+      font-size: 20px;
+      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+      line-height: 1;
+    }
+
+    .letter-paper {
+      background: #fbf8f1;
+      color: #1f2937;
+      box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+    }
+
+    .dashed-box {
+      border: 1.5px dashed #d1c7b7;
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .animate-shake {
+      animation: shake 0.35s ease-in-out;
+    }
+
+    /* Smart QR: คอนทราสต์สูง ขอบว่าง และโหมดขยายสำหรับเครื่องยิง 2D */
+    .smart-qr-shell { background:#fff; padding:16px; border-radius:18px; width:fit-content; max-width:100%; margin:14px auto; }
+    #passQrCanvas canvas, #passQrCanvas img { display:block; max-width:100%; height:auto !important; image-rendering:pixelated; }
+    #qrPassModal.smart-qr-expanded { padding:0; background:#fff; backdrop-filter:none; }
+    #qrPassModal.smart-qr-expanded .smart-qr-card { background:#fff; color:#111827; border:0; border-radius:0; width:100%; height:100dvh; max-width:none; padding:18px 12px; display:flex; flex-direction:column; justify-content:center; box-shadow:none; }
+    #qrPassModal.smart-qr-expanded .smart-qr-shell { margin:16px auto; padding:16px; }
+    #qrPassModal.smart-qr-expanded #passName { color:#111827; }
+    #qrPassModal.smart-qr-expanded #passCode { color:#334155; }
+    #qrPassModal.smart-qr-expanded #qrRoundLabel { color:#166534; }
+    #qrPassModal.smart-qr-expanded .smart-qr-hint { color:#334155; }
+    #qrPassModal.smart-qr-expanded .smart-qr-footer { color:#334155; }
+    #qrPassModal.smart-qr-expanded .smart-qr-footer .font-digital { color:#166534; }
+    #qrPassModal.smart-qr-expanded #qrExpandBtn { background:#e2e8f0; color:#0f172a; }
+    @media (max-height:650px) { #qrPassModal.smart-qr-expanded .smart-qr-shell { margin:5px auto; padding:10px; } }
+
+    .clt-brand { display:flex; align-items:center; justify-content:center; flex-direction:column; gap:2px; margin:6px auto 3px; }
+    .clt-brand img { width:65px; height:57px; object-fit:contain; display:block; }
+    .clt-brand-label { color:#fef3c7; font-weight:700; font-size:12px; line-height:1.3; }
+    #qrPassModal.smart-qr-expanded .clt-brand-label { color:#881337; }
+    #qrPassModal.smart-qr-expanded .clt-brand img { width:74px; height:65px; }
+    /* Prevent the QR square from shrinking inside the flex column on iOS LINE. */
+    #qrPassModal.smart-qr-expanded { overflow:hidden; }
+    #qrPassModal.smart-qr-expanded .smart-qr-card {
+      box-sizing:border-box; min-height:0; height:100%; height:100dvh;
+      overflow-y:auto; overflow-x:hidden; justify-content:flex-start;
+      -webkit-overflow-scrolling:touch; padding-top:max(16px, env(safe-area-inset-top));
+      padding-bottom:max(20px, env(safe-area-inset-bottom));
+    }
+    #qrPassModal.smart-qr-expanded .smart-qr-shell {
+      flex:0 0 auto; flex-shrink:0; align-self:center;
+      overflow:visible !important; max-width:calc(100vw - 32px);
+      padding:12px; margin:12px auto;
+    }
+    #qrPassModal.smart-qr-expanded #passQrCanvas { flex:0 0 auto; overflow:visible; }
+    #qrPassModal.smart-qr-expanded #passQrCanvas canvas,
+    #qrPassModal.smart-qr-expanded #passQrCanvas img { flex-shrink:0; max-width:none; }
+    #qrPassModal.smart-qr-expanded .clt-brand { flex-shrink:0; }
+    #qrPassModal.smart-qr-expanded #qrExpandBtn { flex-shrink:0; }
+
+    @media (max-height:690px) { .clt-brand img {width:48px;height:42px;} .clt-brand-label{font-size:11px;} #qrPassModal.smart-qr-expanded .clt-brand img{width:55px;height:48px;} }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 select-none">
+
+  <div id="testModeBanner" role="status" style="position:fixed;top:0;left:0;right:0;z-index:99998;background:#fbbf24;color:#25120b;text-align:center;font:700 12px/1.5 system-ui,sans-serif;padding:calc(7px + env(safe-area-inset-top)) 8px 7px;box-shadow:0 3px 12px #0006">🧪 TEST MODE — ทดลอง QR ได้ทุกเวลา • ไม่ใช่หน้าลงทะเบียนจริง • เซิร์ฟเวอร์ยังจำกัดเวลาเช็คอิน</div>
+  <!-- ================= SCENE 1: ซองจดหมายปิด ================= -->
+  <div id="envelopeScene" class="envelope-wrapper flex flex-col items-center justify-center">
+    <div class="envelope-card" onclick="openEnvelope()">
+      <div class="flap-left"></div>
+      <div class="flap-right"></div>
+      <div class="flap-bottom"></div>
+      <div class="flap-top"></div>
+
+      <div class="absolute inset-x-0 top-6 text-center z-10 pointer-events-none">
+        <div class="envelope-title">งานเลี้ยงสังสรรค์</div>
+        <div class="envelope-subtitle">งานเลี้ยงสังสรรค์ประจำปี CLT</div>
+      </div>
+
+      <div class="wax-seal-container">
+        <div class="wax-seal-inner">
+          <span class="wax-seal-heart">❤️</span>
+        </div>
+      </div>
+
+      <div class="absolute inset-x-0 bottom-4 text-center z-10 pointer-events-none px-4">
+        <div class="envelope-quote">"A night to remember, a celebration to share."</div>
+      </div>
+    </div>
+
+    <p class="mt-7 text-xs text-[#dfba87] font-medium flex items-center gap-1.5 animate-pulse cursor-pointer" onclick="openEnvelope()">
+      <span>👆</span> แตะที่ซองจดหมายเพื่อเปิด
+    </p>
+  </div>
+
+  <!-- ================= SCENE 2: การ์ดเชิญจดหมาย ================= -->
+  <div id="letterScene" class="hidden w-full max-w-sm flex-col items-center transition-all duration-500" >
+    <div class="w-full rounded-3xl letter-paper p-6 sm:p-7 relative border border-[#e5dec9] cursor-pointer" onclick="handleLetterCardTap(event)">
+      
+      <button type="button" onclick="closeToEnvelope()" aria-label="ปิดจดหมายและกลับไปหน้าซอง" class="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-[#f2e8e4] text-[#881337] hover:bg-[#ead7d0] font-bold text-xl shadow-sm" style="z-index:2">×</button>
+      <div class="text-center pb-3 border-b border-dashed border-[#dcd3c1] pr-5">
+        <h3 class="text-lg sm:text-xl font-bold text-[#881337]">งานเลี้ยงสังสรรค์ ประจำปี 2569</h3>
+      </div>
+
+      <div class="mt-4 text-xs text-gray-700 leading-relaxed font-light">
+        <p><b>เรียน พนักงาน CLT,</b></p>
+        <p class="mt-1">ขอเรียนเชิญร่วมงานเลี้ยงสังสรรค์ประจำปีตามกำหนดการดังนี้:</p>
+      </div>
+
+      <div class="mt-3.5 p-3.5 rounded-2xl bg-white border-l-4 border-[#881337] shadow-sm space-y-2 text-xs text-gray-700">
+        <div class="flex items-center gap-2">
+          <span>🌅</span>
+          <span><b>รอบเช้า:</b> 07:00 - 09:30 น.</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span>🌙</span>
+          <span><b>รอบเย็น:</b> 14:00 น. เป็นต้นไป</span>
+        </div>
+        <div class="flex items-start gap-2">
+          <span class="shrink-0 mt-0.5">📍</span>
+          <span><b>สถานที่:</b> รอยัล ฮิลล์ กอล์ฟ รีสอร์ท แอนด์ สปา</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span>🎽</span>
+          <span><b>การแต่งกาย:</b> ชุดกีฬา</span>
+        </div>
+      </div>
+
+      <div id="timeAccessNotice" class="mt-4 p-3 rounded-xl border border-amber-300 bg-amber-50 text-amber-950 text-xs text-center font-semibold" role="status" aria-live="polite"></div>
+      
+      <div id="bottomCardSection" class="mt-4">
+        <!-- กล่องยังไม่ได้ลงทะเบียน -->
+        <div id="unregisteredBox" class="p-4 rounded-2xl dashed-box text-center">
+          <p class="text-xs text-gray-600 font-medium">
+            แตะปุ่มด้านล่างเพื่อ กรอกรหัสพนักงาน 6 หลัก<br>แสดงบัตรเข้างาน
+          </p>
+        </div>
+
+        <!-- กล่องแสดงสถานะเช็คอิน -->
+        <div id="completedBox" class="hidden p-4 rounded-2xl border border-blue-200 bg-blue-50/70 text-xs text-gray-800 space-y-2 shadow-inner">
+          <div class="flex items-center gap-2 pb-2 border-b border-blue-200/80 font-bold text-slate-800">
+            <span>👤</span>
+            <span id="completedGuestTitle">-</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span>🌅 รอบเช้า:</span>
+            <span id="completedMorningStatus" class="font-digital text-emerald-700 font-bold">-</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span>🌙 รอบเย็น:</span>
+            <span id="completedEveningStatus" class="font-digital text-emerald-700 font-bold">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5">
+        <button 
+          id="btnOpenPinModal" 
+          onclick="event.stopPropagation(); handleMainCardButtonClick();" 
+          class="w-full py-3.5 px-4 rounded-2xl bg-[#881337] hover:bg-[#700f2d] active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2"
+        >
+          <span>🔢</span>
+          <span id="btnMainText">กรอกรหัสพนักงาน (PIN 6 หลัก)</span>
+        </button>
+
+        <button 
+          id="btnCompletedLocked" 
+          onclick="event.stopPropagation();"
+          class="hidden w-full py-3.5 px-4 rounded-2xl bg-[#475569] text-white font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 cursor-default"
+        >
+          <span>🔒</span>
+          <span>เช็คอินครบทั้ง 2 รอบแล้ว</span>
+        </button>
+      </div>
+
+      <div class="text-center mt-3">
+        <button type="button" onclick="closeToEnvelope()" class="text-xs text-[#881337] font-semibold underline underline-offset-4 py-2 px-3">✉ พับจดหมายกลับเข้าซอง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 1: แป้นพิมพ์ PIN 6 หลัก ================= -->
+  <div id="pinModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div id="pinModalCard" class="w-full max-w-[340px] rounded-[32px] bg-[#1a0e1b] border border-amber-600/40 p-6 flex flex-col items-center shadow-2xl">
+      <h3 class="text-lg font-bold text-amber-200">Enter Employee PIN</h3>
+      <p class="text-xs text-purple-300/70 mt-0.5 mb-5 font-light">กรอกรหัสพนักงาน 6 หลัก เพื่อเข้าสู่ระบบ</p>
+
+      <div class="w-full py-3 px-4 rounded-2xl border-2 border-amber-500/60 bg-[#0d040f] flex items-center justify-center gap-2 sm:gap-3 mb-6 shadow-inner">
+        <span id="pinDash0" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
+        <span id="pinDash1" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
+        <span id="pinDash2" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
+        <span id="pinDash3" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
+        <span id="pinDash4" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
+        <span id="pinDash5" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3.5 w-full max-w-[250px] mb-4">
+        <button onclick="pressPin('1')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">1</button>
+        <button onclick="pressPin('2')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">2</button>
+        <button onclick="pressPin('3')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">3</button>
+
+        <button onclick="pressPin('4')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">4</button>
+        <button onclick="pressPin('5')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">5</button>
+        <button onclick="pressPin('6')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">6</button>
+
+        <button onclick="pressPin('7')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">7</button>
+        <button onclick="pressPin('8')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">8</button>
+        <button onclick="pressPin('9')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">9</button>
+
+        <div class="w-16 h-16"></div>
+        <button onclick="pressPin('0')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">0</button>
+        <button onclick="backspacePin()" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-slate-300 text-lg flex items-center justify-center mx-auto transition">⌫</button>
+      </div>
+
+      <button onclick="closePinModal()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold mt-2">
+        Cancel
+      </button>
+
+      <p id="pinSearchError" class="text-rose-400 text-xs mt-3 hidden font-medium text-center"></p>
+    </div>
+  </div>
+
+  <!-- แจ้งเตือนรหัสพนักงาน / LINE (แสดงเหนือแป้นตัวเลข) -->
+  <div id="employeePinAlert" class="fixed inset-0 z-[100] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-5" role="alertdialog" aria-modal="true" aria-labelledby="employeePinAlertTitle" aria-describedby="employeePinAlertMessage">
+    <div class="w-full max-w-[340px] rounded-[28px] bg-[#211322] border border-amber-500/60 shadow-2xl p-6 text-center">
+      <div class="text-4xl mb-3" aria-hidden="true">⚠️</div>
+      <h3 id="employeePinAlertTitle" class="text-xl font-bold text-amber-200 mb-3">ไม่พบรหัสพนักงานนี้</h3>
+      <p id="employeePinAlertMessage" class="text-sm text-white/90 leading-relaxed mb-6">กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ</p>
+      <button id="employeePinAlertButton" type="button" onclick="closeEmployeePinAlert()" class="w-full rounded-xl bg-amber-400 text-[#211322] font-bold py-3 text-base">กรอกรหัสใหม่</button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 2: ยืนยันข้อมูลพนักงาน ================= -->
+  <div id="verifyModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-[340px] rounded-3xl bg-white p-6 shadow-2xl text-slate-900 border-2 border-amber-400">
+      <h3 class="text-lg font-bold text-center text-amber-900 mb-2">โปรดตรวจสอบข้อมูล</h3>
+
+      <div class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-700 leading-snug mb-4">
+        ⚠️ รบกวนตรวจสอบเลขและชื่อ-สกุลว่าถูกต้องไหม ก่อนกดยืนยันการลงทะเบียน
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs mb-5">
+        <div class="flex items-center gap-2">
+          <span>🔢</span>
+          <span><b>รหัส:</b> <span id="vCode" class="text-amber-700 font-bold font-digital text-sm">-</span></span>
+        </div>
+        <div class="flex items-start gap-2">
+          <span>👤</span>
+          <span><b>ชื่อ-สกุล:</b> <span id="vName" class="font-bold text-slate-900">-</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span>🏢</span>
+          <span><b>สาขา:</b> <span id="vBranch">-</span></span>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button onclick="confirmGuestRegistration()" class="w-full py-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs sm:text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-1.5">
+          <span>✅</span>
+          <span>ข้อมูลถูกต้อง ยืนยันการลงทะเบียน</span>
+        </button>
+        <button onclick="closeVerifyModal()" class="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition active:scale-95 flex items-center justify-center gap-1">
+          <span>✕</span>
+          <span>ไม่ใช่ฉัน / กรอกใหม่</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 3: Dynamic Live QR Code ================= -->
+  <div id="qrPassModal" class="fixed inset-0 z-50 hidden bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="smart-qr-card w-full max-w-sm rounded-3xl bg-[#1b0a2a] border-2 border-amber-500/70 p-6 text-center text-white relative shadow-2xl">
+      <button onclick="closeQrPassModal()" class="absolute top-4 right-4 text-purple-300 hover:text-white text-base">✕</button>
+
+      <h4 id="passName" class="text-base font-bold text-amber-200 truncate mt-2">-</h4>
+      <p id="passCode" class="text-xs text-purple-300 font-mono mt-0.5">-</p>
+
+      <!-- CLT logo ABOVE the QR: QR modules remain fully unobstructed -->
+      <div class="clt-brand" aria-label="โลโก้ CLT">
+        <img src="clt-logo.png" alt="CLT" loading="eager" />
+        <div class="clt-brand-label">งานเลี้ยงสังสรรค์ ประจำปี 2569</div>
+      </div>
+      <div class="smart-qr-shell shadow-xl relative overflow-hidden">
+        <div id="passQrCanvas" style="max-width:100%;display:flex;align-items:center;justify-content:center"></div>
+      </div>
+
+      <div class="w-full bg-purple-950/80 rounded-full h-2 mb-2 overflow-hidden border border-purple-700/50">
+        <div id="qrCountdownBar" class="bg-gradient-to-r from-amber-400 to-rose-500 h-2 rounded-full transition-all duration-1000" style="width: 100%;"></div>
+      </div>
+      
+      <div class="smart-qr-footer flex items-center justify-between text-[11px] text-gray-300 px-1 mb-4">
+        <span>QR ถาวร: <b id="qrTimerText" class="text-amber-300 font-digital text-xs">ใช้งานได้ตลอดงาน</b></span>
+        <span class="font-digital text-emerald-400">⏰ <span id="passLiveClock">00:00:00</span></span>
+      </div>
+
+      <p id="qrRoundLabel" class="text-xs text-emerald-300 font-bold mb-2"></p>
+      <p class="smart-qr-hint text-[11px] text-amber-200/90 mb-3">
+        📲 ยื่นหน้าจอนี้ให้แอดมินสแกนเข้างาน
+      </p>
+
+      <button id="qrExpandBtn" onclick="toggleSmartQrExpand()" class="w-full py-3 rounded-xl bg-amber-400 text-slate-950 font-bold text-sm mb-2 transition">
+        ⛶ ขยาย QR เพื่อสแกนง่ายขึ้น
+      </button>
+      <p class="smart-qr-hint text-[11px] text-gray-300 mb-3">หากสแกนไม่ติด ให้เพิ่มความสว่างหน้าจอด้วยตนเอง • ไม่ต้องเปิดจอสว่างสุดตลอดเวลา</p>
+      <button onclick="closeQrPassModal()" class="w-full py-2.5 rounded-xl bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs transition">
+        ปิดหน้าต่าง
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 4: แจ้งลงทะเบียนสำเร็จ ================= -->
+  <div id="successModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-[340px] rounded-3xl bg-[#131b2e] border-2 border-emerald-500 p-6 shadow-2xl text-white text-center">
+      <h3 id="successTitle" class="text-lg font-bold text-emerald-400 mb-4">ลงทะเบียนเรียบร้อยแล้ว!</h3>
+
+      <div class="p-3.5 rounded-2xl bg-[#0f172a] border border-slate-800 text-left text-xs space-y-2 mb-5">
+        <div class="flex items-center gap-2">
+          <span>👤</span>
+          <span><b>ชื่อ-สกุล:</b> <span id="sName" class="text-amber-300 font-bold">-</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span>🏢</span>
+          <span><b>สาขา:</b> <span id="sBranch">-</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span>⏰</span>
+          <span><b>รอบ:</b> <span id="sRound" class="text-emerald-300 font-semibold">-</span></span>
+        </div>
+      </div>
+
+      <button onclick="enterPartyPass()" class="w-full py-3.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/25 transition active:scale-95 flex items-center justify-center gap-2">
+        <span>🎉</span>
+        <span id="successButtonLabel">ดูบัตรเข้างาน</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- LINE LIFF gate — external browser is blocked; invitation remains intact underneath -->
+  <div id="lineAccessGate" style="position:fixed;inset:0;z-index:99999;background:#0b1121;color:#fff;display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif">
+    <div id="lineGateCard" style="box-sizing:border-box;width:100%;max-width:354px;background:#1e293b;border:2px solid #00cf62;border-radius:25px;padding:35px 20px 34px;text-align:center;box-shadow:0 12px 35px #0002">
+      <div style="width:70px;height:70px;margin:0 auto 18px;border:2px solid #00cf62;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1b3a39;font-size:29px" aria-hidden="true">💬</div>
+      <h2 id="lineGateTitle" style="color:#00d467;font-size:20px;font-weight:800;line-height:1.4;margin:0 0 12px">กรุณาเปิดผ่านแอป LINE</h2>
+      <p id="lineGateDescription" style="font-size:13px;line-height:1.8;color:#e5e7eb;margin:0 0 4px">เพื่อความปลอดภัยและการยืนยันสิทธิ์เข้าร่วมงานเลี้ยง<br>ระบบอนุญาตให้เปิดผ่าน แอปพลิเคชัน LINE เท่านั้น</p>
+      <p id="lineGateWarning" style="font-size:11px;color:#ff626e;margin:0 0 18px">(ไม่อนุญาตให้เปิดผ่าน Safari, Chrome หรือเบราว์เซอร์ภายนอก)</p>
+      <div id="lineGateTip" style="border:1px dashed #475569;background:#192435;color:#aab8cc;padding:10px 8px;border-radius:12px;font-size:12px;line-height:1.5">📌 กรุณาแตะลิงก์หรือสแกน QR Code จากในห้องแชท<br>LINE โดยตรง</div>
+      <p id="lineGateMessage" role="status" aria-live="polite" style="display:none;font-size:13px;line-height:1.6;margin:14px 0 0;color:#e5e7eb"></p>
+
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT ================= -->
+  <script>
+    const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
+    
+    const LIFF_ID = '2011957072-m1NOMVo2';
+    const LINE_AUTH_URL = 'https://ycljxlywewigwxovdnyj.supabase.co/functions/v1/line-auth';
+    let lineEmployeeCode = null;
+    let lineReady = false;
+    let lineVerified = false; // LINE token validated; card may be viewed before enrollment
+    let supabaseClient = null;
+    let realtimeChannel = null;
+    let inputPin = "";
+    let matchedGuest = null;
+    let qrTimerInterval = null;
+    const QR_LIFETIME_SECONDS = 45;
+    let remainingSeconds = 45;
+    let qrIssuedAtMs = 0;
+    let qrExpiresAtMs = 0;
+    let qrCurrentPayload = null;
+
+    const EVENT_TIMEZONE = 'Asia/Bangkok';
+
+    function initSupabase() {
+      if (window.supabase) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    }
+
+    function getOrCreateDeviceToken() {
+      let token = localStorage.getItem('my_device_token');
+      if (!token) {
+        token = 'dev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('my_device_token', token);
+      }
+      return token;
+    }
+
+    function openEnvelope() {
+      document.getElementById('envelopeScene').classList.add('hidden');
+      const letter = document.getElementById('letterScene');
+      letter.classList.remove('hidden');
+      letter.classList.add('flex');
+      checkExistingLogin();
+    }
+
+    function handleLetterCardTap(event) {
+      // แตะพื้นที่การ์ดเพื่อพับซอง แต่ไม่ขัดจังหวะปุ่ม PIN หรือปุ่มอื่น
+      if (event.target.closest('button, a, input, select, textarea, label, [role="button"]')) return;
+      closeToEnvelope();
+    }
+
+    function closeToEnvelope() {
+      document.getElementById('letterScene').classList.add('hidden');
+      document.getElementById('letterScene').classList.remove('flex');
+      document.getElementById('envelopeScene').classList.remove('hidden');
+    }
+
+    function openPinModal() {
+      if (!lineVerified) return;
+      if (!['morning', 'evening'].includes(getActiveRound())) return;
+      const round = getActiveRound();
+      if (round !== 'morning' && round !== 'evening') { showTimeRestriction(round); return; }
+      inputPin = "";
+      updatePinDashes();
+      document.getElementById('pinSearchError').classList.add('hidden');
+      document.getElementById('pinModal').classList.remove('hidden');
+    }
+
+    function closePinModal() {
+      document.getElementById('pinModal').classList.add('hidden');
+    }
+
+    function updatePinDashes() {
+      for (let i = 0; i < 6; i++) {
+        const el = document.getElementById(`pinDash${i}`);
+        if (el) {
+          el.textContent = inputPin[i] ? inputPin[i] : '_';
+        }
+      }
+    }
+
+    let employeePinChecking = false;
+    let employeePinAlertReset = true;
+
+    function showEmployeePinAlert(title, message, buttonText = 'กรอกรหัสใหม่', resetPin = true) {
+      employeePinAlertReset = resetPin;
+      document.getElementById('employeePinAlertTitle').textContent = title;
+      document.getElementById('employeePinAlertMessage').textContent = message;
+      document.getElementById('employeePinAlertButton').textContent = buttonText;
+      document.getElementById('employeePinAlert').classList.remove('hidden');
+      document.getElementById('employeePinAlertButton').focus();
+    }
+
+    function closeEmployeePinAlert() {
+      document.getElementById('employeePinAlert').classList.add('hidden');
+      if (employeePinAlertReset) { inputPin = ''; updatePinDashes(); }
+      document.getElementById('pinSearchError').classList.add('hidden');
+    }
+
+    function pressPin(digit) {
+      if (employeePinChecking || !document.getElementById('employeePinAlert').classList.contains('hidden')) return;
+      if (inputPin.length < 6) {
+        inputPin += digit;
+        updatePinDashes();
+        document.getElementById('pinSearchError').classList.add('hidden');
+        if (inputPin.length === 6) {
+          setTimeout(verifyEmployeePinFromSQL, 200);
+        }
+      }
+    }
+
+    function backspacePin() {
+      if (employeePinChecking || !document.getElementById('employeePinAlert').classList.contains('hidden')) return;
+      if (inputPin.length > 0) {
+        inputPin = inputPin.slice(0, -1);
+        updatePinDashes();
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('pinModal');
+      if (modal && !modal.classList.contains('hidden') && document.getElementById('employeePinAlert').classList.contains('hidden')) {
+        if (e.key >= '0' && e.key <= '9') {
+          pressPin(e.key);
+        } else if (e.key === 'Backspace') {
+          backspacePin();
+        }
+      }
+    });
+
+    async function verifyEmployeePinFromSQL() {
+      if (employeePinChecking || inputPin.length !== 6) return;
+      employeePinChecking = true;
+      const active = getActiveRound();
+      if (active !== 'morning' && active !== 'evening') { closePinModal(); showTimeRestriction(active); return; }
+      if (!['morning', 'evening'].includes(getActiveRound())) { closePinModal(); return; }
+      if (!lineVerified) { closePinModal(); return; }
+      const errEl = document.getElementById('pinSearchError');
+      const card = document.getElementById('pinModalCard');
+      errEl.classList.add('hidden');
+
+      try {
+        if (!lineVerified) throw new Error('ยังยืนยันบัญชี LINE ไม่สำเร็จ กรุณาลองใหม่');
+        const firstLineBinding = !lineReady;
+        if (!lineReady) {
+          throw new Error('test_requires_existing_binding');
+          const binding = await lineAuthRequest('bind_pin', inputPin);
+          if (!binding.linked || binding.employeeCode !== inputPin) {
+            throw new Error('ไม่สามารถผูกบัญชี LINE ได้ กรุณาติดต่อผู้ดูแล');
+          }
+          lineEmployeeCode = binding.employeeCode;
+          lineReady = true;
+        }
+        if (inputPin !== lineEmployeeCode) throw new Error('รหัสนี้ไม่ตรงกับบัญชี LINE ที่เคยลงทะเบียน');
+        if (!supabaseClient) throw new Error('ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
+
+        const { data, error } = await supabaseClient
+          .from('guests')
+          .select('*')
+          .eq('employee_code', inputPin)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!data) {
+          showEmployeePinAlert('ไม่พบรหัสพนักงานนี้', 'กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ');
+          return;
+        }
+
+        matchedGuest = data;
+        closePinModal();
+        localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
+        await checkExistingLogin();
+        subscribeToGuestCheckIn(matchedGuest.employee_code);
+        if (firstLineBinding) {
+          showSuccessPopup(matchedGuest, 'binding');
+        } else if (matchedGuest.morning_check_in && matchedGuest.evening_check_in) {
+          // No QR after both rounds are completed.
+          await checkExistingLogin();
+        } else {
+          openQrPass(matchedGuest);
+        }
+
+      } catch (err) {
+        const code = String(err && err.message || '').toLowerCase();
+        if (code.includes('test_requires_existing_binding')) {
+          showEmployeePinAlert('โหมดทดสอบไม่ผูก LINE ใหม่', 'กรุณาใช้บัญชี LINE ที่เคยลงทะเบียนแล้ว เพื่อไม่ให้การทดสอบเปลี่ยนข้อมูลจริง', 'ตกลง');
+        } else if (code.includes('employee_not_found')) {
+          showEmployeePinAlert('ไม่พบรหัสพนักงานนี้', 'กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ');
+        } else if (code.includes('line_already_bound') || code.includes('employee_already_bound') || code.includes('already_bound_to_other') || code.includes('employee_bound') || code.includes('line_bound')) {
+          showEmployeePinAlert('รหัสนี้ผูกบัญชี LINE แล้ว', 'กรุณาติดต่อเจ้าหน้าที่เพื่อขอปลดการผูกบัญชี LINE', 'ตกลง');
+        } else if (code.includes('rate_limited')) {
+          showEmployeePinAlert('ลองกรอกรหัสบ่อยเกินไป', 'กรุณารอสักครู่ แล้วลองใหม่อีกครั้งค่ะ', 'ตกลง');
+        } else if (code.includes('ไม่ตรงกับบัญชี line')) {
+          showEmployeePinAlert('บัญชี LINE นี้ลงทะเบียนแล้ว', 'กรุณาใช้รหัสพนักงานที่เคยลงทะเบียน หรือติดต่อเจ้าหน้าที่', 'ตกลง');
+        } else {
+          showEmployeePinAlert('ไม่สามารถตรวจสอบรหัสได้', 'กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองใหม่อีกครั้ง หากยังไม่สำเร็จให้ติดต่อเจ้าหน้าที่', 'ลองใหม่อีกครั้ง');
+        }
+      } finally {
+        employeePinChecking = false;
+      }
+    }
+
+    function openVerifyModal(guest) {
+      document.getElementById('vCode').textContent = guest.employee_code;
+      document.getElementById('vName').textContent = guest.full_name;
+      document.getElementById('vBranch').textContent = guest.branch || 'สำนักงานใหญ่';
+      document.getElementById('verifyModal').classList.remove('hidden');
+    }
+
+    function closeVerifyModal() {
+      document.getElementById('verifyModal').classList.add('hidden');
+      openPinModal();
+    }
+
+    // กดยืนยันข้อมูล -> บันทึกผูก device_token กับ Supabase
+    async function confirmGuestRegistration() {
+      if (!['morning', 'evening'].includes(getActiveRound())) { document.getElementById('verifyModal').classList.add('hidden'); return; }
+      const active = getActiveRound();
+      if (active !== 'morning' && active !== 'evening') { document.getElementById('verifyModal').classList.add('hidden'); showTimeRestriction(active); return; }
+      document.getElementById('verifyModal').classList.add('hidden');
+      if (!lineReady || !matchedGuest || matchedGuest.employee_code !== lineEmployeeCode) return;
+      // LINE binding is managed exclusively by the secure Edge Function.
+      localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
+
+      openQrPass(matchedGuest);
+      subscribeToGuestCheckIn(matchedGuest.employee_code);
+      checkExistingLogin();
+    }
+
+    function getEventClock() {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: EVENT_TIMEZONE, hour: '2-digit', minute: '2-digit',
+        second: '2-digit', hourCycle: 'h23'
+      }).formatToParts(new Date());
+      const get = type => Number(parts.find(p => p.type === type).value);
+      return get('hour') * 3600 + get('minute') * 60 + get('second');
+    }
+
+    function getActiveRound() {
+      // Test UI only: permit viewing QR outside the live schedule.
+      // Server-side round/time enforcement is unchanged.
+      return 'morning';
+      const seconds = getEventClock();
+      if (seconds < 7 * 3600) return 'before';
+      if (seconds <= 9 * 3600 + 30 * 60) return 'morning';
+      if (seconds < 14 * 3600) return 'closed';
+      return 'evening';
+    }
+
+    function roundNotice(round) {
+      return ({
+        before: '⏳ รอบเช้าเปิดให้แสดง QR เวลา 07:00 น.',
+        morning: '🧪 โหมดทดสอบ: เปิดดู QR ได้ทุกเวลา (เช็คอินจริงยังจำกัดเวลา)',
+        closed: '⚠️ หมดเวลาเช็คอินรอบเช้า กรุณาติดต่อเจ้าหน้าที่',
+        evening: '🌙 รอบเย็น: เปิดให้แสดง QR ตั้งแต่ 14:00 น.'
+      })[round];
+    }
+
+    function refreshTimeAccessNotice() {
+      const round = getActiveRound();
+      const el = document.getElementById('timeAccessNotice');
+      if (el) {
+        el.replaceChildren();
+        const firstLine = document.createElement('div');
+        firstLine.textContent = roundNotice(round);
+        el.appendChild(firstLine);
+        if (round === 'closed') {
+          const secondLine = document.createElement('div');
+          secondLine.textContent = '🌙 รอบเย็นเริ่ม 14:00 น.';
+          secondLine.className = 'mt-1';
+          secondLine.style.cssText = 'white-space:nowrap;font-size:11px;letter-spacing:-0.2px';
+          el.appendChild(secondLine);
+        }
+      }
+      const canEnter = round === 'morning' || round === 'evening';
+      const button = document.getElementById('btnOpenPinModal');
+      if (button) {
+        button.disabled = !canEnter;
+        button.classList.toggle('opacity-50', !canEnter);
+        button.classList.toggle('cursor-not-allowed', !canEnter);
+        button.classList.toggle('hover:bg-[#700f2d]', canEnter);
+        button.style.backgroundColor = canEnter ? '#881337' : '#94a3b8';
+        button.style.color = canEnter ? '#ffffff' : '#f8fafc';
+        button.style.cursor = canEnter ? 'pointer' : 'not-allowed';
+        button.style.opacity = canEnter ? '1' : '0.75';
+        const label = document.getElementById('btnMainText');
+        if (!canEnter && label) label.textContent = round === 'before' ? '🔒 เปิดกรอกรหัสเวลา 07:00 น.' : '🔒 ปิดรับรอบเช้า • เปิดอีกครั้ง 14:00 น.';
+        if (canEnter && label && !matchedGuest) label.textContent = 'กรอกรหัสพนักงาน (PIN 6 หลัก)';
+        button.setAttribute('aria-disabled', String(!canEnter));
+      }
+      const instruction = document.querySelector('#unregisteredBox p');
+      if (instruction) instruction.textContent = canEnter ? 'แตะปุ่มด้านล่างเพื่อกรอกรหัสพนักงาน 6 หลัก แสดงบัตรเข้างาน' : 'ระบบปิดการกรอกรหัสชั่วคราว กรุณารอเวลาที่กำหนด';
+      const pinModal = document.getElementById('pinModal');
+      const verifyModal = document.getElementById('verifyModal');
+      if (!canEnter) {
+        if (pinModal && !pinModal.classList.contains('hidden')) closePinModal();
+        if (verifyModal) verifyModal.classList.add('hidden');
+      }
+      return round;
+    }
+
+    function showTimeRestriction(round) {
+      refreshTimeAccessNotice();
+      alert(roundNotice(round));
+    }
+
+    // One QR payload per 45-second validity window. Resizing NEVER renews it.
+    let qrRequestSequence = 0;
+    let qrRequestInFlight = false;
+    async function generateDynamicQRCode(guest, renew = false) {
+      const container = document.getElementById('passQrCanvas');
+      if (!container || !guest) return;
+      if (qrCurrentPayload) {
+        renderSignedQr(container); return;
+      }
+      if(qrRequestInFlight) return;
+      qrRequestInFlight=true;
+      const requestId=++qrRequestSequence;
+      container.textContent='กำลังสร้าง QR ที่ปลอดภัย…';
+      try {
+        const result=await lineAuthRequest('issue_qr');
+        if(requestId!==qrRequestSequence || document.getElementById('qrPassModal').classList.contains('hidden')) return;
+        qrCurrentPayload=result.qr;
+        qrIssuedAtMs=Date.now();
+        qrExpiresAtMs=Number.POSITIVE_INFINITY;
+        renderSignedQr(container);
+      } catch(err) {
+        qrCurrentPayload=null;
+        container.textContent=err.message==='already_checked_in'?'เช็คอินรอบนี้แล้ว':'สร้าง QR ไม่สำเร็จ ('+String(err.message || 'unknown').slice(0,100)+')';
+      } finally { qrRequestInFlight=false; }
+    }
+    function renderSignedQr(container) {
+      if(!qrCurrentPayload) return;
+      container.replaceChildren();
+      const expanded=document.getElementById('qrPassModal').classList.contains('smart-qr-expanded');
+      const qrSize=expanded?Math.max(120,Math.min(340,window.innerWidth-56,Math.max(160,window.innerHeight-440))):Math.max(156,Math.min(272,window.innerWidth-104));
+      new QRCode(container,{text:qrCurrentPayload,width:qrSize,height:qrSize,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+      for(const el of container.querySelectorAll('canvas,img')){el.style.width=qrSize+'px';el.style.height=qrSize+'px';}
+    }
+
+    async function pollCurrentQrCheckin(guest, round) {
+      if (qrStatusPolling || !supabaseClient || document.getElementById('qrPassModal').classList.contains('hidden')) return;
+      qrStatusPolling = true;
+      try {
+        const {data, error} = await supabaseClient.from('guests')
+          .select('employee_code,full_name,branch,morning_check_in,evening_check_in')
+          .eq('employee_code', guest.employee_code).maybeSingle();
+        if (!error && data) {
+          matchedGuest = {...matchedGuest,...data};
+          if ((round === 'morning' && data.morning_check_in) || (round === 'evening' && data.evening_check_in)) {
+            closeQrPassModal();
+            showSuccessPopup(matchedGuest, 'checkin', round === 'morning' ? 'รอบเช้า' : 'รอบเย็น');
+          }
+        }
+      } finally { qrStatusPolling = false; }
+    }
+    function syncQrClock(guest, expectedRound) {
+      const modal=document.getElementById('qrPassModal');
+      if (!modal || modal.classList.contains('hidden')) return;
+      const liveClock=document.getElementById('passLiveClock');
+      if (liveClock) liveClock.textContent=new Intl.DateTimeFormat('en-GB', {timeZone:EVENT_TIMEZONE,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date());
+      const label=document.getElementById('qrRoundLabel');
+      const round=getActiveRound();
+      if(label)label.textContent=round==='morning'?'🌅 ใช้เช็คอินรอบเช้า':round==='evening'?'🌙 ใช้เช็คอินรอบเย็น':'🔒 QR ถาวร • รอเวลาเช็คอิน';
+    }
+
+    // Always re-read current session state before showing a new QR.
+    // A completed round must not re-open its QR even on a second device/tab.
+    let qrStatusPolling = false;
+    async function openQrPass(guest) {
+      if (!supabaseClient || !guest) return;
+      try {
+        const {data: latest, error} = await supabaseClient.from('guests')
+          .select('employee_code,full_name,branch,morning_check_in,evening_check_in')
+          .eq('employee_code', guest.employee_code).maybeSingle();
+        if (error || !latest) throw error || new Error('not_found');
+        guest = {...guest, ...latest};
+        matchedGuest = guest;
+        const activeRound = getActiveRound();
+        if ((activeRound === 'morning' && guest.morning_check_in) ||
+            (activeRound === 'evening' && guest.evening_check_in)) {
+          closeQrPassModal();
+          alert('✅ คุณเช็คอินรอบนี้เรียบร้อยแล้ว ไม่สามารถแสดง QR รอบเดิมซ้ำได้');
+          return;
+        }
+      } catch (err) {
+        alert('ไม่สามารถตรวจสอบสถานะเช็คอินได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+        return;
+      }
+      if (!lineReady || !guest || guest.employee_code !== lineEmployeeCode) return;
+      const round = refreshTimeAccessNotice();
+      // QR remains displayable outside check-in hours; server enforces the time window.
+      if (guest.morning_check_in && guest.evening_check_in) return;
+      // Keep showing the same QR after a completed round; server prevents duplicate check-in.
+      matchedGuest = guest;
+      document.getElementById('passName').textContent = guest.full_name;
+      document.getElementById('passCode').textContent = `รหัส: ${guest.employee_code}`;
+      document.getElementById('qrRoundLabel').textContent = round === 'morning' ? '🌅 QR รอบเช้า' : '🌙 QR รอบเย็น';
+      document.getElementById('qrPassModal').classList.remove('smart-qr-expanded');
+      document.getElementById('qrExpandBtn').textContent = '⛶ ขยาย QR เพื่อสแกนง่ายขึ้น';
+      document.getElementById('qrPassModal').classList.remove('hidden');
+      // New QR only on opening, expiry or return from a suspended tab.
+      qrCurrentPayload = null;
+      generateDynamicQRCode(guest, true);
+      updateTimerUI(QR_LIFETIME_SECONDS);
+      if (qrTimerInterval) clearInterval(qrTimerInterval);
+      qrTimerInterval = setInterval(() => syncQrClock(guest, round), 250);
+      pollCurrentQrCheckin(guest, round);
+      if (window.qrCheckinPollTimer) clearInterval(window.qrCheckinPollTimer);
+      window.qrCheckinPollTimer = setInterval(() => pollCurrentQrCheckin(guest, round), 2000);
+    }
+
+    function updateTimerUI(sec) {
+      const timerText = document.getElementById('qrTimerText');
+      const progressBar = document.getElementById('qrCountdownBar');
+      const liveClock = document.getElementById('passLiveClock');
+
+      if (timerText) timerText.textContent = 'ใช้งานได้ตลอดงาน';
+      if (progressBar) progressBar.style.width = '100%';
+      if (liveClock) liveClock.textContent = new Intl.DateTimeFormat('en-GB', {timeZone: EVENT_TIMEZONE, hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'}).format(new Date());
+    }
+
+    // Browser ไม่อนุญาตให้เว็บบังคับความสว่างจอ: ใช้พื้นขาวและขยาย QR แทน
+    // Screen Wake Lock ขอสิทธิ์เฉพาะเมื่อผู้ใช้กดขยาย และรองรับเฉพาะบางเบราว์เซอร์
+    let qrWakeLock = null;
+    async function releaseQrWakeLock() {
+      if (!qrWakeLock) return;
+      const lock = qrWakeLock;
+      qrWakeLock = null;
+      try { await lock.release(); } catch (e) {}
+    }
+    async function toggleSmartQrExpand() {
+      const modal = document.getElementById('qrPassModal');
+      const expanded = modal.classList.toggle('smart-qr-expanded');
+      document.getElementById('qrExpandBtn').textContent = expanded ? '↙ กลับไปแสดง QR ปกติ' : '⛶ ขยาย QR เพื่อสแกนง่ายขึ้น';
+      if (matchedGuest) generateDynamicQRCode(matchedGuest, false);
+      if (expanded && 'wakeLock' in navigator && document.visibilityState === 'visible') {
+        try { qrWakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* อุปกรณ์ไม่รองรับ */ }
+      } else {
+        await releaseQrWakeLock();
+      }
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') {
+        releaseQrWakeLock();
+        // Hide potentially stale QR while backgrounded; resume uses absolute expiry.
+        const canvas = document.getElementById('passQrCanvas');
+        if (canvas) canvas.replaceChildren();
+      } else {
+        const modal = document.getElementById('qrPassModal');
+        if (modal && !modal.classList.contains('hidden') && matchedGuest) {
+          const round = getActiveRound();
+          generateDynamicQRCode(matchedGuest, false);
+          updateTimerUI(QR_LIFETIME_SECONDS);
+        }
+      }
+    });
+    window.addEventListener('resize', () => {
+      const modal = document.getElementById('qrPassModal');
+      if (modal && !modal.classList.contains('hidden') && matchedGuest) generateDynamicQRCode(matchedGuest);
+    });
+
+    function closeQrPassModal() {
+      document.getElementById('qrPassModal').classList.add('hidden');
+      if (window.qrCheckinPollTimer) clearInterval(window.qrCheckinPollTimer);
+      window.qrCheckinPollTimer = null;
+      document.getElementById('qrPassModal').classList.remove('smart-qr-expanded');
+      releaseQrWakeLock();
+      if (qrTimerInterval) clearInterval(qrTimerInterval);
+      qrTimerInterval = null;
+      ++qrRequestSequence;
+      qrCurrentPayload = null;
+      qrExpiresAtMs = 0;
+    }
+
+    // ฟังก์ชัน Realtime: ดักฟังเมื่อแอดมินกด "ปลดล็อก" หรือสแกนเช็คอินสำเร็จ
+    function subscribeToGuestCheckIn(empCode) {
+      if (!supabaseClient) return;
+      if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+
+      realtimeChannel = supabaseClient
+        .channel(`guest_realtime_${empCode}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'guests',
+            filter: `employee_code=eq.${empCode}`
+          },
+          (payload) => {
+            const updated = payload.new;
+
+            // [จุดสำคัญ] เมื่อแอดมินกด "ปลดล็อก" บนหน้า admin: device_token จะเป็น null หรือ is_locked เป็น false
+            if (!updated.device_token || updated.is_locked === false) {
+              localStorage.removeItem('my_registered_emp_code');
+              matchedGuest = null;
+              closeQrPassModal();
+              alert('🔔 แอดมินได้ทำการปลดล็อกเครื่องให้คุณแล้ว กรุณากรอกรหัสพนักงานใหม่อีกครั้ง');
+              window.location.reload();
+              return;
+            }
+
+            // เมื่อแอดมินสแกนเช็คอินสำเร็จ
+            const justCheckedMorning = updated.morning_check_in && (!matchedGuest || !matchedGuest.morning_check_in);
+            const justCheckedEvening = updated.evening_check_in && (!matchedGuest || !matchedGuest.evening_check_in);
+
+            if (justCheckedMorning || justCheckedEvening) {
+              matchedGuest = updated;
+              closeQrPassModal();
+
+              const roundText = justCheckedMorning ? 'รอบเช้า' : 'รอบเย็น';
+              showSuccessPopup(updated, 'checkin', roundText);
+
+              playSuccessSound();
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    let successPopupMode = 'checkin';
+    function showSuccessPopup(guest, mode, roundText) {
+      successPopupMode = mode;
+      document.getElementById('successTitle').textContent = mode === 'binding' ? 'ลงทะเบียนเรียบร้อยแล้ว!' : 'เช็คอินสำเร็จ!';
+      document.getElementById('successButtonLabel').textContent = mode === 'binding' ? 'ดูบัตร QR Code' : 'กลับไปหน้าการ์ดเชิญ';
+      document.getElementById('sName').textContent = guest.full_name || '-';
+      document.getElementById('sBranch').textContent = guest.branch || 'สำนักงานใหญ่';
+      document.getElementById('sRound').textContent = mode === 'binding'
+        ? (getActiveRound() === 'morning' ? 'รอบเช้า' : 'รอบเย็น') : roundText;
+      document.getElementById('successModal').classList.remove('hidden');
+    }
+    function enterPartyPass() {
+      document.getElementById('successModal').classList.add('hidden');
+      checkExistingLogin();
+      if (successPopupMode === 'binding' && matchedGuest) {
+        openQrPass(matchedGuest);
+      }
+    }
+
+    function handleMainCardButtonClick() {
+      if (!lineVerified) return;
+      const active = getActiveRound();
+      if (active !== 'morning' && active !== 'evening') { showTimeRestriction(active); return; }
+      if (matchedGuest && matchedGuest.morning_check_in && matchedGuest.evening_check_in) return;
+      if (matchedGuest) {
+        openQrPass(matchedGuest);
+        subscribeToGuestCheckIn(matchedGuest.employee_code);
+      } else {
+        openPinModal();
+      }
+    }
+
+    // ตรวจสอบสถานะการผูกเครื่องกับ Supabase ทันทีที่เปิดหน้า
+    async function checkExistingLogin() {
+      const savedCode = lineReady ? lineEmployeeCode : null;
+      
+      // ถ้าไม่มีรหัสที่เคยจำไว้ในเครื่อง -> กลับสู่หน้าเริ่มต้น
+      if (!savedCode || !supabaseClient) {
+        resetToUnregisteredUI();
+        refreshTimeAccessNotice();
+        return;
+      }
+
+      try {
+        const { data: guest } = await supabaseClient
+          .from('guests')
+          .select('*')
+          .eq('employee_code', savedCode)
+          .maybeSingle();
+
+        // [จุดสำคัญ] ถ้าแอดมินกดปลดล็อกแล้ว (device_token กลายเป็น null หรือ is_locked เป็น false)
+        // ให้ล้างหน่วยความจำเครื่องและกลับสู่หน้ากรอกรหัสใหม่ทันที
+        if (!lineReady || !guest || guest.employee_code !== lineEmployeeCode) {
+          localStorage.removeItem('my_registered_emp_code');
+          matchedGuest = null;
+          resetToUnregisteredUI();
+          return;
+        }
+
+        matchedGuest = guest;
+        const isMorningDone = !!guest.morning_check_in;
+        const isEveningDone = !!guest.evening_check_in;
+
+        if (isMorningDone && isEveningDone) {
+          document.getElementById('unregisteredBox').classList.add('hidden');
+          document.getElementById('btnOpenPinModal').classList.add('hidden');
+          document.getElementById('completedBox').classList.remove('hidden');
+          document.getElementById('btnCompletedLocked').classList.remove('hidden');
+
+          document.getElementById('completedGuestTitle').textContent = `${guest.employee_code} (${guest.full_name})`;
+          document.getElementById('completedMorningStatus').textContent = `✅ เช็คอินแล้ว (${guest.morning_check_in})`;
+          document.getElementById('completedEveningStatus').textContent = `✅ เช็คอินแล้ว (${guest.evening_check_in})`;
+        } else if (isMorningDone || isEveningDone) {
+          document.getElementById('unregisteredBox').classList.add('hidden');
+          document.getElementById('completedBox').classList.remove('hidden');
+          document.getElementById('btnOpenPinModal').classList.remove('hidden');
+          document.getElementById('btnCompletedLocked').classList.add('hidden');
+
+          document.getElementById('completedGuestTitle').textContent = `${guest.employee_code} (${guest.full_name})`;
+          document.getElementById('completedMorningStatus').textContent = isMorningDone ? `✅ เช็คอินแล้ว (${guest.morning_check_in})` : '⏳ ยังไม่เช็คอิน';
+          document.getElementById('completedEveningStatus').textContent = isEveningDone ? `✅ เช็คอินแล้ว (${guest.evening_check_in})` : '⏳ ยังไม่เช็คอิน';
+
+          const nextRound = !isMorningDone ? 'รอบเช้า' : 'รอบเย็น';
+          document.getElementById('btnMainText').textContent = `แสดง QR Code (${nextRound})`;
+        } else {
+          // Show the bound employee identity even before any check-in.
+          document.getElementById('unregisteredBox').classList.add('hidden');
+          document.getElementById('completedBox').classList.remove('hidden');
+          document.getElementById('completedGuestTitle').textContent = `${guest.employee_code} (${guest.full_name})`;
+          document.getElementById('completedMorningStatus').textContent = '⏳ ยังไม่เช็คอิน';
+          document.getElementById('completedEveningStatus').textContent = '⏳ ยังไม่เช็คอิน';
+          document.getElementById('btnOpenPinModal').classList.remove('hidden');
+          document.getElementById('btnCompletedLocked').classList.add('hidden');
+          document.getElementById('btnMainText').textContent = 'แสดงบัตร QR Code';
+        }
+
+        subscribeToGuestCheckIn(guest.employee_code);
+        refreshTimeAccessNotice();
+
+      } catch (e) {
+        console.warn('Check existing login error:', e);
+      }
+    }
+
+    function resetToUnregisteredUI() {
+      document.getElementById('unregisteredBox').classList.remove('hidden');
+      document.getElementById('completedBox').classList.add('hidden');
+      document.getElementById('btnOpenPinModal').classList.remove('hidden');
+      document.getElementById('btnCompletedLocked').classList.add('hidden');
+      document.getElementById('btnMainText').textContent = 'กรอกรหัสพนักงาน (PIN 6 หลัก)';
+      refreshTimeAccessNotice();
+    }
+
+    function playSuccessSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch (e) {}
+    }
+
+    async function lineAuthRequest(action, employeeCode, enrollmentCode) {
+      const token = liff.getIDToken();
+      if (!token) throw new Error('ไม่พบ LINE ID Token กรุณาเปิด scope openid');
+      const response = await fetch(LINE_AUTH_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, idToken: token, employeeCode, enrollmentCode })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'LINE authentication failed');
+      return data;
+    }
+    // Invitation is visible immediately inside LINE. Authentication happens silently.
+    // QR/PIN actions remain blocked until the LINE token is verified by the server.
+    function showLineStatus(text, isError = false) {
+      let el = document.getElementById('lineBackgroundStatus');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'lineBackgroundStatus';
+        el.setAttribute('role', 'status');
+        el.style.cssText = 'position:fixed;bottom:14px;left:50%;transform:translateX(-50%);max-width:calc(100% - 32px);z-index:9990;background:#1e293b;color:#fff;border:1px solid #00cf62;border-radius:12px;padding:10px 14px;text-align:center;font:13px/1.5 system-ui,sans-serif;box-shadow:0 4px 16px #0005;';
+        document.body.appendChild(el);
+      }
+      el.textContent = text;
+      el.style.borderColor = isError ? '#ff626e' : '#00cf62';
+      el.style.display = text ? 'block' : 'none';
+    }
+    async function initLineAccess() {
+      const gate = document.getElementById('lineAccessGate');
+      const message = document.getElementById('lineGateMessage');
+      try {
+        if (!window.liff) throw new Error('โหลด LINE LIFF SDK ไม่สำเร็จ');
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isInClient()) {
+          gate.style.display = 'flex'; // External browsers remain blocked.
+          return;
+        }
+        gate.style.display = 'none'; // Do not cover the invitation while checking LINE.
+        if (!liff.isLoggedIn()) throw new Error('กรุณาเข้าสู่ระบบ LINE');
+        const result = await lineAuthRequest('status');
+        if (!result.verified) throw new Error('ไม่สามารถยืนยันบัญชี LINE ได้');
+        lineVerified = true;
+        if (result.linked && /^\d{6}$/.test(result.employeeCode || '')) {
+          lineEmployeeCode = result.employeeCode;
+          lineReady = true;
+          localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
+          await checkExistingLogin();
+        } else {
+          lineEmployeeCode = null;
+          lineReady = false;
+          resetToUnregisteredUI();
+          document.getElementById('btnMainText').textContent = 'กรอกรหัสพนักงาน (PIN 6 หลัก)';
+        }
+        showLineStatus('');
+      } catch (error) {
+        lineVerified = false;
+        lineReady = false;
+        lineEmployeeCode = null;
+        // Only show the invitation immediately if we can identify the LINE in-app context.
+        // A normal browser must continue seeing the LINE-only blocking screen.
+        if (window.liff && liff.isInClient()) {
+          gate.style.display = 'none';
+          showLineStatus('ยังไม่สามารถยืนยัน LINE ได้ กรุณาลองเปิดใหม่ก่อนรับ QR: ' + error.message, true);
+        } else {
+          message.style.display = 'block';
+          message.textContent = 'กรุณาเปิดผ่านแอป LINE';
+        }
+      }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      if (/\bLine\//i.test(navigator.userAgent)) document.getElementById('lineAccessGate').style.display = 'none';
+      initSupabase();
+      initLineAccess();
+      refreshTimeAccessNotice();
+      setInterval(refreshTimeAccessNotice, 1000);
+    });
+  </script>
+</body>
+</html>
