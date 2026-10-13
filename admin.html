@@ -214,6 +214,22 @@
       #cltAdminHeader #cltHeaderLogout { right: 9px; }
       #cltAdminHeader .clt-header-brand h1 { font-size: 15px !important; }
     }
+    /* Separate spacer avoids Safari header/safe-area layout collisions. */
+    #cltMobileStatusSpacer { display: none; }
+    @media (max-width: 767px) {
+      #cltMobileStatusSpacer {
+        display: block !important;
+        flex: 0 0 auto !important;
+        height: max(76px, calc(env(safe-area-inset-top, 0px) + 34px)) !important;
+        background: #fffdfb;
+      }
+      #cltAdminHeader {
+        padding-top: 10px !important;
+        grid-template-rows: 40px 40px !important;
+      }
+      #cltAdminHeader #cltHeaderLogout { top: 10px !important; }
+    }
+    html[data-admin-theme="dark"] #cltMobileStatusSpacer { background: #0d0322; }
   </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0217]">
@@ -277,6 +293,8 @@
     </div>
   </div>
 
+  <!-- Mobile iPhone status bar clearance: independent of header padding. -->
+  <div id="cltMobileStatusSpacer" aria-hidden="true"></div>
   <!-- ================= TOP HEADER BAR ================= -->
   <header id="cltAdminHeader" class="w-full px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between border-b border-purple-900/40 bg-[#0d0322]/90 backdrop-blur-md z-30 shrink-0">
     <div class="clt-header-brand flex items-center gap-2 sm:gap-3">
