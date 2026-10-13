@@ -562,6 +562,9 @@
     let qrIssuedAtMs = 0;
     let qrExpiresAtMs = 0;
     let qrCurrentPayload = null;
+    let qrCountdownStartMs = 0;
+    let qrPreparationPromise = null;
+    let qrOpenSequence = 0;
 
     const EVENT_TIMEZONE = 'Asia/Bangkok';
 
@@ -852,28 +855,39 @@
       const shell = document.querySelector('#qrPassModal .smart-qr-shell');
       const label = document.getElementById('qrLoadingMessage');
       if (shell) shell.classList.toggle('qr-ready', Boolean(ready));
-      if (label) { label.hidden = Boolean(ready); label.textContent = message; }
+      if (label) { label.hidden = Boolean(ready); label.style.display = ready ? 'none' : 'block'; label.textContent = message; }
+    }
+    // Fetch once per page session. Closing/reopening the pass does not change its QR.
+    async function prepareStableQr() {
+      if (qrCurrentPayload) return qrCurrentPayload;
+      if (qrPreparationPromise) return qrPreparationPromise;
+      qrPreparationPromise = (async () => {
+        const result = await lineAuthRequest('issue_qr');
+        if (!result || typeof result.qr !== 'string' ||
+            !/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(result.qr)) {
+          throw new Error('line-auth ไม่ได้ส่ง CLT2 กลับมา');
+        }
+        if (lineEmployeeCode && result.qr.split('.')[1] !== lineEmployeeCode) {
+          throw new Error('QR ไม่ตรงกับรหัสพนักงานที่ยืนยันผ่าน LINE');
+        }
+        qrCurrentPayload = result.qr;
+        return qrCurrentPayload;
+      })();
+      try { return await qrPreparationPromise; }
+      finally { qrPreparationPromise = null; }
     }
     async function generateDynamicQRCode(guest) {
       const container = document.getElementById('passQrCanvas');
       if (!container || !guest || document.getElementById('qrPassModal').classList.contains('hidden')) return;
       if (qrCurrentPayload) { renderSignedQr(container); return; }
-      if (qrRequestInFlight) return;
-      qrRequestInFlight = true;
-      const requestId = ++qrRequestSequence;
-      setQrReady(false, 'กำลังโหลด QR ประจำตัว…');
       try {
-        const result = await lineAuthRequest('issue_qr');
-        if (requestId !== qrRequestSequence || document.getElementById('qrPassModal').classList.contains('hidden')) return;
-        if (!result || typeof result.qr !== 'string' ||
-            !/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(result.qr)) {
-          throw new Error('line-auth ไม่ได้ส่ง CLT2 กลับมา');
-        }
-        qrCurrentPayload = result.qr;
-        renderSignedQr(container);
+        setQrReady(false, 'กำลังโหลด QR ประจำตัว…');
+        await prepareStableQr();
+        if (!document.getElementById('qrPassModal').classList.contains('hidden')) renderSignedQr(container);
       } catch (err) {
-        setQrReady(false, 'สร้าง QR ไม่สำเร็จ: ' + String(err.message || 'unknown').slice(0, 90));
-      } finally { qrRequestInFlight = false; }
+        if (!document.getElementById('qrPassModal').classList.contains('hidden'))
+          setQrReady(false, 'สร้าง QR ไม่สำเร็จ: ' + String(err.message || 'unknown').slice(0, 90));
+      }
     }
     function renderSignedQr(container) {
       if(!qrCurrentPayload) return;
@@ -938,53 +952,58 @@
       const round = getActiveRound();
       if (label) label.textContent = round === 'morning' ? '🌅 ใช้เช็คอินรอบเช้า' : round === 'evening' ? '🌙 ใช้เช็คอินรอบเย็น' : '🔒 ยังไม่อยู่ในเวลาเช็คอิน';
       // Countdown loops without modifying the signed QR payload.
-      updateTimerUI(QR_LIFETIME_SECONDS - Math.floor(Date.now() / 1000) % QR_LIFETIME_SECONDS);
+      const elapsed = Math.floor(Math.max(0, Date.now() - qrCountdownStartMs) / 1000);
+      updateTimerUI(QR_LIFETIME_SECONDS - (elapsed % QR_LIFETIME_SECONDS));
     }
 
     // Always re-read current session state before showing a new QR.
     // A completed round must not re-open its QR even on a second device/tab.
     let qrStatusPolling = false;
     async function openQrPass(guest) {
-      if (!supabaseClient || !guest) return;
+      if (!supabaseClient || !guest || !lineReady || guest.employee_code !== lineEmployeeCode) return;
+      const openId = ++qrOpenSequence;
       try {
         const {data: latest, error} = await supabaseClient.from('guests')
           .select('employee_code,full_name,branch,morning_check_in,evening_check_in')
           .eq('employee_code', guest.employee_code).maybeSingle();
+        if (openId !== qrOpenSequence) return;
         if (error || !latest) throw error || new Error('not_found');
         guest = {...guest, ...latest};
         matchedGuest = guest;
         const activeRound = getActiveRound();
         if ((activeRound === 'morning' && guest.morning_check_in) ||
             (activeRound === 'evening' && guest.evening_check_in)) {
-          closeQrPassModal();
           alert('✅ คุณเช็คอินรอบนี้เรียบร้อยแล้ว ไม่สามารถแสดง QR รอบเดิมซ้ำได้');
           return;
         }
+        if (guest.morning_check_in && guest.evening_check_in) return;
+        // Do not open the QR modal until the signed QR has been received.
+        await prepareStableQr();
+        if (openId !== qrOpenSequence) return;
+        const round = refreshTimeAccessNotice();
+        document.getElementById('passName').textContent = guest.full_name;
+        document.getElementById('passCode').textContent = `รหัส: ${guest.employee_code}`;
+        document.getElementById('qrRoundLabel').textContent = round === 'morning' ? '🌅 QR รอบเช้า' : '🌙 QR รอบเย็น';
+        const modal = document.getElementById('qrPassModal');
+        modal.classList.remove('smart-qr-expanded');
+        document.getElementById('qrExpandBtn').textContent = '⛶ ขยาย QR เพื่อสแกนง่ายขึ้น';
+        modal.classList.remove('hidden');
+        renderSignedQr(document.getElementById('passQrCanvas'));
+        // Reset the visual countdown every time the card is opened.
+        qrCountdownStartMs = Date.now();
+        updateTimerUI(QR_LIFETIME_SECONDS);
+        if (qrTimerInterval) clearInterval(qrTimerInterval);
+        qrTimerInterval = setInterval(() => syncQrClock(guest, round), 250);
+        syncQrClock(guest, round);
+        pollCurrentQrCheckin(guest, round);
+        if (window.qrCheckinPollTimer) clearInterval(window.qrCheckinPollTimer);
+        window.qrCheckinPollTimer = setInterval(() => pollCurrentQrCheckin(guest, round), 2000);
       } catch (err) {
-        alert('ไม่สามารถตรวจสอบสถานะเช็คอินได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
-        return;
+        if (openId === qrOpenSequence) {
+          console.error('Unable to open QR pass:', err);
+          alert('ไม่สามารถแสดง QR ได้: ' + String(err.message || 'กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'));
+        }
       }
-      if (!lineReady || !guest || guest.employee_code !== lineEmployeeCode) return;
-      const round = refreshTimeAccessNotice();
-      // QR remains displayable outside check-in hours; server enforces the time window.
-      if (guest.morning_check_in && guest.evening_check_in) return;
-      // Keep showing the same QR after a completed round; server prevents duplicate check-in.
-      matchedGuest = guest;
-      document.getElementById('passName').textContent = guest.full_name;
-      document.getElementById('passCode').textContent = `รหัส: ${guest.employee_code}`;
-      document.getElementById('qrRoundLabel').textContent = round === 'morning' ? '🌅 QR รอบเช้า' : '🌙 QR รอบเย็น';
-      document.getElementById('qrPassModal').classList.remove('smart-qr-expanded');
-      document.getElementById('qrExpandBtn').textContent = '⛶ ขยาย QR เพื่อสแกนง่ายขึ้น';
-      document.getElementById('qrPassModal').classList.remove('hidden');
-      setQrReady(false, 'กำลังสร้าง QR Code…');
-      // Preserve the same QR payload when opening the card again.
-      generateDynamicQRCode(guest);
-      updateTimerUI(QR_LIFETIME_SECONDS);
-      if (qrTimerInterval) clearInterval(qrTimerInterval);
-      qrTimerInterval = setInterval(() => syncQrClock(guest, round), 250);
-      pollCurrentQrCheckin(guest, round);
-      if (window.qrCheckinPollTimer) clearInterval(window.qrCheckinPollTimer);
-      window.qrCheckinPollTimer = setInterval(() => pollCurrentQrCheckin(guest, round), 2000);
     }
 
     function updateTimerUI(sec) {
@@ -1007,7 +1026,7 @@
       const modal = document.getElementById('qrPassModal');
       const expanded = modal.classList.toggle('smart-qr-expanded');
       document.getElementById('qrExpandBtn').textContent = expanded ? '↙ กลับไปแสดง QR ปกติ' : '⛶ ขยาย QR เพื่อสแกนง่ายขึ้น';
-      if (matchedGuest) generateDynamicQRCode(matchedGuest, false);
+      if (matchedGuest && qrCurrentPayload) renderSignedQr(document.getElementById('passQrCanvas'));
       if (expanded && 'wakeLock' in navigator && document.visibilityState === 'visible') {
         try { qrWakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* อุปกรณ์ไม่รองรับ */ }
       } else {
@@ -1022,13 +1041,13 @@
         const modal = document.getElementById('qrPassModal');
         if (modal && !modal.classList.contains('hidden') && matchedGuest) {
           const round = getActiveRound();
-          generateDynamicQRCode(matchedGuest);
+          if (qrCurrentPayload) renderSignedQr(document.getElementById('passQrCanvas'));
         }
       }
     });
     window.addEventListener('resize', () => {
       const modal = document.getElementById('qrPassModal');
-      if (modal && !modal.classList.contains('hidden') && matchedGuest) generateDynamicQRCode(matchedGuest);
+      if (modal && !modal.classList.contains('hidden') && matchedGuest && qrCurrentPayload) renderSignedQr(document.getElementById('passQrCanvas'));
     });
 
     function closeQrPassModal() {
@@ -1040,7 +1059,8 @@
       releaseQrWakeLock();
       if (qrTimerInterval) clearInterval(qrTimerInterval);
       qrTimerInterval = null;
-      ++qrRequestSequence;
+      ++qrOpenSequence;
+      qrCountdownStartMs = 0;
       // Keep QR in memory until page reload; line-auth issues the same CLT2 on reload.
     }
 
