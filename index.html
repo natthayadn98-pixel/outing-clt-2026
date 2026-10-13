@@ -20,6 +20,12 @@
 
   <!-- QRCode.js สำหรับสร้าง QR ในเครื่อง -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script>
+    // Alternate CDN if the primary QR library is blocked in an in-app browser.
+    if (typeof window.QRCode !== 'function') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
+    }
+  </script>
 
   <style>
     * {
@@ -868,8 +874,28 @@
       container.replaceChildren();
       const expanded=document.getElementById('qrPassModal').classList.contains('smart-qr-expanded');
       const qrSize=expanded?Math.max(120,Math.min(340,window.innerWidth-56,Math.max(160,window.innerHeight-440))):Math.max(156,Math.min(272,window.innerWidth-104));
-      new QRCode(container,{text:qrCurrentPayload,width:qrSize,height:qrSize,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
-      for(const el of container.querySelectorAll('canvas,img')){el.style.width=qrSize+'px';el.style.height=qrSize+'px';}
+      if (typeof window.QRCode !== 'function') {
+        container.textContent = 'ไม่สามารถโหลดระบบแสดง QR Code ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่';
+        return;
+      }
+      try {
+        new QRCode(container,{text:qrCurrentPayload,width:qrSize,height:qrSize,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+        const rendered = container.querySelector('canvas, img, table');
+        if (!rendered) throw new Error('qr_render_empty');
+        for (const el of container.querySelectorAll('canvas,img')) {
+          el.style.width=qrSize+'px'; el.style.height=qrSize+'px';
+          el.style.display='block'; el.style.visibility='visible'; el.style.opacity='1';
+        }
+        // Some in-app browsers defer QRCode.js image creation until the next frame.
+        requestAnimationFrame(() => {
+          const img=container.querySelector('img');
+          const canvas=container.querySelector('canvas');
+          if (img && canvas && (!img.complete || !img.naturalWidth)) img.style.display='none';
+        });
+      } catch (error) {
+        console.error('QR rendering failed:', error);
+        container.textContent='แสดงภาพ QR ไม่สำเร็จ กรุณารีเฟรชหน้าเว็บแล้วลองใหม่';
+      }
     }
 
     async function pollCurrentQrCheckin(guest, round) {
