@@ -143,44 +143,87 @@
     html[data-admin-theme="light"] #supabaseConfigModal label,
     html[data-admin-theme="light"] #supabaseConfigModal p { color: #73687a !important; }
     html[data-admin-theme="light"] #supabaseConfigModal input { background: #faf8fb !important; color: #4d4059 !important; border-color: #e7dfea !important; }
-  
-/* CLT Admin Login — readable on mobile and desktop */
-#secureAdminGate input,
-#secureAdminEmail,
-#secureAdminPassword {
-  color-scheme: light !important;
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  color: #172033 !important;
-  -webkit-text-fill-color: #172033 !important;
-  border: 2px solid #d5dbe5 !important;
-  border-radius: 12px;
-  caret-color: #172033 !important;
-  opacity: 1 !important;
-}
 
-#secureAdminGate input::placeholder {
-  color: #697586 !important;
-  -webkit-text-fill-color: #697586 !important;
-  opacity: 1 !important;
-}
-
-#secureAdminGate input:focus {
-  outline: none !important;
-  border-color: #d6a22b !important;
-  box-shadow: 0 0 0 3px rgba(214,162,43,0.18) !important;
-}
-
-/* Fix browser autofill turning fields black */
-#secureAdminGate input:-webkit-autofill,
-#secureAdminGate input:-webkit-autofill:hover,
-#secureAdminGate input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #172033 !important;
-  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-  box-shadow: 0 0 0 1000px #ffffff inset !important;
-  caret-color: #172033 !important;
-}
-
+    /* Mobile header: two tidy rows, no clipped controls or horizontal scrolling. */
+    #cltAdminHeader { min-width: 0; }
+    .clt-header-brand, .clt-header-actions { min-width: 0; }
+    @media (max-width: 767px) {
+      #cltAdminHeader {
+        position: relative;
+        display: grid !important;
+        grid-template-columns: minmax(0,1fr) 120px;
+        grid-template-areas: "brand logout" "actions actions";
+        column-gap: 10px;
+        row-gap: 10px;
+        padding: 12px 14px 10px !important;
+        padding-top: max(12px, env(safe-area-inset-top)) !important;
+      }
+      #cltAdminHeader .clt-header-brand { grid-area: brand; gap: 10px; overflow: hidden; }
+      #cltAdminHeader .clt-header-brand h1 { font-size: 17px !important; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #cltAdminHeader .clt-header-brand button { flex-shrink: 0; width: 38px; height: 38px; }
+      #cltAdminHeader .clt-header-actions {
+        grid-area: actions;
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        gap: 7px !important;
+        padding-top: 9px;
+        border-top: 1px solid rgba(157,122,196,.20);
+      }
+      #cltAdminHeader #liveClockBox { flex: 0 1 auto; min-width: 0; padding: 7px 10px !important; }
+      #cltAdminHeader #syncBadge { flex: 0 0 auto; padding: 7px 10px !important; }
+      #cltAdminHeader #adminThemeToggle,
+      #cltAdminHeader #cltHeaderSettings,
+      #cltAdminHeader #cltHeaderReset { flex: 0 0 auto; width: 36px !important; height: 36px !important; border-radius: 12px !important; }
+      #cltAdminHeader #cltHeaderLogout {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        z-index: 1;
+        min-height: 38px;
+        padding: 7px 12px !important;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      #cltAdminHeader #cltHeaderLogout span:last-child { display: inline !important; }
+      #cltAdminHeader .clt-header-brand { padding-right: 2px; }
+      #cltAdminHeader .clt-header-actions #cltHeaderLogout { display: inline-flex; }
+    }
+    /* Responsive header refinement: visual layout only; auth and data logic untouched. */
+    @media (max-width: 767px) {
+      #cltAdminHeader { grid-template-columns: minmax(0, 1fr) auto !important; }
+      #cltAdminHeader .clt-header-actions {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) repeat(3, 36px);
+        justify-content: stretch !important;
+        gap: 6px !important;
+      }
+      #cltAdminHeader #liveClockBox,
+      #cltAdminHeader #syncBadge { width: 100%; min-width: 0; justify-content: center; white-space: nowrap; padding: 7px 3px !important; }
+      #cltAdminHeader #liveClock { font-size: 11px !important; letter-spacing: 0 !important; }
+      #cltAdminHeader #syncText { font-size: 11px !important; letter-spacing: 0 !important; }
+      #cltAdminHeader #adminThemeToggle,
+      #cltAdminHeader #cltHeaderSettings,
+      #cltAdminHeader #cltHeaderReset { width: 36px !important; height: 36px !important; }
+      #cltAdminHeader #cltHeaderLogout { position: absolute; top: 12px; right: 14px; }
+    }
+    @media (max-width: 390px) {
+      #cltAdminHeader .clt-header-actions { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) repeat(3, 32px); gap: 4px !important; }
+      #cltAdminHeader #liveClockBox > span:first-child { display: none; }
+      #cltAdminHeader #liveClockBox, #cltAdminHeader #syncBadge { padding: 6px 2px !important; }
+      #cltAdminHeader #adminThemeToggle,
+      #cltAdminHeader #cltHeaderSettings,
+      #cltAdminHeader #cltHeaderReset { width: 32px !important; height: 34px !important; }
+    }
+    @media (max-width: 370px) {
+      #cltAdminHeader { padding-left: 9px !important; padding-right: 9px !important; }
+      #cltAdminHeader #cltHeaderLogout { right: 9px; }
+      #cltAdminHeader .clt-header-actions { gap: 4px !important; }
+      #cltAdminHeader #liveClockBox, #cltAdminHeader #syncBadge { padding: 6px !important; }
+      #cltAdminHeader #adminThemeToggle, #cltAdminHeader #cltHeaderSettings, #cltAdminHeader #cltHeaderReset { width: 32px !important; height: 34px !important; }
+      #cltAdminHeader .clt-header-brand h1 { font-size: 15px !important; }
+    }
   </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0217]">
@@ -241,8 +284,8 @@
   </div>
 
   <!-- ================= TOP HEADER BAR ================= -->
-  <header class="w-full px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between border-b border-purple-900/40 bg-[#0d0322]/90 backdrop-blur-md z-30 shrink-0">
-    <div class="flex items-center gap-2 sm:gap-3">
+  <header id="cltAdminHeader" class="w-full px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between border-b border-purple-900/40 bg-[#0d0322]/90 backdrop-blur-md z-30 shrink-0">
+    <div class="clt-header-brand flex items-center gap-2 sm:gap-3">
       <!-- ปุ่ม 3 ขีด (กดเพื่อพับ/กางทั้งบนคอมและมือถือ) -->
       <button onclick="toggleSidebar()" class="w-9 h-9 rounded-xl bg-[#1e1346] hover:bg-[#2c1a67] border border-purple-700/60 flex items-center justify-center text-amber-300 text-lg transition active:scale-90 shadow" title="เปิด/ปิด แถบเมนูข้าง">
         ☰
@@ -254,7 +297,7 @@
     </div>
 
     <!-- เมนูสถานะด้านขวา -->
-    <div class="flex items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+    <div class="clt-header-actions flex items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
       <div id="liveClockBox" class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#1b0a3c] text-purple-200 border border-purple-600/40 font-digital tracking-wider shadow">
         <span class="text-xs">⏰</span>
         <span id="liveClock" class="text-[11px] sm:text-xs">00:00:00</span>
@@ -268,15 +311,15 @@
       <!-- Theme toggle is presentation-only; it does not change authentication or check-in data. -->
       <button id="adminThemeToggle" type="button" onclick="toggleAdminTheme()" aria-label="เปลี่ยนเป็นธีมสว่าง" aria-pressed="false" title="เปลี่ยนธีมสว่าง / มืด" class="w-9 h-9 rounded-xl bg-[#201047] hover:bg-[#341872] border border-purple-500/40 flex items-center justify-center text-lg text-amber-300 transition shadow"><span id="adminThemeIcon" aria-hidden="true">☀️</span></button>
 
-      <button onclick="openConfigModal()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#201047] hover:bg-[#341872] border border-purple-500/40 flex items-center justify-center text-xs text-amber-300 transition shadow" title="ตั้งค่า Supabase">
+      <button id="cltHeaderSettings" onclick="openConfigModal()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#201047] hover:bg-[#341872] border border-purple-500/40 flex items-center justify-center text-xs text-amber-300 transition shadow" title="ตั้งค่า Supabase">
         ⚙️
       </button>
 
-      <button onclick="resetDataConfirmation()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#4a0e2a] hover:bg-[#6b133c] border border-rose-500/40 flex items-center justify-center text-xs text-rose-300 transition shadow" title="รีโหลดข้อมูล">
+      <button id="cltHeaderReset" onclick="resetDataConfirmation()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#4a0e2a] hover:bg-[#6b133c] border border-rose-500/40 flex items-center justify-center text-xs text-rose-300 transition shadow" title="รีโหลดข้อมูล">
         ⏹️
       </button>
 
-      <button onclick="adminLogout()" class="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-rose-950/70 hover:bg-rose-900 border border-rose-600/50 text-rose-300 hover:text-white transition shadow text-xs font-semibold" title="ออกจากระบบ">
+      <button id="cltHeaderLogout" onclick="adminLogout()" class="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-rose-950/70 hover:bg-rose-900 border border-rose-600/50 text-rose-300 hover:text-white transition shadow text-xs font-semibold" title="ออกจากระบบ">
         <span>🔒</span>
         <span class="hidden md:inline">ออกจากระบบ</span>
       </button>
