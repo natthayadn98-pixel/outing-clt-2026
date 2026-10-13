@@ -1,144 +1,37 @@
 <!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    * { font-family: 'Anakotmai', sans-serif; }
-    body { background-color: #0c0217; color: #f1f5f9; min-height: 100vh; padding: 2rem 1rem; }
-    .vip-input { background-color: #0e0523; border: 1px solid rgba(139, 92, 246, 0.35); }
-  </style>
-  <link rel="stylesheet" href="admin-pages-theme.css" />
+<html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>รายชื่อผู้เช็คอินแล้ว</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/Anakotmai/Anakotmai.css">
+<style>
+*{box-sizing:border-box;font-family:Anakotmai,system-ui,sans-serif}body{margin:0;background:#f3f8f6;color:#173b32;padding:24px 14px}.panel{max-width:950px;margin:auto;background:white;border:1px solid #dcece5;border-radius:24px;padding:clamp(16px,3vw,30px);box-shadow:0 14px 35px #174b3210}h1{margin:0;color:#176749;font-size:clamp(21px,3vw,29px)}.sub{font-size:13px;color:#71847d;margin:4px 0 24px}.top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid #e5efe9;padding-bottom:15px}.count{font-weight:700;color:#23664c}.items{display:grid;gap:12px;margin-top:16px}.item{border:1px solid #e1eee7;border-radius:16px;background:#fbfefd;padding:15px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.name{font-weight:700}.details{font-size:12px;color:#63766d;margin-top:5px}.buttons{display:flex;gap:7px;flex-wrap:wrap}button{border:0;border-radius:11px;padding:9px 14px;cursor:pointer;font-weight:700;background:#e5f3eb;color:#196648}button:hover{filter:brightness(.97)}button:disabled{opacity:.45;cursor:wait}.danger{background:#fff0f0;color:#bc2846}.primary{background:#17845c;color:white}.message{font-size:13px;min-height:25px;margin-top:10px}.message.error{color:#b91c1c}.message.ok{color:#087747}.muted{color:#74877d;text-align:center;padding:32px}dialog{border:1px solid #d7e7de;border-radius:20px;padding:24px;max-width:min(420px,calc(100vw - 24px));width:100%;box-shadow:0 25px 80px #10271f40}dialog::backdrop{background:#071e16a8}.field{display:grid;gap:5px;margin:14px 0;font-size:13px}.field input{width:100%;border:1px solid #cbded3;border-radius:10px;padding:10px;font-size:15px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}#clearAll{font-size:12px}@media(max-width:600px){body{padding:12px 8px}.item{align-items:stretch}.buttons{width:100%}.buttons button{flex:1}}
+</style></head><body>
+<section class="panel"><h1>📋 รายชื่อผู้ที่เช็คอินแล้ว</h1><p class="sub">ตรวจสอบและจัดการเวลาเช็คอินของพนักงาน • แสดงเวลาประเทศไทย</p>
+<div class="top"><div class="count">ผู้เช็คอินแล้วทั้งหมด <span id="count">—</span> คน</div><div class="buttons"><button id="refresh">↻ รีเฟรช</button><button class="danger" id="clearAll">🗑 ล้างเวลาทุกคน</button></div></div>
+<div id="message" class="message" role="status" aria-live="polite"></div><div id="list" class="items"><div class="muted">กำลังโหลดข้อมูล…</div></div></section>
+<dialog id="editDialog"><h2 style="margin:0;color:#176749">✏️ แก้ไขเวลาเช็คอิน</h2><p id="editName" class="sub"></p><label class="field">รอบเช้า (เวลาไทย)<input type="datetime-local" step="1" id="morning"></label><label class="field">รอบเย็น (เวลาไทย)<input type="datetime-local" step="1" id="evening"></label><small style="color:#71847d">เว้นว่างเพื่อล้างเวลาของรอบนั้น</small><div class="modal-actions"><button id="cancel">ยกเลิก</button><button class="primary" id="save">บันทึก</button></div></dialog>
 <script>
-(function(){
-  const key = 'clt_admin_color_theme_v1';
-  function setPageTheme(value) {
-    if (value !== 'light' && value !== 'dark') return;
-    document.documentElement.setAttribute('data-admin-theme', value);
-  }
-  try { setPageTheme(localStorage.getItem(key) || 'dark'); } catch (_) {}
-  window.addEventListener('message', function(event) {
-    if (event.origin !== location.origin || event.source !== window.parent) return;
-    if (event.data && event.data.type === 'clt-admin-theme') setPageTheme(event.data.theme);
-  });
-  window.addEventListener('storage', function(event) {
-    if (event.key === key) setPageTheme(event.newValue);
-  });
-})();
-</script>
-</head>
-<body class="flex justify-center">
-
-  <section class="w-full max-w-4xl bg-[#14082e]/95 border border-[#3c1d77] rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
-    <div class="text-center mb-6">
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#facc15] tracking-wide flex items-center justify-center gap-2">
-        <span>📋</span> รายชื่อผู้ที่เช็คอินแล้ว
-      </h2>
-      <p class="text-xs sm:text-sm text-purple-300/80 mt-1 font-light">จัดการเวลาเช็คอินรายคน เลือกลบเฉพาะรอบ หรือแก้ไขเวลา</p>
-    </div>
-
-    <div class="bg-[#0e0423]/90 border border-purple-800/80 rounded-2xl p-5 shadow-xl">
-      <div class="flex justify-between items-center mb-4 pb-3 border-b border-purple-900/60">
-        <span class="text-sm font-bold text-amber-300">พบผู้เช็คอินแล้วทั้งหมด <span id="checkedInCountBadge" class="text-white text-lg">0</span> คน</span>
-        <button onclick="resetAllCheckedInGuests()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs">🗑️ ล้างเวลาทุกคน</button>
-      </div>
-      <div id="checkedInListContainer" class="space-y-3 max-h-[520px] overflow-y-auto pr-1"></div>
-    </div>
-  </section>
-
-  <!-- MODAL: แก้ไขเวลา -->
-  <div id="editCheckinModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#170b36] border border-purple-600/70 rounded-3xl p-6 max-w-sm w-full">
-      <h3 class="text-base font-bold text-amber-300 mb-3">✏️ แก้ไขเวลาเช็คอิน</h3>
-      <p id="editModalEmpName" class="text-xs text-purple-200 font-semibold mb-4">-</p>
-      <input type="hidden" id="editModalEmpCode" />
-      <div class="space-y-3 mb-5 text-xs">
-        <div>
-          <label class="block text-amber-300 mb-1">รอบเช้า</label>
-          <input type="text" id="editModalMorningTime" class="w-full px-3 py-2 vip-input rounded-xl text-white" />
-        </div>
-        <div>
-          <label class="block text-indigo-300 mb-1">รอบเย็น</label>
-          <input type="text" id="editModalEveningTime" class="w-full px-3 py-2 vip-input rounded-xl text-white" />
-        </div>
-      </div>
-      <div class="flex gap-2 justify-end">
-        <button onclick="closeEditCheckinModal()" class="px-3.5 py-2 rounded-xl bg-purple-900/50 text-purple-300 text-xs">ยกเลิก</button>
-        <button onclick="saveEditedCheckinTimes()" class="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs">บันทึก</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    let guestsList = [];
-
-    async function loadData() {
-      const { data } = await supabaseClient.from('guests').select('*');
-      guestsList = data || [];
-      renderCheckedInList();
-    }
-
-    function renderCheckedInList() {
-      const container = document.getElementById('checkedInListContainer');
-      const badge = document.getElementById('checkedInCountBadge');
-      const checkedGuests = guestsList.filter(g => g.morning_check_in || g.evening_check_in);
-      badge.textContent = checkedGuests.length;
-
-      if (checkedGuests.length === 0) {
-        container.innerHTML = '<div class="text-center py-10 text-purple-400/60 text-xs sm:text-sm">ยังไม่มีใครเช็คอิน</div>';
-        return;
-      }
-
-      container.innerHTML = checkedGuests.map(g => `
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between p-3.5 rounded-2xl bg-[#09021a] border border-purple-900/50 gap-3">
-          <div>
-            <p class="text-xs sm:text-sm font-bold text-amber-200">${g.full_name} (${g.employee_code}) - ${g.branch || 'ทั่วไป'}</p>
-            <p class="text-[11px] text-gray-400 mt-1">เช้า: ${g.morning_check_in || '-'} | เย็น: ${g.evening_check_in || '-'}</p>
-          </div>
-          <div class="flex gap-1.5">
-            <button onclick="openEditCheckinModal('${g.employee_code}', '${g.full_name}', '${g.morning_check_in || ''}', '${g.evening_check_in || ''}')" class="px-2.5 py-1.5 rounded-xl bg-purple-900/60 text-purple-200 text-xs">✏️ แก้ไข</button>
-            <button onclick="removeCheckInSingle('${g.employee_code}')" class="px-2.5 py-1.5 rounded-xl bg-rose-950/70 text-rose-300 text-xs">🗑️ ล้าง</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function openEditCheckinModal(code, name, m, e) {
-      document.getElementById('editModalEmpCode').value = code;
-      document.getElementById('editModalEmpName').textContent = `${name} (${code})`;
-      document.getElementById('editModalMorningTime').value = m;
-      document.getElementById('editModalEveningTime').value = e;
-      document.getElementById('editCheckinModal').classList.remove('hidden');
-    }
-    function closeEditCheckinModal() { document.getElementById('editCheckinModal').classList.add('hidden'); }
-
-    async function saveEditedCheckinTimes() {
-      const code = document.getElementById('editModalEmpCode').value;
-      const m = document.getElementById('editModalMorningTime').value.trim() || null;
-      const e = document.getElementById('editModalEveningTime').value.trim() || null;
-      await supabaseClient.from('guests').update({ morning_check_in: m, evening_check_in: e }).eq('employee_code', code);
-      closeEditCheckinModal();
-      loadData();
-    }
-
-    async function removeCheckInSingle(code) {
-      if (!confirm('ยืนยันล้างเวลาเช็คอินคนนี้?')) return;
-      await supabaseClient.from('guests').update({ morning_check_in: null, evening_check_in: null }).eq('employee_code', code);
-      loadData();
-    }
-
-    async function resetAllCheckedInGuests() {
-      if (!confirm('ยืนยันล้างเวลาเช็คอินของทุกคน?')) return;
-      await supabaseClient.from('guests').update({ morning_check_in: null, evening_check_in: null }).neq('employee_code', '');
-      loadData();
-    }
-
-    loadData();
-  </script>
-</body>
-</html>
+const URL='https://ycljxlywewigwxovdnyj.supabase.co/functions/v1/admin-manage-checkins';
+const $=id=>document.getElementById(id);let rows=[],editing=null,busy=false;
+function notice(message,type=''){const el=$('message');el.textContent=message;el.className='message '+type;}
+function dateDisplay(v){if(!v)return '—';return String(v).replace('T',' ').replace(/\+.*$/,'').replace(/Z$/,'').slice(0,19);}
+function editDate(v){return v?String(v).replace(' ','T').slice(0,19):'';}
+async function request(action,extra={}){
+  const client=window.parent?.cltSecureAdminClient;
+  if(!client)throw Error('กรุณาเปิดหน้านี้ผ่านหน้า Admin และเข้าสู่ระบบก่อน');
+  const {data:{session},error}=await client.auth.getSession();
+  if(error||!session?.access_token)throw Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบ Admin ใหม่');
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
+  try{
+    const res=await fetch(URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':sessionStorage.getItem('clt_public_anon_key')||'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI'},body:JSON.stringify({action,...extra}),signal:controller.signal});
+    const data=await res.json().catch(()=>({}));if(!res.ok)throw Error(({admin_not_authorized:'บัญชีนี้ไม่มีสิทธิ์ Admin',admin_login_required:'กรุณาเข้าสู่ระบบ Admin ใหม่',employee_not_found:'ไม่พบพนักงาน',invalid_timestamp:'รูปแบบวันเวลาไม่ถูกต้อง',database_error:'ฐานข้อมูลปฏิเสธคำสั่ง',origin_not_allowed:'โดเมนเว็บไซต์ไม่ได้รับอนุญาต'})[data.error]||'ดำเนินการไม่สำเร็จ ('+(data.error||res.status)+')'+(data.code?' ['+data.code+']':''));return data;
+  }finally{clearTimeout(timer)}
+}
+function render(){const list=$('list');list.replaceChildren();$('count').textContent=rows.length;if(!rows.length){const d=document.createElement('div');d.className='muted';d.textContent='ยังไม่มีผู้เช็คอิน';list.append(d);return;}
+  for(const g of rows){const item=document.createElement('div');item.className='item';const info=document.createElement('div');const name=document.createElement('div');name.className='name';name.textContent=`${g.full_name||'ไม่ระบุชื่อ'} (${g.employee_code}) — ${g.branch||'ทั่วไป'}`;const details=document.createElement('div');details.className='details';details.textContent=`เช้า: ${dateDisplay(g.morning_check_in)} | เย็น: ${dateDisplay(g.evening_check_in)}`;info.append(name,details);const buttons=document.createElement('div');buttons.className='buttons';const edit=document.createElement('button');edit.textContent='✏️ แก้ไข';edit.onclick=()=>{editing=g;$('editName').textContent=`${g.full_name} (${g.employee_code})`;$('morning').value=editDate(g.morning_check_in);$('evening').value=editDate(g.evening_check_in);$('editDialog').showModal()};buttons.append(edit);for(const [round,label] of [['morning','ล้างเช้า'],['evening','ล้างเย็น']]){if(!g[round+'_check_in'])continue;const btn=document.createElement('button');btn.className='danger';btn.textContent='🗑 '+label;btn.onclick=()=>clearOne(g,round);buttons.append(btn)}item.append(info,buttons);list.append(item)}
+}
+async function load(){if(busy)return;busy=true;$('refresh').disabled=true;notice('กำลังโหลดข้อมูล…');try{const result=await request('list');rows=result.guests||[];render();notice('โหลดข้อมูลล่าสุดแล้ว','ok')}catch(e){notice(e.message,'error');$('list').replaceChildren();const d=document.createElement('div');d.className='muted';d.textContent='โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ';$('list').append(d)}finally{busy=false;$('refresh').disabled=false}}
+async function clearOne(g,round){if(busy||!confirm(`ยืนยันล้างเวลารอบ${round==='morning'?'เช้า':'เย็น'}ของ ${g.full_name} (${g.employee_code})?`))return;busy=true;try{await request('clear',{employeeCode:g.employee_code,round});notice('ล้างเวลาเรียบร้อย','ok')}catch(e){notice(e.message,'error')}finally{busy=false;await load()}}
+$('refresh').onclick=load;$('cancel').onclick=()=>$('editDialog').close();
+$('save').onclick=async()=>{if(!editing||busy)return;busy=true;$('save').disabled=true;try{await request('edit',{employeeCode:editing.employee_code,morning:$('morning').value||null,evening:$('evening').value||null});$('editDialog').close();notice('บันทึกเวลาเรียบร้อย','ok')}catch(e){notice(e.message,'error');alert(e.message)}finally{busy=false;$('save').disabled=false;await load()}};
+$('clearAll').onclick=async()=>{if(busy)return;if(!confirm('คำเตือน: จะล้างเวลาเช็คอินทั้งรอบเช้าและเย็นของพนักงานทุกคน ยืนยันหรือไม่?'))return;const input=prompt('เพื่อยืนยันอีกครั้ง พิมพ์คำว่า ล้างทั้งหมด');if(input!=='ล้างทั้งหมด')return;busy=true;$('clearAll').disabled=true;try{const result=await request('clear_all',{confirm:'CLEAR_ALL_CHECKINS'});notice(`ล้างเวลาแล้ว ${result.count} คน`,'ok')}catch(e){notice(e.message,'error')}finally{busy=false;$('clearAll').disabled=false;await load()}};
+load();
+</script></body></html>
