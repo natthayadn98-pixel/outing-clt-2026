@@ -302,8 +302,17 @@
     function submitGunInput() {
       if (!gunInputEl || currentScanMode !== 'gun') return;
       clearTimeout(gunInputTimer);
-      const code = convertThaiKeyToEnglish(gunInputEl.value.trim());
-      if (!code) return;
+      const rawCode = gunInputEl.value.trim();
+      if (!rawCode) return;
+      // CLT3 signatures are Base64URL: '-' and '_' are legitimate signature bytes.
+      // Never run an already valid CLT3 token through the Thai keyboard map:
+      // the old map changes '-' to '3' and '_' to '%', invalidating the HMAC.
+      const clt3Pattern = /^CLT3\.\d{6}\.\d+\.\d{10}\.[A-Za-z0-9_-]{43}$/;
+      const code = clt3Pattern.test(rawCode)
+        ? rawCode
+        : /[\u0E00-\u0E7F]/.test(rawCode)
+          ? convertThaiKeyToEnglish(rawCode)
+          : rawCode;
       // ไม่ล้างข้อมูลที่ยังมาไม่ครบ เพื่อให้เครื่องยิงที่ส่งช้ากว่าสามารถส่งต่อได้
       // A complete USB scan ends with Enter/Tab. Reject malformed input instead of leaving it in the field.
       if (!/^CLT3\.\d{6}\.\d+\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(code)) {
@@ -406,7 +415,7 @@
         }else if(result.error==='invalid_qr'){
           show('❌ QR รูปแบบไม่ตรง ('+(result.stage||'invalid_qr')+')','error');
         }else if(result.error==='invalid_qr_signature'){
-          show('❌ ลายเซ็น QR ไม่ตรง กรุณาตรวจ line-auth และ QR_SIGNING_SECRET','error');
+          show('❌ ลายเซ็น QR ไม่ตรง กรุณาตรวจการตั้งค่าเครื่องยิง USB และลองสแกนใหม่','error');
         }else if(result.error==='database_error'){
           show('❌ ฐานข้อมูลผิดพลาด: '+(result.stage||'unknown')+' ('+(result.code||'ไม่ทราบรหัส')+')','error');
         }else if(result.error==='outside_checkin_hours'){
