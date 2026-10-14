@@ -459,7 +459,7 @@
       </div>
 
       <div class="space-y-2">
-        <button onclick="confirmGuestRegistration()" class="w-full py-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs sm:text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-1.5">
+        <button id="confirmRegistrationButton" onclick="confirmGuestRegistration()" class="w-full py-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs sm:text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-1.5">
           <span>✅</span>
           <span>ข้อมูลถูกต้อง ยืนยันการลงทะเบียน</span>
         </button>
@@ -690,74 +690,39 @@
       }
     });
 
+    // Step 2 -> 3: look up the employee BEFORE binding LINE or issuing a QR.
+    // Only the explicit confirmation button may perform the irreversible bind_pin action.
     async function verifyEmployeePinFromSQL() {
       if (employeePinChecking || inputPin.length !== 6) return;
       employeePinChecking = true;
-      const active = getActiveRound();
-      if (active !== 'morning' && active !== 'evening') { closePinModal(); showTimeRestriction(active); return; }
-      if (!['morning', 'evening'].includes(getActiveRound())) { closePinModal(); return; }
-      if (!lineVerified) { closePinModal(); return; }
       const errEl = document.getElementById('pinSearchError');
-      const card = document.getElementById('pinModalCard');
       errEl.classList.add('hidden');
-
       try {
         if (!lineVerified) throw new Error('ยังยืนยันบัญชี LINE ไม่สำเร็จ กรุณาลองใหม่');
-        const firstLineBinding = !lineReady;
-        if (!lineReady) {
-          const binding = await lineAuthRequest('bind_pin', inputPin);
-          if (!binding.linked || binding.employeeCode !== inputPin) {
-            throw new Error('ไม่สามารถผูกบัญชี LINE ได้ กรุณาติดต่อผู้ดูแล');
-          }
-          lineEmployeeCode = binding.employeeCode;
-          lineReady = true;
+        if (lineReady && inputPin !== lineEmployeeCode) {
+          throw new Error('รหัสนี้ไม่ตรงกับบัญชี LINE ที่เคยลงทะเบียน');
         }
-        if (inputPin !== lineEmployeeCode) throw new Error('รหัสนี้ไม่ตรงกับบัญชี LINE ที่เคยลงทะเบียน');
         if (!supabaseClient) throw new Error('ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
-
-        const { data, error } = await supabaseClient
-          .from('guests')
-          .select('*')
-          .eq('employee_code', inputPin)
-          .maybeSingle();
-
+        const { data, error } = await supabaseClient.from('guests')
+          .select('employee_code,full_name,branch,morning_check_in,evening_check_in')
+          .eq('employee_code', inputPin).maybeSingle();
         if (error) throw error;
-
         if (!data) {
           showEmployeePinAlert('ไม่พบรหัสพนักงานนี้', 'กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ');
           return;
         }
-
         matchedGuest = data;
         closePinModal();
-        localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
-        await checkExistingLogin();
-        subscribeToGuestCheckIn(matchedGuest.employee_code);
-        if (firstLineBinding) {
-          showSuccessPopup(matchedGuest, 'binding');
-        } else if (matchedGuest.morning_check_in && matchedGuest.evening_check_in) {
-          // No QR after both rounds are completed.
-          await checkExistingLogin();
-        } else {
-          openQrPass(matchedGuest);
-        }
-
+        openVerifyModal(data);
       } catch (err) {
-        const code = String(err && err.message || '').toLowerCase();
-        if (code.includes('employee_not_found')) {
-          showEmployeePinAlert('ไม่พบรหัสพนักงานนี้', 'กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ');
-        } else if (code.includes('line_already_bound') || code.includes('employee_already_bound') || code.includes('already_bound_to_other') || code.includes('employee_bound') || code.includes('line_bound')) {
-          showEmployeePinAlert('รหัสนี้ผูกบัญชี LINE แล้ว', 'กรุณาติดต่อเจ้าหน้าที่เพื่อขอปลดการผูกบัญชี LINE', 'ตกลง');
-        } else if (code.includes('rate_limited')) {
-          showEmployeePinAlert('ลองกรอกรหัสบ่อยเกินไป', 'กรุณารอสักครู่ แล้วลองใหม่อีกครั้งค่ะ', 'ตกลง');
-        } else if (code.includes('ไม่ตรงกับบัญชี line')) {
+        const code = String(err?.message || '');
+        if (code.includes('ไม่ตรงกับบัญชี LINE')) {
           showEmployeePinAlert('บัญชี LINE นี้ลงทะเบียนแล้ว', 'กรุณาใช้รหัสพนักงานที่เคยลงทะเบียน หรือติดต่อเจ้าหน้าที่', 'ตกลง');
         } else {
-          showEmployeePinAlert('ไม่สามารถตรวจสอบรหัสได้', 'กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองใหม่อีกครั้ง หากยังไม่สำเร็จให้ติดต่อเจ้าหน้าที่', 'ลองใหม่อีกครั้ง');
+          showEmployeePinAlert('ไม่สามารถตรวจสอบรหัสได้', 'กรุณาลองใหม่อีกครั้ง หากยังไม่สำเร็จให้ติดต่อเจ้าหน้าที่', 'ลองใหม่อีกครั้ง');
+          console.warn('Employee preview failed:', err?.message || 'unknown');
         }
-      } finally {
-        employeePinChecking = false;
-      }
+      } finally { employeePinChecking = false; }
     }
 
     function openVerifyModal(guest) {
@@ -772,19 +737,37 @@
       openPinModal();
     }
 
-    // กดยืนยันข้อมูล -> บันทึกผูก device_token กับ Supabase
+    let registrationConfirming = false;
+    // Step 3 -> 4: bind LINE only AFTER the employee confirms the displayed identity.
     async function confirmGuestRegistration() {
-      if (!['morning', 'evening'].includes(getActiveRound())) { document.getElementById('verifyModal').classList.add('hidden'); return; }
-      const active = getActiveRound();
-      if (active !== 'morning' && active !== 'evening') { document.getElementById('verifyModal').classList.add('hidden'); showTimeRestriction(active); return; }
-      document.getElementById('verifyModal').classList.add('hidden');
-      if (!lineReady || !matchedGuest || matchedGuest.employee_code !== lineEmployeeCode) return;
-      // LINE binding is managed exclusively by the secure Edge Function.
-      localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
-
-      openQrPass(matchedGuest);
-      subscribeToGuestCheckIn(matchedGuest.employee_code);
-      checkExistingLogin();
+      if (registrationConfirming || !matchedGuest || !lineVerified) return;
+      const guest = matchedGuest;
+      const button = document.getElementById('confirmRegistrationButton');
+      registrationConfirming = true;
+      if (button) { button.disabled = true; button.textContent = 'กำลังยืนยันข้อมูล…'; }
+      try {
+        if (!lineReady) {
+          const binding = await lineAuthRequest('bind_pin', guest.employee_code);
+          if (!binding?.linked || binding.employeeCode !== guest.employee_code) {
+            throw new Error('ไม่สามารถผูกบัญชี LINE ได้ กรุณาติดต่อเจ้าหน้าที่');
+          }
+          lineEmployeeCode = binding.employeeCode;
+          lineReady = true;
+        }
+        if (guest.employee_code !== lineEmployeeCode) throw new Error('รหัสไม่ตรงกับบัญชี LINE');
+        localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
+        document.getElementById('verifyModal').classList.add('hidden');
+        await checkExistingLogin();
+        subscribeToGuestCheckIn(guest.employee_code);
+        // No success/fireworks before a real check-in. Open the original purple/gold QR modal.
+        await openQrPass(matchedGuest || guest);
+      } catch (err) {
+        console.warn('Employee confirmation failed:', err?.message || 'unknown');
+        showEmployeePinAlert('ยืนยันข้อมูลไม่สำเร็จ', String(err?.message || 'กรุณาลองใหม่อีกครั้ง'), 'ตกลง');
+      } finally {
+        registrationConfirming = false;
+        if (button) { button.disabled = false; button.innerHTML = '<span>✅</span><span>ข้อมูลถูกต้อง ยืนยันการลงทะเบียน</span>'; }
+      }
     }
 
     function getEventClock() {
@@ -991,7 +974,8 @@
           return;
         }
         if (guest.morning_check_in && guest.evening_check_in) return;
-        // Do not open the QR modal until the signed QR has been received.
+        // Fetch a freshly signed CLT2 payload on every opening; countdown is only visual.
+        qrCurrentPayload = null;
         await prepareStableQr();
         if (openId !== qrOpenSequence) return;
         const round = refreshTimeAccessNotice();
@@ -1075,7 +1059,7 @@
       qrTimerInterval = null;
       ++qrOpenSequence;
       qrCountdownStartMs = 0;
-      // Keep QR in memory until page reload; line-auth issues the same CLT2 on reload.
+      qrCurrentPayload = null; // Never reuse a previous display payload.
     }
 
     // ฟังก์ชัน Realtime: ดักฟังเมื่อแอดมินกด "ปลดล็อก" หรือสแกนเช็คอินสำเร็จ
@@ -1234,8 +1218,8 @@
       const isCheckin = mode === 'checkin';
       const modal = document.getElementById('successModal');
       modal.dataset.mode = isCheckin ? 'checkin' : 'binding';
-      document.getElementById('successTitle').textContent = isCheckin ? '✅ เช็คอินสำเร็จ!' : 'ลงทะเบียนเรียบร้อยแล้ว!';
-      document.getElementById('successButtonLabel').textContent = isCheckin ? 'เชิญเข้าสู่งาน' : 'ดูบัตร QR Code';
+      document.getElementById('successTitle').textContent = isCheckin ? 'ลงทะเบียนเรียบร้อยแล้ว!' : 'ยืนยันข้อมูลสำเร็จ';
+      document.getElementById('successButtonLabel').textContent = isCheckin ? 'เข้าสู่งานเลี้ยง' : 'ดูบัตร QR Code';
       document.getElementById('sName').textContent = guest.full_name || '-';
       document.getElementById('sBranch').textContent = guest.branch || 'สำนักงานใหญ่';
       document.getElementById('sRound').textContent = mode === 'binding'
