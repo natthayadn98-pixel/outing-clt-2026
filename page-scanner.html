@@ -302,7 +302,9 @@
     function submitGunInput() {
       if (!gunInputEl || currentScanMode !== 'gun') return;
       clearTimeout(gunInputTimer);
-      const code = convertThaiKeyToEnglish(gunInputEl.value.trim());
+      const rawCode = gunInputEl.value.trim();
+       const code = /^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(rawCode)
+         ? rawCode : convertThaiKeyToEnglish(rawCode);
       if (!code) return;
       // ไม่ล้างข้อมูลที่ยังมาไม่ครบ เพื่อให้เครื่องยิงที่ส่งช้ากว่าสามารถส่งต่อได้
       // A complete USB scan ends with Enter/Tab. Reject malformed input instead of leaving it in the field.
