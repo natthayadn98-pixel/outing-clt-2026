@@ -34,8 +34,48 @@
     /* Let the search card follow its content instead of stretching to the iframe height. */
     body { align-items: flex-start !important; }
     body > section { flex: 0 0 auto; height: auto !important; min-height: 0 !important; align-self: flex-start; }
-    #tabSearchResultsContainer { max-height: none !important; overflow: visible !important; padding-right: 0; }
+
     @media (max-width: 640px) { body { padding: 12px; } body > section { padding: 20px 16px; } }
+
+    /* Search dashboard: compact fixed-height results viewport, independent scrolling */
+    html,body{width:100%;min-height:100%;}
+    body{display:block!important;padding:18px clamp(12px,2vw,32px)!important;background:transparent!important;overflow-x:hidden;}
+    body>section{width:min(100%,1250px)!important;max-width:1250px!important;margin:0 auto!important;height:auto!important;min-height:0!important;padding:0!important;overflow:hidden;border-radius:24px!important;background:var(--clt-search-surface,#fffdf9)!important;border:1px solid #e7dfd1!important;box-shadow:0 12px 35px rgba(34,43,67,.08)!important;color:#243047!important;}
+    .clt-search-header{padding:22px 26px 13px;background:linear-gradient(125deg,#fffdf7,#fff7e6 60%,#fffdf9);text-align:center;border-bottom:1px solid #f2e9d9;}
+    .clt-search-header h2{color:#99600a!important;font-size:clamp(21px,2vw,28px)!important;font-weight:800;}
+    .clt-search-header p{color:#68748a!important;}
+    .clt-search-controls{padding:17px 22px 12px;background:#fff;}
+    .clt-search-field{border:1.5px solid #eebc55!important;box-shadow:0 3px 13px rgba(199,149,54,.10)!important;background:#fff!important;}
+    .clt-search-controls input{color:#23314d!important;}
+    .clt-search-help{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 13px;margin-top:12px;border-radius:13px;background:#fff9e9;color:#775f37;font-size:12px;}
+    .clt-search-count{white-space:nowrap;border-radius:100px;background:#ffebad;padding:5px 12px;font-weight:800;color:#80550a;}
+    .clt-table-wrap{padding:0 22px 20px;background:#fff;}
+    .clt-table-head{display:grid;grid-template-columns:minmax(220px,2.25fr) minmax(95px,.85fr) minmax(95px,.8fr) minmax(150px,1.35fr) minmax(270px,2.2fr);gap:10px;align-items:center;background:#ffe6a0;border:1px solid #f2d48b;border-radius:12px 12px 0 0;padding:11px 14px;font-size:12px;font-weight:800;color:#674916;}
+    #tabSearchResultsContainer{max-height:min(58vh,540px)!important;min-height:90px;overflow-y:auto!important;overflow-x:hidden!important;padding:5px 3px 8px!important;scrollbar-gutter:stable;scrollbar-color:#b79bd3 #f5f1f9;}
+    .clt-result-row{display:grid;grid-template-columns:minmax(220px,2.25fr) minmax(95px,.85fr) minmax(95px,.8fr) minmax(150px,1.35fr) minmax(270px,2.2fr);gap:10px;align-items:center;padding:11px 12px;margin:5px 0;border:1px solid #e6eaf0;border-left:4px solid #f3c55e;border-radius:12px;background:#fff;box-shadow:0 3px 9px rgba(24,39,65,.045);color:#263550;}
+    .clt-result-row:hover{background:#fffcf5;border-color:#ebd6a8;}
+    .clt-person-name{font-weight:800;color:#91600d;font-size:14px;overflow-wrap:anywhere;}
+    .clt-person-branch{font-size:11px;color:#67758a;}
+    .clt-person-code,.clt-person-location{font-size:12px;color:#39465b;overflow-wrap:anywhere;}
+    .clt-check-state{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:11px;color:#45546d;}
+    .clt-state-pill{display:inline-block;border-radius:50px;padding:3px 8px;background:#fef3c7;color:#805c0c;}
+    .clt-state-pill.evening{background:#dff4ff;color:#176087;}
+    .clt-row-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px;}
+    .clt-row-actions button{border-radius:11px!important;font-size:11px!important;padding:8px 10px!important;min-height:35px;white-space:nowrap;font-weight:800;}
+    .clt-row-actions .clt-unbind-button{background:linear-gradient(110deg,#ff963d,#f06b22)!important;color:#fff!important;}
+    #unlockNotifyAlert{margin:0 22px 10px;}
+    @media(max-width:1100px){.clt-table-head,.clt-result-row{grid-template-columns:minmax(170px,2fr) minmax(78px,.7fr) minmax(135px,1.3fr) minmax(260px,2.2fr)}.clt-col-branch{display:none}}
+    @media(max-width:720px){body{padding:10px!important}.clt-search-header{padding:17px 12px 12px}.clt-search-controls{padding:12px}.clt-table-wrap{padding:0 12px 14px}.clt-table-head{display:none}.clt-result-row{grid-template-columns:1fr 1fr;gap:8px;padding:12px}.clt-col-name{grid-column:1/-1}.clt-col-branch{display:block}.clt-col-state{grid-column:1/-1}.clt-row-actions{grid-column:1/-1;justify-content:flex-start}.clt-search-help{font-size:11px;flex-wrap:wrap}#tabSearchResultsContainer{max-height:min(58vh,560px)!important}}
+    [data-admin-theme="dark"] body>section{background:#1c1630!important;border-color:#4a3a61!important;color:#f1e9ff!important}
+    [data-admin-theme="dark"] .clt-search-header{background:linear-gradient(125deg,#281c38,#302139);border-color:#4c395a}
+    [data-admin-theme="dark"] .clt-search-header h2{color:#f4c96d!important}
+    [data-admin-theme="dark"] .clt-search-header p{color:#d3c4e0!important}
+    [data-admin-theme="dark"] .clt-search-controls,[data-admin-theme="dark"] .clt-table-wrap{background:#1c1630}
+    [data-admin-theme="dark"] .clt-search-help{background:#352844;color:#f1d9a6}
+    [data-admin-theme="dark"] .clt-result-row{background:#291f3d;border-color:#57446b;color:#f1e9ff}
+    [data-admin-theme="dark"] .clt-person-name{color:#f6cd7d}
+    [data-admin-theme="dark"] .clt-person-branch,[data-admin-theme="dark"] .clt-person-code,[data-admin-theme="dark"] .clt-person-location,[data-admin-theme="dark"] .clt-check-state{color:#ded0ee}
+
   </style>
 
   <style>
@@ -73,15 +113,16 @@
 </head>
 <body class="w-full">
 
-  <section class="w-full max-w-3xl h-auto self-start bg-[#14082e]/95 border border-[#3c1d77] rounded-3xl p-6 sm:p-10 card-glow backdrop-blur-xl">
-    <div class="text-center mb-6">
+  <section class="clt-search-panel">
+    <div class="clt-search-header">
       <h2 class="text-2xl sm:text-3xl font-bold text-amber-300">ค้นหารายชื่อผู้เข้างาน</h2>
       <p class="text-xs sm:text-sm text-purple-300/80 mt-1.5">ค้นหาพนักงานและจัดการการผูก LINE โดยเจ้าหน้าที่ • ไม่ลบประวัติเช็คอิน</p>
     </div>
 
+    <div class="clt-search-controls">
     <!-- ช่องค้นหา -->
     <div class="relative mb-4">
-      <div class="flex items-center bg-white rounded-2xl border-2 border-amber-400 px-4 py-2.5 shadow-lg">
+      <div class="clt-search-field flex items-center bg-white rounded-2xl border-2 border-amber-400 px-4 py-2.5 shadow-lg">
         <input 
           type="text" 
           id="searchInputTab" 
@@ -96,15 +137,21 @@
       </div>
     </div>
 
+    <div class="clt-search-help"><span>💡 ค้นหาได้จากชื่อ นามสกุล รหัสพนักงาน หรือสาขา</span><span id="cltSearchCount" class="clt-search-count">เริ่มค้นหา</span></div>
+    </div>
+
     <!-- แถบแจ้งเตือนส่งคำสั่งปลดล็อกสำเร็จ -->
     <div id="unlockNotifyAlert" class="hidden mb-4 p-3 rounded-xl bg-[#0f0728] border border-emerald-500/40 text-emerald-400 text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-lg transition-all duration-300">
       <span class="text-base">✅</span>
       <span id="unlockNotifyText">ปลดการผูก LINE สำเร็จ</span>
     </div>
 
-    <!-- ผลการค้นหา -->
-    <div id="tabSearchResultsContainer" class="space-y-3.5 overflow-visible">
+    <!-- ผลการค้นหา: เลื่อนเฉพาะรายการ ไม่เลื่อนช่องค้นหา -->
+    <div class="clt-table-wrap">
+    <div class="clt-table-head"><span>ชื่อ–นามสกุล</span><span>รหัสพนักงาน</span><span class="clt-col-branch">สาขา</span><span>สถานะเช็คอิน</span><span style="text-align:right">จัดการ</span></div>
+    <div id="tabSearchResultsContainer" aria-live="polite">
       <div class="text-center py-12 text-purple-400/60 text-xs sm:text-sm">พิมพ์รหัสพนักงานหรือชื่อเพื่อค้นหาข้อมูล</div>
+    </div>
     </div>
   </section>
 
@@ -176,8 +223,10 @@
     function handleTabSearch() {
       const q = document.getElementById('searchInputTab').value.trim().toLowerCase();
       const container = document.getElementById('tabSearchResultsContainer');
+      const countEl = document.getElementById('cltSearchCount');
       
       if (!q) {
+        countEl.textContent = 'เริ่มค้นหา';
         container.innerHTML = '<div class="text-center py-12 text-purple-400/60 text-xs sm:text-sm">พิมพ์รหัสพนักงานหรือชื่อเพื่อค้นหาข้อมูล</div>';
         return;
       }
@@ -188,6 +237,7 @@
         (g.branch && String(g.branch).toLowerCase().includes(q))
       );
 
+      countEl.textContent = 'พบ ' + filtered.length.toLocaleString('th-TH') + ' คน';
       if (filtered.length === 0) {
         container.innerHTML = '<div class="text-center py-12 text-rose-400/80 text-xs sm:text-sm">ไม่พบรายชื่อผู้เข้างานที่ตรงกับคำค้นหา</div>';
         return;
@@ -196,68 +246,22 @@
       container.innerHTML = filtered.map(item => {
         const isMorning = !!item.morning_check_in;
         const isEvening = !!item.evening_check_in;
-
+        const code = escapeHTML(item.employee_code);
         return `
-          <div class="relative bg-[#0d0421] border border-purple-800/80 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg hover:border-amber-400/50 transition">
-            
-            <div class="flex items-start gap-2.5 min-w-0 flex-1">
-              <div class="w-1.5 self-stretch bg-amber-400 rounded-full shrink-0"></div>
-              <div class="min-w-0 pr-1">
-                <div class="flex items-baseline flex-wrap gap-x-1.5">
-                  <h3 class="text-sm sm:text-base font-bold text-amber-300 truncate">
-                    ${escapeHTML(item.full_name)}
-                  </h3>
-                  <span class="text-xs text-purple-300 font-normal whitespace-nowrap">
-                    (${escapeHTML(item.branch || 'สำนักงานใหญ่')})
-                  </span>
-                </div>
-                <p class="text-xs text-purple-300 font-mono mt-0.5">
-                  รหัส: ${escapeHTML(item.employee_code)}
-                </p>
-                <div class="flex gap-2 text-[10px] sm:text-[11px] font-mono mt-0.5 text-purple-400">
-                  <span>เช้า: ${item.morning_check_in || '-'}</span> | 
-                  <span>เย็น: ${item.evening_check_in || '-'}</span>
-                </div>
-              </div>
+          <div class="clt-result-row">
+            <div class="clt-col-name"><div class="clt-person-name">${escapeHTML(item.full_name)}</div><div class="clt-person-branch">${escapeHTML(item.branch || 'สำนักงานใหญ่')}</div></div>
+            <div class="clt-person-code">${code}</div>
+            <div class="clt-col-branch clt-person-location">${escapeHTML(item.branch || 'สำนักงานใหญ่')}</div>
+            <div class="clt-col-state clt-check-state">
+              <span class="clt-state-pill">☀️ เช้า: ${escapeHTML(item.morning_check_in || '-')}</span>
+              <span class="clt-state-pill evening">🌙 เย็น: ${escapeHTML(item.evening_check_in || '-')}</span>
             </div>
-
-            <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center flex-nowrap">
-              <button 
-                onclick="checkInRoundManual('${item.employee_code}', 'morning')" 
-                class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow whitespace-nowrap ${
-                  isMorning 
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/60' 
-                    : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 active:scale-95'
-                }"
-              >
-                <span>🟡</span>
-                <span>${isMorning ? 'เช้า (เช็คแล้ว)' : 'เช้า'}</span>
-              </button>
-
-              <button 
-                onclick="checkInRoundManual('${item.employee_code}', 'evening')" 
-                class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow whitespace-nowrap ${
-                  isEvening 
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/60' 
-                    : 'bg-gradient-to-r from-cyan-400 to-sky-500 hover:from-cyan-300 text-slate-950 active:scale-95'
-                }"
-              >
-                <span>🌙</span>
-                <span>${isEvening ? 'เย็น (เช็คแล้ว)' : 'เย็น'}</span>
-              </button>
-
-              <button 
-                onclick="unlockDeviceManual('${item.employee_code}')" 
-                class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 text-white transition flex items-center gap-1 shadow active:scale-95 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-                title="ปลดเฉพาะการผูก LINE ของพนักงานนี้ โดยไม่ลบประวัติเช็คอิน"
-              >
-                <span>🔓</span>
-                <span>${lineBindings.has(String(item.employee_code)) ? 'ปลดผูก LINE' : 'ตรวจสอบ/ปลด LINE'}</span>
-              </button>
+            <div class="clt-row-actions">
+              <button type="button" onclick="checkInRoundManual('${code}', 'morning')" class="${isMorning ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-300 text-slate-900 hover:bg-amber-200'}">☀️ ${isMorning ? 'เช็คแล้ว' : 'เช้า'}</button>
+              <button type="button" onclick="checkInRoundManual('${code}', 'evening')" class="${isEvening ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-400 text-slate-900 hover:bg-sky-300'}">🌙 ${isEvening ? 'เช็คแล้ว' : 'เย็น'}</button>
+              <button type="button" onclick="unlockDeviceManual('${code}')" class="clt-unbind-button" title="ตรวจสอบหรือปลดการผูก LINE โดยไม่ลบประวัติเช็คอิน">🔓 ${lineBindings.has(String(item.employee_code)) ? 'ปลดผูก LINE' : 'ตรวจสอบ/ปลด LINE'}</button>
             </div>
-
-          </div>
-        `;
+          </div>`;
       }).join('');
     }
 
