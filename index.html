@@ -265,6 +265,33 @@
     #successModal[data-mode="binding"] .clt-success-subtitle { margin-bottom:16px; }
     @media (prefers-reduced-motion:reduce) { #successFireworks { display:none; } }
 
+
+    /* CLT 2569 — youthful champagne/lavender luxury confirmation */
+    #successModal { background:radial-gradient(ellipse at 50% 12%,#7954a17a,transparent 48%),linear-gradient(155deg,#140e2c 0%,#34224d 55%,#160e2c 100%)!important; }
+    #successModal .clt-success-card {
+      color:#241b3e!important; background:linear-gradient(150deg,rgba(255,255,255,.97),rgba(249,241,255,.96) 64%,rgba(255,246,234,.97))!important;
+      border:1px solid rgba(245,204,145,.85)!important; border-radius:30px!important;
+      box-shadow:0 22px 75px #06001888,0 0 0 5px #ffffff10!important;
+      padding:25px 20px 22px!important;
+    }
+    #successModal .clt-party-brand {display:flex;flex-direction:column;align-items:center;gap:0;margin-bottom:13px;letter-spacing:.13em;color:#a47a48;}
+    #successModal .clt-party-brand strong {font-family:Georgia,serif;font-size:34px;line-height:1.1;font-weight:500;letter-spacing:.08em;}
+    #successModal .clt-party-brand strong span {font-size:25px;}
+    #successModal .clt-party-brand small {font-size:9px;letter-spacing:.34em;font-weight:800;}
+    #successModal .clt-party-crown {color:#bb8e51;font-size:20px;line-height:1.1;}
+    #successModal .clt-success-medal {width:65px;height:65px;display:grid;place-items:center;margin:0 auto 14px;border-radius:50%;font-size:37px;font-weight:800;color:white;background:linear-gradient(135deg,#d5b5fa,#8255c8);border:4px solid #fff;box-shadow:0 5px 22px #a684d56b;}
+    #successModal .clt-welcome-title {color:#3b2864;font-size:clamp(19px,5vw,23px);font-weight:800;line-height:1.4;text-shadow:none;margin:0 0 9px;}
+    #successModal .clt-welcome-title span {font-family:Georgia,serif;font-size:29px;font-weight:600;color:#a87b45;letter-spacing:.03em;}
+    #successModal .clt-success-subtitle {display:inline-block;color:#7652b7;background:#eee2ff;border-radius:99px;padding:8px 16px;font-size:14px;margin-bottom:17px;}
+    #successModal .clt-guest-details {background:#ffffffc7;border:1px solid #e8dcf1;box-shadow:0 5px 15px #4c28710b;color:#3c3350;}
+    #successModal .clt-guest-details > div {font-size:13px;line-height:1.65;}
+    #successModal .clt-guest-name {color:#38245c;}
+    #successModal .clt-guest-round {color:#7954b4;}
+    #successModal .clt-party-enter {background:linear-gradient(110deg,#e8b96b,#ffe2a0 49%,#d6a14d);color:#342344;box-shadow:0 8px 24px #c6965660;border:1px solid #d4a155;font-size:15px;}
+    #successModal .clt-party-enter:hover {filter:brightness(1.05);}
+    #successModal[data-mode="binding"] .clt-success-medal {display:none;}
+    @media (max-height:720px) {#successModal .clt-success-card{padding:16px!important;}#successModal .clt-party-brand{margin-bottom:7px;}#successModal .clt-success-medal{width:48px;height:48px;font-size:27px;margin-bottom:8px;} }
+
     /* Minimal dark-plum and gold: independent rounded employee PIN cells */
     .clt-pin-cells { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:7px; width:100%; }
     .clt-pin-cell { display:flex; align-items:center; justify-content:center; min-width:0; height:48px;
@@ -551,14 +578,16 @@
   <!-- ================= MODAL 4: แจ้งลงทะเบียนสำเร็จ ================= -->
   <div id="successModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4" data-mode="binding">
     <canvas id="successFireworks" aria-hidden="true"></canvas>
-    <div class="clt-success-card w-full max-w-[360px] rounded-3xl bg-[#131b2e] border-2 border-emerald-500 p-6 shadow-2xl text-white text-center">
-      <div class="clt-welcome-title">✨ ยินดีต้อนรับสู่งานสังสรรค์ CLT 2569 ✨</div>
+    <div class="clt-success-card w-full max-w-[360px] rounded-3xl p-6 shadow-2xl text-center">
+      <div class="clt-party-brand"><span class="clt-party-crown">✦</span><strong>CLT <span>2569</span></strong><small>COMPANY PARTY</small></div>
+      <div class="clt-success-medal" aria-hidden="true">✓</div>
+      <div class="clt-welcome-title">ยินดีต้อนรับสู่งานสังสรรค์<br><span>CLT 2569</span></div>
       <h3 id="successTitle" class="clt-success-subtitle">ลงทะเบียนเรียบร้อยแล้ว!</h3>
 
-      <div class="p-3.5 rounded-2xl bg-[#0f172a] border border-slate-800 text-left text-xs space-y-2 mb-5">
+      <div class="clt-guest-details p-3.5 rounded-2xl text-left text-xs space-y-2 mb-5">
         <div class="flex items-center gap-2">
           <span>👤</span>
-          <span><b>ชื่อ-สกุล:</b> <span id="sName" class="text-amber-300 font-bold">-</span></span>
+          <span><b>ชื่อ-สกุล:</b> <span id="sName" class="clt-guest-name font-bold">-</span></span>
         </div>
         <div class="flex items-center gap-2">
           <span>🏢</span>
@@ -566,15 +595,15 @@
         </div>
         <div class="flex items-center gap-2">
           <span>⏰</span>
-          <span><b>รอบ:</b> <span id="sRound" class="text-emerald-300 font-semibold">-</span></span>
+          <span><b>รอบ:</b> <span id="sRound" class="clt-guest-round font-semibold">-</span></span>
         </div>
       </div>
 
-      <button onclick="enterPartyPass()" class="w-full py-3.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/25 transition active:scale-95 flex items-center justify-center gap-2">
+      <button onclick="enterPartyPass()" class="clt-party-enter w-full py-3.5 rounded-xl font-bold text-xs sm:text-sm transition active:scale-95 flex items-center justify-center gap-2">
         <span>🎉</span>
         <span id="successButtonLabel">ดูบัตรเข้างาน</span>
       </button>
-      <button type="button" id="celebrationSoundToggle" class="clt-sound-toggle hidden" onclick="toggleCelebrationSound(event)" aria-label="เปิดหรือปิดเสียงฉลอง">🔊 เปิดเสียงฉลอง</button>
+
     </div>
   </div>
 
@@ -1220,15 +1249,6 @@
         });
       } catch (e) { /* Silent celebration if audio is blocked. */ }
     }
-    function toggleCelebrationSound(event) {
-      if (event) event.stopPropagation();
-      celebrationSoundEnabled = !celebrationSoundEnabled;
-      const btn = document.getElementById('celebrationSoundToggle');
-      btn.textContent = celebrationSoundEnabled ? '🔊 เปิดเสียงฉลอง' : '🔇 ปิดเสียงฉลอง';
-      btn.setAttribute('aria-pressed', String(celebrationSoundEnabled));
-      if (celebrationSoundEnabled) { unlockCelebrationAudio(); playCelebrationSound(); }
-    }
-
     function stopSuccessFireworks() {
       if (fireworksAnimationId) cancelAnimationFrame(fireworksAnimationId);
       fireworksAnimationId = 0;
@@ -1249,9 +1269,8 @@
       canvas.width = Math.round(width * scale);
       canvas.height = Math.round(height * scale);
       ctx.setTransform(scale,0,0,scale,0,0);
-      const colors = ['#f4c76e','#ffe6a1','#10b981','#6ee7b7','#ffffff'];
-      const start = performance.now();
-      let burstCount = 0;
+      const colors = ['#f4c76e','#ffe6a1','#e7b7ff','#b68cff','#ffffff'];
+      let lastBurst = -1000;
       function burst(x,y) {
         for (let i=0; i<38; i++) {
           const angle = (Math.PI*2*i/38) + Math.random()*0.12;
@@ -1260,10 +1279,9 @@
         }
       }
       function frame(now) {
-        const elapsed = now-start;
-        if (elapsed < 1700 && burstCount < Math.floor(elapsed/340)+1) {
-          burst(width*(0.2+Math.random()*0.6),height*(0.15+Math.random()*0.35));
-          burstCount++;
+        if (now - lastBurst >= 430) {
+          burst(width*(0.12+Math.random()*0.76),height*(0.08+Math.random()*0.48));
+          lastBurst = now;
         }
         ctx.clearRect(0,0,width,height);
         fireworksParticles = fireworksParticles.filter(p => p.life > 0);
@@ -1273,7 +1291,7 @@
           ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
         }
         ctx.globalAlpha=1;
-        if (elapsed < 2900 && !document.getElementById('successModal').classList.contains('hidden')) {
+        if (!document.getElementById('successModal').classList.contains('hidden')) {
           fireworksAnimationId=requestAnimationFrame(frame);
         } else { stopSuccessFireworks(); }
       }
@@ -1291,15 +1309,14 @@
       document.getElementById('sBranch').textContent = guest.branch || 'สำนักงานใหญ่';
       document.getElementById('sRound').textContent = mode === 'binding'
         ? (getActiveRound() === 'morning' ? 'รอบเช้า' : 'รอบเย็น') : roundText;
-      document.getElementById('celebrationSoundToggle').classList.toggle('hidden', !isCheckin);
+
       modal.classList.remove('hidden');
       if (isCheckin) {
         const checkinKey = String(guest.employee_code || '') + ':' + String(roundText || '');
-        if (lastCelebratedCheckinKey !== checkinKey) {
-          lastCelebratedCheckinKey = checkinKey;
-          startSuccessFireworks();
-          playCelebrationSound();
-        }
+        lastCelebratedCheckinKey = checkinKey;
+        startSuccessFireworks();
+        unlockCelebrationAudio();
+        playCelebrationSound();
       } else { stopSuccessFireworks(); }
     }
     function enterPartyPass() {
