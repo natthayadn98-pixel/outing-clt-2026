@@ -606,11 +606,12 @@
     let inputPin = "";
     let matchedGuest = null;
     let qrTimerInterval = null;
-    const QR_LIFETIME_SECONDS = 45;
+    const QR_LIFETIME_SECONDS = 60;
     let remainingSeconds = 45;
     let qrIssuedAtMs = 0;
     let qrExpiresAtMs = 0;
     let qrCurrentPayload = null;
+    let qrRenewing = false;
     let qrCountdownStartMs = 0;
     let qrPreparationPromise = null;
     let qrOpenSequence = 0;
@@ -881,30 +882,38 @@
       alert(roundNotice(round));
     }
 
-    // CLT2: stable server-signed QR; 45-second timer is visual only.
+    // CLT3: server-signed QR expires after 60 seconds, renewed automatically.
     let qrRequestSequence = 0;
     let qrRequestInFlight = false;
     let qrServerOffsetMs = 0;
+    // Countdown uses the issuing server's clock, not the phone clock.
+    function qrServerNowMs() { return Date.now() + qrServerOffsetMs; }
     function setQrReady(ready, message = 'กำลังเตรียม QR Code…') {
       const shell = document.querySelector('#qrPassModal .smart-qr-shell');
       const label = document.getElementById('qrLoadingMessage');
       if (shell) shell.classList.toggle('qr-ready', Boolean(ready));
       if (label) { label.hidden = Boolean(ready); label.style.display = ready ? 'none' : 'block'; label.textContent = message; }
     }
-    // Fetch the server-issued QR when opening the pass; never reuse an old displayed signature.
-    async function prepareStableQr() {
-      if (qrCurrentPayload) return qrCurrentPayload;
+    async function prepareStableQr(force = false) {
+      if (!force && qrCurrentPayload && qrServerNowMs() < qrExpiresAtMs - 4000) return qrCurrentPayload;
       if (qrPreparationPromise) return qrPreparationPromise;
       qrPreparationPromise = (async () => {
+        const requestStartedAt = Date.now();
         const result = await lineAuthRequest('issue_qr');
+        const responseReceivedAt = Date.now();
         if (!result || typeof result.qr !== 'string' ||
-            !/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(result.qr)) {
-          throw new Error('line-auth ไม่ได้ส่ง CLT2 กลับมา');
+            !/^CLT3\.\d{6}\.\d+\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(result.qr)) {
+          throw new Error('line-auth ไม่ได้ส่ง CLT3 กลับมา');
         }
-        if (lineEmployeeCode && result.qr.split('.')[1] !== lineEmployeeCode) {
+        if (lineEmployeeCode && result.qr.split('.')[1] !== lineEmployeeCode)
           throw new Error('QR ไม่ตรงกับรหัสพนักงานที่ยืนยันผ่าน LINE');
-        }
+        const expires = Date.parse(result.expiresAt);
+        const serverTimeMs = Date.parse(result.serverTime);
+        if (!Number.isFinite(serverTimeMs)) throw new Error('ไม่ได้รับเวลาเซิร์ฟเวอร์');
+        qrServerOffsetMs = serverTimeMs - (requestStartedAt + responseReceivedAt) / 2;
+        if (!Number.isFinite(expires) || expires <= qrServerNowMs()) throw new Error('QR หมดอายุก่อนแสดงผล');
         qrCurrentPayload = result.qr;
+        qrExpiresAtMs = expires;
         return qrCurrentPayload;
       })();
       try { return await qrPreparationPromise; }
@@ -913,15 +922,33 @@
     async function generateDynamicQRCode(guest) {
       const container = document.getElementById('passQrCanvas');
       if (!container || !guest || document.getElementById('qrPassModal').classList.contains('hidden')) return;
-      if (qrCurrentPayload) { renderSignedQr(container); return; }
       try {
-        setQrReady(false, 'กำลังโหลด QR ประจำตัว…');
+        setQrReady(false, 'กำลังโหลด QR สด…');
         await prepareStableQr();
         if (!document.getElementById('qrPassModal').classList.contains('hidden')) renderSignedQr(container);
       } catch (err) {
         if (!document.getElementById('qrPassModal').classList.contains('hidden'))
           setQrReady(false, 'สร้าง QR ไม่สำเร็จ: ' + String(err.message || 'unknown').slice(0, 90));
       }
+    }
+    async function renewQrIfNeeded() {
+      const modal = document.getElementById('qrPassModal');
+      if (!modal || modal.classList.contains('hidden') || qrRenewing || !matchedGuest) return;
+      if (qrServerNowMs() < qrExpiresAtMs - 4500) return;
+      qrRenewing = true;
+      const previous = qrCurrentPayload;
+      try {
+        await prepareStableQr(true);
+        if (!modal.classList.contains('hidden') && previous !== qrCurrentPayload)
+          renderSignedQr(document.getElementById('passQrCanvas'));
+      } catch (err) {
+        // Never keep an expired image visible when the network is unavailable.
+        if (qrServerNowMs() >= qrExpiresAtMs - 1500) {
+          qrCurrentPayload = null;
+          document.getElementById('passQrCanvas')?.replaceChildren();
+          setQrReady(false, 'เชื่อมต่อไม่สำเร็จ กำลังขอ QR ใหม่…');
+        }
+      } finally { qrRenewing = false; }
     }
     function renderSignedQr(container) {
       if(!qrCurrentPayload) return;
@@ -985,9 +1012,9 @@
       const label = document.getElementById('qrRoundLabel');
       const round = getActiveRound();
       if (label) label.textContent = round === 'morning' ? '🌅 ใช้เช็คอินรอบเช้า' : round === 'evening' ? '🌙 ใช้เช็คอินรอบเย็น' : '🔒 ยังไม่อยู่ในเวลาเช็คอิน';
-      // Countdown loops without modifying the signed QR payload.
-      const elapsed = Math.floor(Math.max(0, Date.now() - qrCountdownStartMs) / 1000);
-      updateTimerUI(QR_LIFETIME_SECONDS - (elapsed % QR_LIFETIME_SECONDS));
+      const remaining = Math.max(0, Math.ceil((qrExpiresAtMs - qrServerNowMs()) / 1000));
+      updateTimerUI(remaining);
+      if (qrServerNowMs() >= qrExpiresAtMs - 4500) renewQrIfNeeded();
     }
 
     // Always re-read current session state before showing a new QR.
@@ -1011,8 +1038,9 @@
           return;
         }
         if (guest.morning_check_in && guest.evening_check_in) return;
-        // Fetch a freshly signed CLT2 payload on every opening; countdown is only visual.
+        // Fetch a fresh expiring CLT3 QR each time the pass opens.
         qrCurrentPayload = null;
+        qrExpiresAtMs = 0;
         await prepareStableQr();
         if (openId !== qrOpenSequence) return;
         const round = refreshTimeAccessNotice();
@@ -1071,12 +1099,13 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') {
         releaseQrWakeLock();
-        // Keep the stable CLT2 QR available when returning to LINE.
+        // QR expires on the server even if LINE is backgrounded.
       } else {
         const modal = document.getElementById('qrPassModal');
         if (modal && !modal.classList.contains('hidden') && matchedGuest) {
           const round = getActiveRound();
-          if (qrCurrentPayload) renderSignedQr(document.getElementById('passQrCanvas'));
+          if (qrCurrentPayload && qrServerNowMs() < qrExpiresAtMs) renderSignedQr(document.getElementById('passQrCanvas'));
+          renewQrIfNeeded();
         }
       }
     });
@@ -1097,6 +1126,7 @@
       ++qrOpenSequence;
       qrCountdownStartMs = 0;
       qrCurrentPayload = null; // Never reuse a previous display payload.
+      qrExpiresAtMs = 0;
     }
 
     // ฟังก์ชัน Realtime: ดักฟังเมื่อแอดมินกด "ปลดล็อก" หรือสแกนเช็คอินสำเร็จ

@@ -302,13 +302,11 @@
     function submitGunInput() {
       if (!gunInputEl || currentScanMode !== 'gun') return;
       clearTimeout(gunInputTimer);
-      const rawCode = gunInputEl.value.trim();
-       const code = /^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(rawCode)
-         ? rawCode : convertThaiKeyToEnglish(rawCode);
+      const code = convertThaiKeyToEnglish(gunInputEl.value.trim());
       if (!code) return;
       // ไม่ล้างข้อมูลที่ยังมาไม่ครบ เพื่อให้เครื่องยิงที่ส่งช้ากว่าสามารถส่งต่อได้
       // A complete USB scan ends with Enter/Tab. Reject malformed input instead of leaving it in the field.
-      if (!/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(code)) {
+      if (!/^CLT3\.\d{6}\.\d+\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(code)) {
         if (code.length >= 17) { gunInputEl.value = ''; enqueueScan(code); }
         return;
       }
@@ -382,7 +380,7 @@
         hideScanResultLater();
       };
       const qr=String(scannedValue||'').trim();
-      if(!/^CLT2\.\d{6}\.\d+\.[A-Za-z0-9_-]{43}$/.test(qr)) {show('❌ QR ไม่ถูกต้อง กรุณาเปิด QR ใหม่ใน LINE','error');return;}
+      if(!/^CLT3\.\d{6}\.\d+\.\d{10}\.[A-Za-z0-9_-]{43}$/.test(qr)) {show('❌ QR ไม่ถูกต้อง กรุณาเปิด QR ใหม่ใน LINE','error');return;}
       try {
         const session=await supabaseClient.auth.getSession();
         const jwt=session.data?.session?.access_token;
