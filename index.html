@@ -871,9 +871,9 @@
       if (shell) shell.classList.toggle('qr-ready', Boolean(ready));
       if (label) { label.hidden = Boolean(ready); label.style.display = ready ? 'none' : 'block'; label.textContent = message; }
     }
-    // Fetch once per page session. Closing/reopening the pass does not change its QR.
-    async function prepareStableQr() {
-      if (qrCurrentPayload) return qrCurrentPayload;
+    // Refresh the signed QR from line-auth on each new pass opening; never reuse an old in-memory QR.
+    async function prepareStableQr(forceRefresh = false) {
+      if (!forceRefresh && qrCurrentPayload) return qrCurrentPayload;
       if (qrPreparationPromise) return qrPreparationPromise;
       qrPreparationPromise = (async () => {
         const result = await lineAuthRequest('issue_qr');
@@ -992,7 +992,7 @@
         }
         if (guest.morning_check_in && guest.evening_check_in) return;
         // Do not open the QR modal until the signed QR has been received.
-        await prepareStableQr();
+        await prepareStableQr(true);
         if (openId !== qrOpenSequence) return;
         const round = refreshTimeAccessNotice();
         document.getElementById('passName').textContent = guest.full_name;
@@ -1075,7 +1075,7 @@
       qrTimerInterval = null;
       ++qrOpenSequence;
       qrCountdownStartMs = 0;
-      // Keep QR in memory until page reload; line-auth issues the same CLT2 on reload.
+      // The next opening requests a fresh signed QR from line-auth.
     }
 
     // ฟังก์ชัน Realtime: ดักฟังเมื่อแอดมินกด "ปลดล็อก" หรือสแกนเช็คอินสำเร็จ
