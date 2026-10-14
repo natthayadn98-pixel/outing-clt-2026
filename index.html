@@ -264,6 +264,36 @@
     #successModal[data-mode="binding"] .clt-welcome-title { display:none; }
     #successModal[data-mode="binding"] .clt-success-subtitle { margin-bottom:16px; }
     @media (prefers-reduced-motion:reduce) { #successFireworks { display:none; } }
+
+    /* Minimal dark-plum and gold: independent rounded employee PIN cells */
+    .clt-pin-cells { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:7px; width:100%; }
+    .clt-pin-cell { display:flex; align-items:center; justify-content:center; min-width:0; height:48px;
+      border-radius:12px; border:1px solid #73546a; background:#261629; color:#96778e;
+      font-size:23px; font-weight:750; font-variant-numeric:tabular-nums;
+      box-shadow:inset 0 1px 2px #00000038; transition:border-color .15s,background .15s,box-shadow .15s; }
+    .clt-pin-cell.filled { background:#38233a; color:#ffe29b; border-color:#e5b85b; }
+    .clt-pin-cell.next { border-color:#f2c767; box-shadow:0 0 0 1px #f2c76755; }
+    @media(max-width:360px) { .clt-pin-cells {gap:5px;} .clt-pin-cell {height:44px;border-radius:10px;} }
+    /* VIP CLT PIN design: retain the main gold-outlined card, without a second footer box. */
+    #pinModal { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 12px; }
+    #pinModalCard {
+      max-width:390px; padding:25px 22px 24px;
+      border:1.5px solid #d5a24c;
+      border-radius:30px;
+      background:radial-gradient(ellipse at 50% 0%, #352337 0%, #241526 44%, #190f1d 100%);
+      box-shadow:0 0 0 1px #e7b96922, 0 18px 60px #000a, inset 0 1px 24px #dba8570b;
+    }
+    .clt-pin-lock { display:flex; align-items:center; justify-content:center; width:58px; height:58px; margin:0 auto 13px; border:1px solid #e3b55c; border-radius:50%; color:#f5d58a; background:#33213b; box-shadow:0 0 20px #e2aa4d20; }
+    #pinModalCard .clt-pin-cells { gap:7px; }
+    #pinModalCard .clt-pin-cell { border-color:#c99645; background:#311c35; color:#e7c57f; }
+    #pinModalCard .clt-pin-cell.filled { color:#ffe5a6; background:#422646; }
+    #pinModalCard .clt-pin-key { width:clamp(57px, 17vw, 70px); height:clamp(57px, 17vw, 70px); border:1px solid #513055; background:linear-gradient(145deg,#412345,#2b1830); font-size:23px; box-shadow:inset 0 1px 1px #ffffff0c; }
+    #pinModalCard .clt-pin-key:active { background:#603567; }
+    .clt-pin-footer { display:flex; justify-content:space-between; align-items:center; width:100%; margin-top:17px; padding:8px 4px 0; gap:16px; background:transparent; border:0; box-shadow:none; }
+    .clt-pin-it { color:#f6e9f2; font-size:14px; font-weight:700; letter-spacing:.7px; white-space:nowrap; }
+    .clt-pin-cancel { color:#fb7185; font-size:15px; font-weight:750; background:none; border:0; padding:8px 2px; }
+    @media(max-height:720px) { #pinModalCard { padding-top:15px; padding-bottom:13px; } .clt-pin-lock { width:43px; height:43px; margin-bottom:7px; } #pinModalCard .clt-pin-key { width:51px; height:51px; } }
+    @media(max-width:355px) { #pinModalCard {padding-left:15px;padding-right:15px;} }
   </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4 select-none">
@@ -386,39 +416,44 @@
   <!-- ================= MODAL 1: แป้นพิมพ์ PIN 6 หลัก ================= -->
   <div id="pinModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
     <div id="pinModalCard" class="w-full max-w-[340px] rounded-[32px] bg-[#1a0e1b] border border-amber-600/40 p-6 flex flex-col items-center shadow-2xl">
-      <h3 class="text-lg font-bold text-amber-200">Enter Employee PIN</h3>
+      <div class="clt-pin-lock" aria-hidden="true">
+        <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <h3 class="text-xl font-bold text-white">Enter Employee <span class="text-[#f5d58a]">PIN</span></h3>
       <p class="text-xs text-purple-300/70 mt-0.5 mb-5 font-light">กรอกรหัสพนักงาน 6 หลัก เพื่อเข้าสู่ระบบ</p>
 
-      <div class="w-full py-3 px-4 rounded-2xl border-2 border-amber-500/60 bg-[#0d040f] flex items-center justify-center gap-2 sm:gap-3 mb-6 shadow-inner">
-        <span id="pinDash0" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
-        <span id="pinDash1" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
-        <span id="pinDash2" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
-        <span id="pinDash3" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
-        <span id="pinDash4" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
-        <span id="pinDash5" class="w-7 text-center font-digital font-bold text-xl text-amber-300 border-b-2 border-amber-500/80">_</span>
+      <!-- Six separate, rounded PIN cells; keypad and logic unchanged -->
+      <div class="clt-pin-cells mb-6" role="group" aria-label="รหัสพนักงาน 6 หลัก">
+        <span id="pinDash0" class="clt-pin-cell" aria-label="หลักที่ 1">·</span>
+        <span id="pinDash1" class="clt-pin-cell" aria-label="หลักที่ 2">·</span>
+        <span id="pinDash2" class="clt-pin-cell" aria-label="หลักที่ 3">·</span>
+        <span id="pinDash3" class="clt-pin-cell" aria-label="หลักที่ 4">·</span>
+        <span id="pinDash4" class="clt-pin-cell" aria-label="หลักที่ 5">·</span>
+        <span id="pinDash5" class="clt-pin-cell" aria-label="หลักที่ 6">·</span>
       </div>
 
       <div class="grid grid-cols-3 gap-3.5 w-full max-w-[250px] mb-4">
-        <button onclick="pressPin('1')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">1</button>
-        <button onclick="pressPin('2')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">2</button>
-        <button onclick="pressPin('3')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">3</button>
+        <button onclick="pressPin('1')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">1</button>
+        <button onclick="pressPin('2')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">2</button>
+        <button onclick="pressPin('3')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">3</button>
 
-        <button onclick="pressPin('4')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">4</button>
-        <button onclick="pressPin('5')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">5</button>
-        <button onclick="pressPin('6')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">6</button>
+        <button onclick="pressPin('4')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">4</button>
+        <button onclick="pressPin('5')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">5</button>
+        <button onclick="pressPin('6')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">6</button>
 
-        <button onclick="pressPin('7')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">7</button>
-        <button onclick="pressPin('8')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">8</button>
-        <button onclick="pressPin('9')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">9</button>
+        <button onclick="pressPin('7')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">7</button>
+        <button onclick="pressPin('8')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">8</button>
+        <button onclick="pressPin('9')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">9</button>
 
         <div class="w-16 h-16"></div>
-        <button onclick="pressPin('0')" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">0</button>
-        <button onclick="backspacePin()" class="w-16 h-16 rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-slate-300 text-lg flex items-center justify-center mx-auto transition">⌫</button>
+        <button onclick="pressPin('0')" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-white font-bold text-xl flex items-center justify-center mx-auto transition">0</button>
+        <button onclick="backspacePin()" class="clt-pin-key rounded-full bg-[#2a172c] hover:bg-[#3b223e] active:scale-90 text-slate-300 text-lg flex items-center justify-center mx-auto transition">⌫</button>
       </div>
 
-      <button onclick="closePinModal()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold mt-2">
-        Cancel
-      </button>
+      <div class="clt-pin-footer">
+        <span class="clt-pin-it">▫︎ ɪᴛ ᴄʟᴛ</span>
+        <button type="button" onclick="closePinModal()" class="clt-pin-cancel">ยกเลิก</button>
+      </div>
 
       <p id="pinSearchError" class="text-rose-400 text-xs mt-3 hidden font-medium text-center"></p>
     </div>
@@ -636,7 +671,9 @@
       for (let i = 0; i < 6; i++) {
         const el = document.getElementById(`pinDash${i}`);
         if (el) {
-          el.textContent = inputPin[i] ? inputPin[i] : '_';
+          el.textContent = inputPin[i] ? inputPin[i] : '·';
+          el.classList.toggle('filled', Boolean(inputPin[i]));
+          el.classList.toggle('next', !inputPin[i] && i === inputPin.length);
         }
       }
     }
