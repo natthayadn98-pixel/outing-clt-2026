@@ -292,6 +292,21 @@
     #successModal[data-mode="binding"] .clt-success-medal {display:none;}
     @media (max-height:720px) {#successModal .clt-success-card{padding:16px!important;}#successModal .clt-party-brand{margin-bottom:7px;}#successModal .clt-success-medal{width:48px;height:48px;font-size:27px;margin-bottom:8px;} }
 
+
+    /* Final approved gala layout: readable year, no English subtitle */
+    #successModal .clt-celebration-layout {position:relative;z-index:1;width:min(100%,390px);max-height:calc(100dvh - 22px);overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;align-items:center;gap:10px;}
+    #successModal .clt-celebration-layout::-webkit-scrollbar{display:none;}
+    #successModal .clt-top-logo {display:flex;flex-direction:column;align-items:center;color:#f8dd9f;text-shadow:0 3px 20px #f5b35a44;line-height:1;flex-shrink:0;padding:3px 0 8px;}
+    #successModal .clt-logo-crown {font-size:27px;line-height:1.1;color:#edc677;}
+    #successModal .clt-top-logo strong {font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:clamp(52px,14vw,77px);letter-spacing:.08em;}
+    #successModal .clt-logo-year {font-family:Georgia,'Times New Roman',serif;font-size:clamp(29px,8vw,42px);letter-spacing:.17em;font-variant-numeric:lining-nums tabular-nums;margin-left:.17em;}
+    #successModal .clt-success-card {width:100%;max-width:390px!important;max-height:none!important;overflow:visible!important;padding:21px 19px 22px!important;border-radius:27px!important;}
+    #successModal .clt-success-medal {margin:0 auto 14px!important;}
+    #successModal .clt-welcome-title {font-size:clamp(18px,5vw,23px)!important;}
+    #successModal .clt-welcome-title span {font-family:Georgia,'Times New Roman',serif;font-variant-numeric:lining-nums tabular-nums;letter-spacing:.03em;}
+    #successModal[data-mode="binding"] .clt-top-logo {display:none;}
+    @media(max-height:740px){#successModal .clt-celebration-layout{gap:4px;}#successModal .clt-top-logo strong{font-size:49px;}#successModal .clt-logo-year{font-size:28px;}#successModal .clt-logo-crown{font-size:18px;}#successModal .clt-success-card{padding:14px 16px!important;}}
+
     /* Minimal dark-plum and gold: independent rounded employee PIN cells */
     .clt-pin-cells { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:7px; width:100%; }
     .clt-pin-cell { display:flex; align-items:center; justify-content:center; min-width:0; height:48px;
@@ -578,8 +593,9 @@
   <!-- ================= MODAL 4: แจ้งลงทะเบียนสำเร็จ ================= -->
   <div id="successModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4" data-mode="binding">
     <canvas id="successFireworks" aria-hidden="true"></canvas>
-    <div class="clt-success-card w-full max-w-[360px] rounded-3xl p-6 shadow-2xl text-center">
-      <div class="clt-party-brand"><span class="clt-party-crown">✦</span><strong>CLT <span>2569</span></strong><small>COMPANY PARTY</small></div>
+    <div class="clt-celebration-layout">
+      <div class="clt-top-logo" aria-label="CLT 2569"><span class="clt-logo-crown">♛</span><strong>CLT</strong><span class="clt-logo-year">2569</span></div>
+      <div class="clt-success-card w-full max-w-[360px] rounded-3xl p-6 shadow-2xl text-center">
       <div class="clt-success-medal" aria-hidden="true">✓</div>
       <div class="clt-welcome-title">ยินดีต้อนรับสู่งานสังสรรค์<br><span>CLT 2569</span></div>
       <h3 id="successTitle" class="clt-success-subtitle">ลงทะเบียนเรียบร้อยแล้ว!</h3>
@@ -604,6 +620,7 @@
         <span id="successButtonLabel">ดูบัตรเข้างาน</span>
       </button>
 
+      </div>
     </div>
   </div>
 
