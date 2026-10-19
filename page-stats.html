@@ -40,6 +40,21 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
 .absence-dialog .dialog-actions button{padding:11px 18px;font-weight:800}
 .absence-dialog .dialog-actions .save{background:linear-gradient(110deg,#b78b30,#946a1c);border-color:transparent;color:#fff}
 @media(max-width:500px){.absence-dialog{padding:17px 15px;max-height:94dvh}.dialog-symbol{height:40px;width:40px}.reason-options{gap:7px}.reason-card-content{min-height:118px;padding:11px 9px}.reason-card input:checked+.reason-card-content{padding:10.5px 8.5px}.reason-card small{font-size:10px}.absence-dialog .dialog-actions button{padding:10px 12px}}
+
+/* Branch dashboard: all figures follow the same attendance classification as top summary. */
+.branch-card{width:100%;background:var(--card);color:var(--text);text-align:left;cursor:pointer;transition:border-color .2s,background .2s}
+.branch-card:hover,.branch-card:focus-visible,.branch-card.is-selected{border-color:var(--gold);background:var(--accent-soft)}
+.branch-top span{color:var(--muted);white-space:normal;text-align:right}
+.branch-split{display:flex;height:10px;background:var(--line);border-radius:20px;overflow:hidden}
+.branch-split>span{height:100%;min-width:0;display:block}
+.branch-checked{background:var(--green)}.branch-declared{background:var(--red)}.branch-unknown{background:#a2a1ac}
+.branch-details{display:flex;gap:6px 13px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:11px}
+.branch-details strong{font-weight:800;color:var(--text)}
+.branch-dot{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle;margin-right:3px}
+#branchActiveFilter{display:none;margin:0 0 11px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--accent-soft);color:var(--text);font-size:12px}
+#branchActiveFilter.is-visible{display:flex;justify-content:space-between;align-items:center;gap:10px}
+#branchActiveFilter button{border:0;border-radius:8px;background:var(--card);padding:6px 10px;color:var(--accent);font-weight:800}
+.branch-legend{font-size:11px;color:var(--muted);margin:-5px 0 12px;line-height:1.6}
 </style>
 <script>
 (function () {
@@ -85,7 +100,7 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
     <div class="stats-primary">
       <div class="stat-main"><div class="stat-icon">♟</div><div><div class="stat-label">จำนวนทั้งหมด</div><div class="stat-value gold"><span id="statBoxTotal">0</span> <small>คน</small></div></div></div>
       <div class="stat-main"><div class="stat-icon green">✓</div><div><div class="stat-label">สแกนเข้างานแล้ว</div><div class="stat-value"><span id="statBoxChecked">0</span> <small>คน</small></div></div></div>
-      <div class="stat-main"><div class="stat-icon orange">◷</div><div><div class="stat-label">ยังไม่เช็คอิน</div><div class="stat-value orange"><span id="statBoxRemaining">0</span> <small>คน</small></div></div></div>
+      <div class="stat-main"><div class="stat-icon orange">◷</div><div><div class="stat-label">ยังไม่เช็คอิน (รวมผู้แจ้งไม่มา)</div><div class="stat-value orange"><span id="statBoxRemaining">0</span> <small>คน</small></div></div></div>
     </div>
     <div class="stats-secondary" aria-label="สรุปการเข้าร่วม">
       <div class="mini-stat"><span class="mini-icon">☀</span><div><small>เข้าร่วมแล้ว</small><strong id="absenceChecked">0</strong></div></div>
@@ -97,6 +112,7 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
       <div class="panel-head"><h2 class="panel-title"><span class="emoji">👥</span>จัดการผู้ที่ยังไม่เข้าร่วมงาน</h2><div class="panel-meta">บันทึกแยกเช้า–เย็น · เฉพาะ Admin</div></div>
       <input id="absenceSearch" class="search" placeholder="⌕  ค้นหาชื่อ รหัสพนักงาน หรือสาขา..." aria-label="ค้นหาพนักงาน" />
       <div class="list-toolbar"><div class="segment"><button class="selected" id="absenceShowPending" onclick="setAbsenceView('pending')">ยังไม่ครบสถานะ</button><button id="absenceShowAll" onclick="setAbsenceView('all')">พนักงานทั้งหมด</button></div><div id="statsListCount" class="panel-meta">ทั้งหมด 0 คน</div></div>
+      <div id="branchActiveFilter" aria-live="polite"><span id="branchActiveLabel"></span><button type="button" onclick="setBranchFilter(null)">✕ ทุกสาขา</button></div>
       <p id="absenceMessage" role="status" aria-live="polite"></p>
       <div class="table-wrap"><table class="employee-table"><thead><tr><th>ชื่อ–นามสกุล</th><th>รหัสพนักงาน</th><th>สาขา</th><th>สถานะเช้า / จัดการ</th><th>สถานะเย็น / จัดการ</th></tr></thead><tbody id="absenceEmployees"></tbody></table></div>
       <div class="pagination"><span>แสดง 10 รายการต่อหน้า</span><div><button id="statsPrev" onclick="moveStatsPage(-1)">‹ ก่อนหน้า</button> <span id="statsPageInfo">หน้า 1 / 1</span> <button id="statsNext" onclick="moveStatsPage(1)">ถัดไป ›</button></div></div>
@@ -104,7 +120,7 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
     <button class="excel-btn" onclick="exportStatsToExcel()">▣ ส่งออกไฟล์ Excel (แยกเช้า–เย็น)</button>
   </div>
   <aside class="rightcol">
-    <section class="panel"><div class="panel-head"><h2 class="panel-title">▥ สถิติและรายชื่อแยกตามสาขา</h2><span class="panel-meta">ทุกสาขา</span></div><div id="statBranchDetailsList" class="branch-list"></div></section>
+    <section class="panel"><div class="panel-head"><h2 class="panel-title">▥ สถิติและรายชื่อแยกตามสาขา</h2><span class="panel-meta">ทุกสาขา</span></div><p class="branch-legend">● สีเขียว มาแล้ว &nbsp; ● สีส้ม แจ้งไม่มา &nbsp; ● สีเทา ยังไม่ทราบ · กดสาขาเพื่อดูรายชื่อ</p><div id="statBranchDetailsList" class="branch-list"></div></section>
     <section class="panel"><div class="panel-head"><h2 class="panel-title">◉ สรุปภาพรวมการเข้างาน</h2></div><div class="donut-content"><div id="donutChart" class="donut"><div class="donut-inner"><strong id="donutNumber">0</strong><small>คน</small></div></div><div class="chart-legend"><div class="legend-row"><span class="legend-label"><i class="legend-dot" style="background:var(--green)"></i>เข้าร่วมแล้ว</span><strong id="chartChecked">0</strong></div><div class="legend-row"><span class="legend-label"><i class="legend-dot" style="background:var(--red)"></i>แจ้งไม่เข้าร่วม</span><strong id="chartAbsent">0</strong></div><div class="legend-row"><span class="legend-label"><i class="legend-dot" style="background:#888"></i>ยังไม่ทราบสถานะ</span><strong id="chartUnknown">0</strong></div></div></div></section>
     <section class="panel"><div class="panel-head"><h2 class="panel-title">▤ เหตุผลการไม่เข้าร่วม (สรุป)</h2></div><div id="reasonSummary"></div></section>
   </aside>
@@ -143,6 +159,7 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
     let guestsList = [];
     let absenceNotes = [];
     let absenceView = 'pending';
+    let selectedBranch = null;
     let absenceTarget = null;
     let absenceBusy = false;
     const ABSENCE_API = 'https://ycljxlywewigwxovdnyj.supabase.co/functions/v1/admin-manage-checkins';
@@ -164,6 +181,8 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
       if(rounds.some(r=>absenceFind(String(g.employee_code),r)))return 'absent';
       return 'unknown';
     }
+    // 'all' is a person-level overview: any check-in overrides absence, preventing double counting.
+    // A person can have different statuses in morning and evening tabs.
     function updateAbsenceSummary(){
       let checked=0,absent=0,unknown=0;
       guestsList.forEach(g=>{const s=statsState(g);if(s==='checked')checked++;else if(s==='absent')absent++;else unknown++;});
@@ -190,6 +209,7 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
       const query=document.getElementById('absenceSearch').value.trim().toLocaleLowerCase('th');
       const rounds=currentStatsFilter==='all'?['morning','evening']:[currentStatsFilter];
       const filtered=guestsList.filter(g=>{
+        if(selectedBranch!==null && (g.branch||'สำนักงานใหญ่')!==selectedBranch)return false;
         if(query && ![g.employee_code,g.full_name,g.branch].some(x=>String(x||'').toLocaleLowerCase('th').includes(query)))return false;
         return absenceView==='all'||rounds.some(r=>!absenceRoundChecked(g,r)&&!absenceFind(String(g.employee_code),r));
       });
@@ -221,6 +241,14 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
         frag.append(tr);
       });
       root.append(frag);
+    }
+    function setBranchFilter(branch){
+      selectedBranch=selectedBranch===branch?null:branch;statsPage=1;
+      const box=document.getElementById('branchActiveFilter');
+      box.classList.toggle('is-visible',selectedBranch!==null);
+      document.getElementById('branchActiveLabel').textContent=selectedBranch===null?'':'กำลังดูสาขา: '+selectedBranch;
+      if(selectedBranch!==null)setAbsenceView('all');
+      renderBranchBreakdown();renderAbsenceEmployees();
     }
     function moveStatsPage(delta){statsPage=Math.max(1,statsPage+delta);renderAbsenceEmployees();}
     function renderReasonSummary(){
@@ -279,8 +307,8 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
         const { data, error } = await supabaseClient.from('guests')
           .select('employee_code,full_name,branch,morning_check_in,evening_check_in');
         if (error) throw error;
-        guestsList = data || [];
         const absenceResult=await absenceRequest('absence_list');
+        guestsList = data || [];
         absenceNotes=absenceResult.notes || [];
         recalculateStatistics();
         status.textContent = 'อัปเดตล่าสุด ' + new Date().toLocaleTimeString('th-TH', {timeZone:'Asia/Bangkok'}) + ' น. · อัปเดตอัตโนมัติทุก 10 วินาที';
@@ -328,17 +356,37 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
       })[char]);
     }
 
+    function getStatusCounts(list){
+      const counts={checked:0,absent:0,unknown:0,total:list.length};
+      for(const guest of list)counts[statsState(guest)]++;
+      return counts;
+    }
     function renderBranchBreakdown() {
       const container=document.getElementById('statBranchDetailsList');container.replaceChildren();
-      const groups=new Map();for(const g of guestsList){const branch=g.branch||'สำนักงานใหญ่';if(!groups.has(branch))groups.set(branch,[]);groups.get(branch).push(g);}
+      const groups=new Map();
+      for(const g of guestsList){const branch=g.branch||'สำนักงานใหญ่';if(!groups.has(branch))groups.set(branch,[]);groups.get(branch).push(g);}
       for(const [branch,list] of [...groups.entries()].sort((a,b)=>b[1].length-a[1].length)){
-        const checked=list.filter(g=>currentStatsFilter==='all'?(g.morning_check_in||g.evening_check_in):g[currentStatsFilter+'_check_in']).length;
-        const pct=list.length?Math.round(checked/list.length*100):0;
-        const card=document.createElement('div');card.className='branch-card';
+        const counts=getStatusCounts(list),pct=counts.total?Math.round(counts.checked/counts.total*100):0;
+        const card=document.createElement('button');card.type='button';card.className='branch-card'+(selectedBranch===branch?' is-selected':'');
+        card.setAttribute('aria-label',branch+' มาแล้ว '+counts.checked+' ไม่มา '+counts.absent+' ยังไม่ทราบ '+counts.unknown+' คน กดเพื่อดูรายชื่อ');
+        card.setAttribute('aria-pressed',String(selectedBranch===branch));
+        card.onclick=()=>setBranchFilter(branch);
         const top=document.createElement('div');top.className='branch-top';
-        const name=document.createElement('strong');name.textContent=branch+' ('+list.length+' คน)';
-        const stat=document.createElement('span');stat.textContent=checked+' / '+list.length+' ('+pct+'%)';top.append(name,stat);
-        const track=document.createElement('div');track.className='progress-track';const bar=document.createElement('div');bar.className='progress-bar';bar.style.width=pct+'%';track.append(bar);card.append(top,track);container.append(card);
+        const name=document.createElement('strong');name.textContent=branch+' ('+counts.total+' คน)';
+        const stat=document.createElement('span');stat.textContent='มาแล้ว '+counts.checked+' / '+counts.total+' ('+pct+'%)';top.append(name,stat);
+        const track=document.createElement('div');track.className='branch-split';
+        for(const [state,className] of [['checked','branch-checked'],['absent','branch-declared'],['unknown','branch-unknown']]){
+          const portion=document.createElement('span');portion.className=className;portion.style.width=(counts.total?(counts[state]/counts.total*100):0)+'%';track.append(portion);
+        }
+        const details=document.createElement('div');details.className='branch-details';
+        for(const [state,text,color] of [['checked','มาแล้ว','var(--green)'],['absent','แจ้งไม่มา','var(--red)'],['unknown','ยังไม่ทราบ','var(--muted)']]){
+          const item=document.createElement('span');
+          const dot=document.createElement('i');dot.className='branch-dot';dot.style.background=color;
+          const label=document.createElement('span');label.textContent=text+' ';
+          const count=document.createElement('strong');count.textContent=String(counts[state]);
+          item.append(dot,label,count);details.append(item);
+        }
+        card.append(top,track,details);container.append(card);
       }
     }
     function exportStatsToExcel() {
@@ -347,9 +395,22 @@ html[data-admin-theme="dark"]{color-scheme:dark;--bg:#0c0717;--card:#191129;--te
       const addStatus=(g,round)=>g[round+'_check_in']?'เช็คอินแล้ว':absenceFind(String(g.employee_code),round)?'แจ้งไม่เข้าร่วม':'ยังไม่ทราบสถานะ';
       morningData.forEach((row,i)=>{row['สถานะ']=addStatus(guestsList[i],'morning');row['เหตุผลไม่เข้าร่วม']=absenceFind(String(guestsList[i].employee_code),'morning')?.reason||'-';row['รายละเอียดหมายเหตุ']=absenceFind(String(guestsList[i].employee_code),'morning')?.detail||'-';});
       eveningData.forEach((row,i)=>{row['สถานะ']=addStatus(guestsList[i],'evening');row['เหตุผลไม่เข้าร่วม']=absenceFind(String(guestsList[i].employee_code),'evening')?.reason||'-';row['รายละเอียดหมายเหตุ']=absenceFind(String(guestsList[i].employee_code),'evening')?.detail||'-';});
+      const branchGroups=new Map();
+      for(const g of guestsList){const name=g.branch||'สำนักงานใหญ่';if(!branchGroups.has(name))branchGroups.set(name,[]);branchGroups.get(name).push(g);}
+      const branchSummary=[];
+      for(const [branch,list] of branchGroups){
+        for(const [round,title] of [['all','ทั้งหมด (คนที่มารอบใดก็ได้ถือว่ามาแล้ว)'],['morning','รอบเช้า'],['evening','รอบเย็น']]){
+          const previous=currentStatsFilter;
+          currentStatsFilter=round;
+          const c=getStatusCounts(list);
+          currentStatsFilter=previous;
+          branchSummary.push({'สาขา':branch,'รอบ':title,'พนักงานทั้งหมด':c.total,'เข้าร่วมแล้ว':c.checked,'แจ้งไม่เข้าร่วม':c.absent,'ยังไม่ทราบสถานะ':c.unknown});
+        }
+      }
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(morningData), "รอบเช้า");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eveningData), "รอบเย็น");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(branchSummary), "สรุปตามสาขา");
       XLSX.writeFile(wb, `รายงานสถิติเข้างาน_${new Date().toISOString().slice(0, 10)}.xlsx`);
     }
 
