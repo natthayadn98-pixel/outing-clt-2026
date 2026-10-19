@@ -10,6 +10,29 @@
     * { font-family: 'Anakotmai', sans-serif; }
     .font-digital { font-family: 'Anakotmai', monospace; }
     body { background-color: #0c0217; color: #f1f5f9; min-height: 100vh; padding: 2rem 1rem; }
+
+/* Absence management — preserve existing dark/gold look */
+.clt-absence-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:22px}
+.clt-absence-box{border:1px solid #5d427d;background:#1a1035;border-radius:15px;padding:13px;text-align:center}
+.clt-absence-box strong{display:block;font-size:27px;color:#f5d08b}
+.clt-absence-box span{font-size:12px;color:#e5d4f6}
+.clt-absence-panel{margin:20px 0;padding:17px;border:1px solid #604777;border-radius:18px;background:#160d30}
+.clt-absence-search{width:100%;color:#fff;background:#21153d;border:1px solid #755a8e;border-radius:12px;padding:12px;outline:none;margin:12px 0}
+.clt-absence-row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid #3c2b58}
+.clt-absence-name{font-size:14px;font-weight:700;color:#f6d386}
+.clt-absence-meta{font-size:11px;color:#c5b9d7;margin-top:3px}
+.clt-absence-actions{display:flex;gap:7px;flex-wrap:wrap}
+.clt-absence-actions button{border-radius:10px;font-size:12px;padding:7px 11px;background:#ebc876;color:#2b1b38;font-weight:700}
+.clt-absence-actions button[disabled]{opacity:.5;cursor:not-allowed}
+.clt-absence-actions .clt-absence-clear{background:#40335b;color:#fff}
+.clt-absence-pill{display:inline-block;background:#55366e;color:#f6e0a7;font-size:11px;border-radius:99px;padding:3px 9px}
+.clt-absence-dialog{border:1px solid #dac08d;border-radius:20px;padding:22px;width:min(440px,calc(100vw - 28px));background:#fffaf2;color:#382849;box-shadow:0 25px 80px #080315a8}
+.clt-absence-dialog::backdrop{background:#130b28ae;backdrop-filter:blur(3px)}
+.clt-absence-dialog select,.clt-absence-dialog textarea{width:100%;padding:11px;margin-top:7px;border:1px solid #d6c5dc;background:white;border-radius:10px;color:#382849}
+.clt-absence-dialog button{border-radius:11px;padding:10px 16px;font-weight:700;background:#e7dced;color:#422f58}
+.clt-absence-dialog button.clt-absence-save{background:#8157b8;color:white}
+@media(min-width:700px){.clt-absence-summary{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
   </style>
   <link rel="stylesheet" href="admin-pages-theme.css" />
 <script>
@@ -55,11 +78,32 @@
         <div id="statBoxChecked" class="text-2xl sm:text-4xl font-extrabold text-white font-digital mt-3">0</div>
       </div>
       <div class="bg-[#0e0423]/90 border border-purple-800/70 rounded-2xl p-2 sm:p-5 text-center">
-        <div class="text-xs text-slate-300">ยังไม่มา</div>
+        <div class="text-xs text-slate-300">ยังไม่เช็คอิน</div>
         <div id="statBoxRemaining" class="text-2xl sm:text-4xl font-extrabold text-[#facc15] font-digital mt-3">0</div>
       </div>
     </div>
 
+    <div class="clt-absence-summary" aria-label="สรุปสถานะการเข้าร่วม">
+      <div class="clt-absence-box"><span>เข้าร่วมแล้ว</span><strong id="absenceChecked">0</strong></div>
+      <div class="clt-absence-box"><span>แจ้งไม่เข้าร่วม</span><strong id="absenceDeclared">0</strong></div>
+      <div class="clt-absence-box"><span>ยังไม่ทราบสถานะ</span><strong id="absenceUnknown">0</strong></div>
+      <div class="clt-absence-box"><span>จำนวนทั้งหมด</span><strong id="absenceTotal">0</strong></div>
+    </div>
+    <div class="clt-absence-panel">
+      <div class="flex items-center justify-between gap-2 flex-wrap"><h3 class="font-bold text-[#facc15]">📝 จัดการหมายเหตุผู้ไม่เข้าร่วมงาน</h3><span class="text-xs text-purple-200">บันทึกแยกเช้า–เย็น · เฉพาะ Admin</span></div>
+      <input id="absenceSearch" class="clt-absence-search" placeholder="ค้นหาชื่อ รหัสพนักงาน หรือสาขา" aria-label="ค้นหาพนักงานสำหรับบันทึกหมายเหตุ" />
+      <div class="flex flex-wrap gap-2 text-xs mb-2"><button id="absenceShowPending" class="px-3 py-2 rounded-xl bg-amber-300 text-slate-900 font-bold" onclick="setAbsenceView('pending')">ยังไม่ครบสถานะ</button><button id="absenceShowAll" class="px-3 py-2 rounded-xl bg-[#33234d] text-white" onclick="setAbsenceView('all')">พนักงานทั้งหมด</button></div>
+      <p id="absenceMessage" role="status" aria-live="polite" class="text-xs text-amber-200 my-2"></p>
+      <div id="absenceEmployees" class="max-h-[360px] overflow-y-auto"></div>
+    </div>
+    <dialog id="absenceDialog" class="clt-absence-dialog">
+      <h3 class="font-bold text-xl">บันทึกเหตุผลการไม่เข้าร่วมงาน</h3>
+      <p id="absenceTarget" class="text-sm my-3"></p>
+      <label class="text-sm font-bold">เหตุผล<select id="absenceReason"><option>ลางาน / ลาป่วย</option><option>ติดภารกิจ / ปฏิบัติงาน</option><option>ติดธุระส่วนตัว</option><option>แจ้งไม่ประสงค์เข้าร่วม</option><option>อื่น ๆ</option></select></label>
+      <label class="text-sm font-bold block mt-3">รายละเอียดเพิ่มเติม (ถ้ามี)<textarea id="absenceDetail" maxlength="500" rows="3" placeholder="ระบุรายละเอียดที่จำเป็นเท่านั้น"></textarea></label>
+      <p id="absenceDialogError" class="text-red-600 text-sm min-h-[20px] mt-2"></p>
+      <div class="flex gap-2 justify-end mt-3"><button type="button" onclick="closeAbsenceDialog()">ยกเลิก</button><button type="button" id="absenceSave" class="clt-absence-save" onclick="saveAbsence()">บันทึกหมายเหตุ</button></div>
+    </dialog>
     <div class="mb-8">
       <button onclick="exportStatsToExcel()" class="w-full py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-green-500">
         📊 ส่งออกไฟล์ Excel (แยกชีต เช้า-เย็น)
@@ -81,6 +125,90 @@
         const supabaseClient = adminDb();
 
     let guestsList = [];
+    let absenceNotes = [];
+    let absenceView = 'pending';
+    let absenceTarget = null;
+    let absenceBusy = false;
+    const ABSENCE_API = 'https://ycljxlywewigwxovdnyj.supabase.co/functions/v1/admin-manage-checkins';
+    async function absenceRequest(action, extra={}) {
+      const client=adminDb();
+      if(!client) throw new Error('กรุณาเปิดผ่านหน้า Admin ที่เข้าสู่ระบบแล้ว');
+      const {data:{session},error}=await client.auth.getSession();
+      if(error || !session?.access_token) throw new Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
+      const res=await fetch(ABSENCE_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI'},body:JSON.stringify({action,...extra})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok)throw new Error(({admin_login_required:'กรุณาเข้าสู่ระบบใหม่',admin_not_authorized:'บัญชีไม่มีสิทธิ์ Admin',already_checked_in:'พนักงานเช็คอินรอบนี้แล้ว',invalid_action:'Edge Function ยังไม่ได้อัปเดต',database_error:'ฐานข้อมูลมีข้อผิดพลาด'})[data.error] || data.error || ('HTTP '+res.status));
+      return data;
+    }
+    function absenceRoundChecked(g,round){return !!g[round+'_check_in'];}
+    function absenceFind(code,round){return absenceNotes.find(n=>n.employee_code===code && n.round===round);}
+    function statsState(g){
+      const rounds=currentStatsFilter==='all'?['morning','evening']:[currentStatsFilter];
+      if(rounds.some(r=>absenceRoundChecked(g,r)))return 'checked';
+      if(rounds.some(r=>absenceFind(String(g.employee_code),r)))return 'absent';
+      return 'unknown';
+    }
+    function updateAbsenceSummary(){
+      let checked=0,absent=0,unknown=0;
+      guestsList.forEach(g=>{const s=statsState(g);if(s==='checked')checked++;else if(s==='absent')absent++;else unknown++;});
+      document.getElementById('absenceChecked').textContent=checked;
+      document.getElementById('absenceDeclared').textContent=absent;
+      document.getElementById('absenceUnknown').textContent=unknown;
+      document.getElementById('absenceTotal').textContent=guestsList.length;
+    }
+    function setAbsenceView(view){absenceView=view;document.getElementById('absenceShowPending').className='px-3 py-2 rounded-xl '+(view==='pending'?'bg-amber-300 text-slate-900 font-bold':'bg-[#33234d] text-white');document.getElementById('absenceShowAll').className='px-3 py-2 rounded-xl '+(view==='all'?'bg-amber-300 text-slate-900 font-bold':'bg-[#33234d] text-white');renderAbsenceEmployees();}
+    function renderAbsenceEmployees(){
+      const root=document.getElementById('absenceEmployees');root.replaceChildren();
+      const query=document.getElementById('absenceSearch').value.trim().toLowerCase();
+      const filtered=guestsList.filter(g=>{
+        if(query && ![g.employee_code,g.full_name,g.branch].some(x=>String(x||'').toLowerCase().includes(query)))return false;
+        const rounds=currentStatsFilter==='all'?['morning','evening']:[currentStatsFilter];
+        return absenceView==='all'||rounds.some(r=>!absenceRoundChecked(g,r)&&!absenceFind(String(g.employee_code),r));
+      });
+      if(!filtered.length){const p=document.createElement('p');p.textContent='ไม่พบพนักงานตามเงื่อนไข';p.className='text-xs text-purple-200 py-4';root.append(p);return;}
+      const fragment=document.createDocumentFragment();
+      for(const g of filtered.slice(0,500)){
+        const code=String(g.employee_code);const row=document.createElement('div');row.className='clt-absence-row';
+        const info=document.createElement('div');const name=document.createElement('div');name.className='clt-absence-name';name.textContent=g.full_name||'ไม่ระบุชื่อ';
+        const meta=document.createElement('div');meta.className='clt-absence-meta';meta.textContent=`${code} · ${g.branch||'ไม่ระบุสาขา'}`;info.append(name,meta);
+        const actions=document.createElement('div');actions.className='clt-absence-actions';
+        for(const [round,label] of [['morning','☀️ เช้า'],['evening','🌙 เย็น']]){
+          const checked=absenceRoundChecked(g,round),note=absenceFind(code,round);
+          const b=document.createElement('button');b.type='button';b.disabled=checked;
+          b.textContent=checked?label+' ✓ เช็คอิน':note?label+' · แก้เหตุผล':label+' · บันทึกเหตุผล';
+          b.onclick=()=>openAbsenceDialog(code,round);
+          actions.append(b);
+          if(note&&!checked){const clear=document.createElement('button');clear.type='button';clear.className='clt-absence-clear';clear.textContent='ยกเลิกหมายเหตุ';clear.title=note.reason+(note.detail?' — '+note.detail:'');clear.onclick=()=>clearAbsence(code,round);actions.append(clear);}
+        }
+        row.append(info,actions);fragment.append(row);
+      }
+      root.append(fragment);
+    }
+    function openAbsenceDialog(code,round){
+      const g=guestsList.find(x=>String(x.employee_code)===code);if(!g||absenceRoundChecked(g,round))return;
+      absenceTarget={code,round};const note=absenceFind(code,round);
+      document.getElementById('absenceTarget').textContent=`${g.full_name} (${code}) · ${round==='morning'?'รอบเช้า':'รอบเย็น'}`;
+      document.getElementById('absenceReason').value=note?.reason||'ลางาน / ลาป่วย';document.getElementById('absenceDetail').value=note?.detail||'';
+      document.getElementById('absenceDialogError').textContent='';document.getElementById('absenceDialog').showModal();
+    }
+    function closeAbsenceDialog(){if(!absenceBusy)document.getElementById('absenceDialog').close();}
+    async function saveAbsence(){
+      if(absenceBusy||!absenceTarget)return;
+      const reason=document.getElementById('absenceReason').value,detail=document.getElementById('absenceDetail').value.trim();
+      if(reason==='อื่น ๆ'&&detail.length<5){document.getElementById('absenceDialogError').textContent='กรุณาระบุรายละเอียดอย่างน้อย 5 ตัวอักษร';return;}
+      absenceBusy=true;document.getElementById('absenceSave').disabled=true;
+      try{await absenceRequest('absence_set',{employeeCode:absenceTarget.code,round:absenceTarget.round,reason,detail});document.getElementById('absenceDialog').close();document.getElementById('absenceMessage').textContent='✅ บันทึกหมายเหตุสำเร็จ';await loadStatsData();}
+      catch(e){document.getElementById('absenceDialogError').textContent=e.message;}
+      finally{absenceBusy=false;document.getElementById('absenceSave').disabled=false;}
+    }
+    async function clearAbsence(code,round){
+      if(absenceBusy||!confirm('ยืนยันยกเลิกหมายเหตุ '+(round==='morning'?'รอบเช้า':'รอบเย็น')+' ของ '+code+' ?'))return;
+      absenceBusy=true;
+      try{await absenceRequest('absence_clear',{employeeCode:code,round});document.getElementById('absenceMessage').textContent='✅ ยกเลิกหมายเหตุแล้ว';await loadStatsData();}
+      catch(e){document.getElementById('absenceMessage').textContent='❌ '+e.message;}
+      finally{absenceBusy=false;}
+    }
+
     let currentStatsFilter = 'all';
 
     let statsLoading = false;
@@ -93,6 +221,8 @@
           .select('employee_code,full_name,branch,morning_check_in,evening_check_in');
         if (error) throw error;
         guestsList = data || [];
+        const absenceResult=await absenceRequest('absence_list');
+        absenceNotes=absenceResult.notes || [];
         recalculateStatistics();
         status.textContent = 'อัปเดตล่าสุด ' + new Date().toLocaleTimeString('th-TH', {timeZone:'Asia/Bangkok'}) + ' น. · อัปเดตอัตโนมัติทุก 10 วินาที';
         status.classList.remove('text-red-400');
@@ -128,6 +258,8 @@
       document.getElementById('statBoxRemaining').textContent = Math.max(0, total - checkedCount);
 
       renderBranchBreakdown();
+      updateAbsenceSummary();
+      renderAbsenceEmployees();
     }
 
     // Escape database-provided branch names before inserting them into HTML.
@@ -175,12 +307,16 @@
     function exportStatsToExcel() {
       const morningData = guestsList.map(g => ({ 'รหัสพนักงาน': g.employee_code, 'ชื่อ-นามสกุล': g.full_name, 'สาขา': g.branch || 'ทั่วไป', 'เวลาเช็คอิน': g.morning_check_in || '-' }));
       const eveningData = guestsList.map(g => ({ 'รหัสพนักงาน': g.employee_code, 'ชื่อ-นามสกุล': g.full_name, 'สาขา': g.branch || 'ทั่วไป', 'เวลาเช็คอิน': g.evening_check_in || '-' }));
+      const addStatus=(g,round)=>g[round+'_check_in']?'เช็คอินแล้ว':absenceFind(String(g.employee_code),round)?'แจ้งไม่เข้าร่วม':'ยังไม่ทราบสถานะ';
+      morningData.forEach((row,i)=>{row['สถานะ']=addStatus(guestsList[i],'morning');row['เหตุผลไม่เข้าร่วม']=absenceFind(String(guestsList[i].employee_code),'morning')?.reason||'-';row['รายละเอียดหมายเหตุ']=absenceFind(String(guestsList[i].employee_code),'morning')?.detail||'-';});
+      eveningData.forEach((row,i)=>{row['สถานะ']=addStatus(guestsList[i],'evening');row['เหตุผลไม่เข้าร่วม']=absenceFind(String(guestsList[i].employee_code),'evening')?.reason||'-';row['รายละเอียดหมายเหตุ']=absenceFind(String(guestsList[i].employee_code),'evening')?.detail||'-';});
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(morningData), "รอบเช้า");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(eveningData), "รอบเย็น");
       XLSX.writeFile(wb, `รายงานสถิติเข้างาน_${new Date().toISOString().slice(0, 10)}.xlsx`);
     }
 
+    document.getElementById('absenceSearch').addEventListener('input',renderAbsenceEmployees);
     loadStatsData();
     setInterval(() => { if (!document.hidden) loadStatsData(); }, 10000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStatsData(); });
