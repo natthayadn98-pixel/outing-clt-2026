@@ -440,7 +440,7 @@
       <div class="mt-3.5 p-3.5 rounded-2xl bg-white border-l-4 border-[#881337] shadow-sm space-y-2 text-xs text-gray-700">
         <div class="flex items-center gap-2">
           <span>🌅</span>
-          <span><b>รอบเช้า:</b> 07:00 - 09:30 น.</span>
+          <span><b>รอบเช้า:</b> 08:30 - 09:30 น.</span>
         </div>
         <div class="flex items-center gap-2">
           <span>🌙</span>
@@ -1089,7 +1089,7 @@
         button.style.cursor = canEnter ? 'pointer' : 'not-allowed';
         button.style.opacity = canEnter ? '1' : '0.75';
         const label = document.getElementById('btnMainText');
-        if (!canEnter && label) label.textContent = round === 'before' ? '🔒 เปิดกรอกรหัสเวลา 07:00 น.' : '🔒 ปิดรับรอบเช้า • เปิดอีกครั้ง 14:00 น.';
+        if (!canEnter && label) label.textContent = round === 'before' ? '🔒 เปิดกรอกรหัสเวลา 08:30 น.' : '🔒 ปิดรับรอบเช้า • เปิดอีกครั้ง 14:00 น.';
         if (canEnter && label && !matchedGuest) label.textContent = 'กรอกรหัสพนักงาน (PIN 6 หลัก)';
         button.setAttribute('aria-disabled', String(!canEnter));
       }
