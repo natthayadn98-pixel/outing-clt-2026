@@ -292,21 +292,6 @@
     #successModal[data-mode="binding"] .clt-success-medal {display:none;}
     @media (max-height:720px) {#successModal .clt-success-card{padding:16px!important;}#successModal .clt-party-brand{margin-bottom:7px;}#successModal .clt-success-medal{width:48px;height:48px;font-size:27px;margin-bottom:8px;} }
 
-
-    /* Final approved gala layout: readable year, no English subtitle */
-    #successModal .clt-celebration-layout {position:relative;z-index:1;width:min(100%,390px);max-height:calc(100dvh - 22px);overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;align-items:center;gap:10px;}
-    #successModal .clt-celebration-layout::-webkit-scrollbar{display:none;}
-    #successModal .clt-top-logo {display:flex;flex-direction:column;align-items:center;color:#f8dd9f;text-shadow:0 3px 20px #f5b35a44;line-height:1;flex-shrink:0;padding:3px 0 8px;}
-    #successModal .clt-logo-crown {font-size:27px;line-height:1.1;color:#edc677;}
-    #successModal .clt-top-logo strong {font-family:Georgia,'Times New Roman',serif;font-weight:500;font-size:clamp(52px,14vw,77px);letter-spacing:.08em;}
-    #successModal .clt-logo-year {font-family:Georgia,'Times New Roman',serif;font-size:clamp(29px,8vw,42px);letter-spacing:.17em;font-variant-numeric:lining-nums tabular-nums;margin-left:.17em;}
-    #successModal .clt-success-card {width:100%;max-width:390px!important;max-height:none!important;overflow:visible!important;padding:21px 19px 22px!important;border-radius:27px!important;}
-    #successModal .clt-success-medal {margin:0 auto 14px!important;}
-    #successModal .clt-welcome-title {font-size:clamp(18px,5vw,23px)!important;}
-    #successModal .clt-welcome-title span {font-family:Georgia,'Times New Roman',serif;font-variant-numeric:lining-nums tabular-nums;letter-spacing:.03em;}
-    #successModal[data-mode="binding"] .clt-top-logo {display:none;}
-    @media(max-height:740px){#successModal .clt-celebration-layout{gap:4px;}#successModal .clt-top-logo strong{font-size:49px;}#successModal .clt-logo-year{font-size:28px;}#successModal .clt-logo-crown{font-size:18px;}#successModal .clt-success-card{padding:14px 16px!important;}}
-
     /* Minimal dark-plum and gold: independent rounded employee PIN cells */
     .clt-pin-cells { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:7px; width:100%; }
     .clt-pin-cell { display:flex; align-items:center; justify-content:center; min-width:0; height:48px;
@@ -336,6 +321,14 @@
     .clt-pin-cancel { color:#fb7185; font-size:15px; font-weight:750; background:none; border:0; padding:8px 2px; }
     @media(max-height:720px) { #pinModalCard { padding-top:15px; padding-bottom:13px; } .clt-pin-lock { width:43px; height:43px; margin-bottom:7px; } #pinModalCard .clt-pin-key { width:51px; height:51px; } }
     @media(max-width:355px) { #pinModalCard {padding-left:15px;padding-right:15px;} }
+
+    /* CLT already-registered LINE conflict: same pastel luxury style as approved mockup. */
+    #cltAlreadyRegistered { z-index: 10050; }
+    #cltAlreadyRegistered .clt-dupe-card { width:min(100%,390px);max-height:calc(100dvh - 32px);overflow-y:auto;background:#fff;border-radius:30px;padding:clamp(22px,5vw,30px);box-shadow:0 28px 75px rgba(23,16,48,.30);color:#222544;text-align:center; }
+    #cltAlreadyRegistered .clt-dupe-symbol { width:96px;height:96px;display:grid;place-items:center;margin:0 auto 18px;border-radius:50%;background:linear-gradient(145deg,#fff0f0,#ffdadd);color:#e35a59;font-size:48px; }
+    #cltAlreadyRegistered .clt-dupe-person { border-radius:20px;background:linear-gradient(110deg,#f3efff,#faf8ff);padding:15px 16px;display:flex;align-items:center;text-align:left;gap:12px;margin:20px 0; }
+    #cltAlreadyRegistered .clt-dupe-btn { display:block;width:100%;border-radius:18px;padding:14px 12px;background:linear-gradient(120deg,#7850b9,#9359ca);color:white;font-weight:800;font-size:16px;box-shadow:0 9px 20px #7b4cb52b; }
+    #cltAlreadyRegistered .clt-dupe-btn:focus-visible,#cltAlreadyRegistered .clt-dupe-close:focus-visible {outline:3px solid #f3c364;outline-offset:3px}
   </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4 select-none">
@@ -386,7 +379,7 @@
       <div class="mt-3.5 p-3.5 rounded-2xl bg-white border-l-4 border-[#881337] shadow-sm space-y-2 text-xs text-gray-700">
         <div class="flex items-center gap-2">
           <span>🌅</span>
-          <span><b>รอบเช้า:</b> 08:30 - 09:30 น.</span>
+          <span><b>รอบเช้า:</b> 07:00 - 09:30 น.</span>
         </div>
         <div class="flex items-center gap-2">
           <span>🌙</span>
@@ -511,6 +504,27 @@
     </div>
   </div>
 
+  <!-- Duplicate binding: shown ONLY for a server-confirmed LINE employee conflict. -->
+  <div id="cltAlreadyRegistered" class="fixed inset-0 hidden flex items-center justify-center bg-[#17203a]/75 backdrop-blur-md p-4" role="alertdialog" aria-modal="true" aria-labelledby="cltDupeTitle" aria-describedby="cltDupeDescription">
+    <div class="clt-dupe-card">
+      <button class="clt-dupe-close float-right rounded-full bg-[#f2f2f7] text-[#838599] w-9 h-9 text-xl" aria-label="ปิดข้อความ" type="button" onclick="dismissAlreadyRegistered()">×</button>
+      <div class="clear-both"></div>
+      <div class="clt-dupe-symbol" aria-hidden="true">♙<span style="font-size:27px;margin-left:-13px;margin-top:22px">✖</span></div>
+      <h3 id="cltDupeTitle" class="font-extrabold text-2xl mb-3">มีการลงทะเบียนแล้ว</h3>
+      <p id="cltDupeDescription" class="text-[#646a82] leading-relaxed text-sm">รหัสพนักงานนี้ได้ลงทะเบียนกับบัญชี LINE อื่นแล้ว<br>รบกวนกรอกเลขพนักงานใหม่อีกครั้งค่ะ</p>
+      <div class="clt-dupe-person">
+        <span class="rounded-2xl bg-[#e5ddfb] text-[#7851b5] grid place-items-center text-2xl" style="width:52px;height:52px;flex-shrink:0">♙</span>
+        <div class="min-w-0">
+          <div id="cltDupeEmployeeName" class="font-extrabold text-sm break-words"></div>
+          <div class="text-xs text-[#666b83] mt-1">รหัสพนักงาน <span id="cltDupeEmployeeCode"></span></div>
+          <div class="text-xs text-[#666b83] mt-1">สังกัด: <span id="cltDupeEmployeeBranch"></span></div>
+        </div>
+      </div>
+      <button class="clt-dupe-btn" type="button" onclick="dismissAlreadyRegistered()">↻ &nbsp; กรอกเลขพนักงานใหม่</button>
+      <p class="mt-4 text-xs text-[#82849b]">หากเป็นรหัสของคุณเองและเปลี่ยนเครื่อง กรุณาติดต่อ IT เพื่อปลดการผูก LINE เดิม</p>
+    </div>
+  </div>
+
   <!-- ================= MODAL 2: ยืนยันข้อมูลพนักงาน ================= -->
   <div id="verifyModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-[340px] rounded-3xl bg-white p-6 shadow-2xl text-slate-900 border-2 border-amber-400">
@@ -593,9 +607,8 @@
   <!-- ================= MODAL 4: แจ้งลงทะเบียนสำเร็จ ================= -->
   <div id="successModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-4" data-mode="binding">
     <canvas id="successFireworks" aria-hidden="true"></canvas>
-    <div class="clt-celebration-layout">
-      <div class="clt-top-logo" aria-label="CLT 2569"><span class="clt-logo-crown">♛</span><strong>CLT</strong><span class="clt-logo-year">2569</span></div>
-      <div class="clt-success-card w-full max-w-[360px] rounded-3xl p-6 shadow-2xl text-center">
+    <div class="clt-success-card w-full max-w-[360px] rounded-3xl p-6 shadow-2xl text-center">
+      <div class="clt-party-brand"><span class="clt-party-crown">✦</span><strong>CLT <span>2569</span></strong><small>COMPANY PARTY</small></div>
       <div class="clt-success-medal" aria-hidden="true">✓</div>
       <div class="clt-welcome-title">ยินดีต้อนรับสู่งานสังสรรค์<br><span>CLT 2569</span></div>
       <h3 id="successTitle" class="clt-success-subtitle">ลงทะเบียนเรียบร้อยแล้ว!</h3>
@@ -620,7 +633,6 @@
         <span id="successButtonLabel">ดูบัตรเข้างาน</span>
       </button>
 
-      </div>
     </div>
   </div>
 
@@ -821,6 +833,32 @@
       openPinModal();
     }
 
+    function showAlreadyRegistered(guest) {
+      document.getElementById('verifyModal').classList.add('hidden');
+      document.getElementById('employeePinAlert').classList.add('hidden');
+      // Keep the PIN pad available behind the popup for one-tap re-entry.
+      document.getElementById('pinModal').classList.remove('hidden');
+      document.getElementById('cltDupeEmployeeName').textContent = guest?.full_name || 'รหัสพนักงานที่ระบุ';
+      document.getElementById('cltDupeEmployeeCode').textContent = guest?.employee_code || '—';
+      document.getElementById('cltDupeEmployeeBranch').textContent = guest?.branch || '—';
+      document.getElementById('cltAlreadyRegistered').classList.remove('hidden');
+      document.querySelector('#cltAlreadyRegistered .clt-dupe-btn')?.focus();
+    }
+
+    function dismissAlreadyRegistered() {
+      document.getElementById('cltAlreadyRegistered').classList.add('hidden');
+      matchedGuest = null;
+      inputPin = '';
+      updatePinDashes();
+      document.getElementById('pinSearchError').classList.add('hidden');
+      document.getElementById('pinModal').classList.remove('hidden');
+    }
+
+    function isEmployeeAlreadyLinkedError(error) {
+      const code = String(error?.message || '').toLowerCase();
+      return ['employee_in_use','employee_already_bound','already_bound_to_other','employee_bound','already_registered','employee_already_registered','conflict'].some(x=>code===x);
+    }
+
     let registrationConfirming = false;
     // Step 3 -> 4: bind LINE only AFTER the employee confirms the displayed identity.
     async function confirmGuestRegistration() {
@@ -846,8 +884,13 @@
         // No success/fireworks before a real check-in. Open the original purple/gold QR modal.
         await openQrPass(matchedGuest || guest);
       } catch (err) {
-        console.warn('Employee confirmation failed:', err?.message || 'unknown');
-        showEmployeePinAlert('ยืนยันข้อมูลไม่สำเร็จ', String(err?.message || 'กรุณาลองใหม่อีกครั้ง'), 'ตกลง');
+        if (isEmployeeAlreadyLinkedError(err)) {
+          // Conflict is determined atomically by bind_employee_line_pin_once on the server.
+          showAlreadyRegistered(guest);
+        } else {
+          console.warn('Employee confirmation failed:', err?.message || 'unknown');
+          showEmployeePinAlert('ยืนยันข้อมูลไม่สำเร็จ', String(err?.message || 'กรุณาลองใหม่อีกครั้ง'), 'ตกลง');
+        }
       } finally {
         registrationConfirming = false;
         if (button) { button.disabled = false; button.innerHTML = '<span>✅</span><span>ข้อมูลถูกต้อง ยืนยันการลงทะเบียน</span>'; }
