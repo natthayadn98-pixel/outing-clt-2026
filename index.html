@@ -878,7 +878,15 @@
       if (employeePinChecking || inputPin.length !== 6) return;
       employeePinChecking = true;
       const errEl = document.getElementById('pinSearchError');
-      errEl.classList.add('hidden');
+      errEl.classList.remove('hidden');
+      errEl.textContent = '⏳ กำลังตรวจสอบข้อมูลพนักงาน…';
+      errEl.style.color = '#c4b5fd';
+      const checkingAt = Date.now();
+      const slowHint = setTimeout(() => {
+        if (employeePinChecking && inputPin.length === 6) {
+          errEl.textContent = 'กำลังเชื่อมต่อกับระบบ กรุณารอสักครู่…';
+        }
+      }, 3000);
       try {
         if (!lineVerified) throw new Error('ยังยืนยันบัญชี LINE ไม่สำเร็จ กรุณาลองใหม่');
         if (lineReady && inputPin !== lineEmployeeCode) {
@@ -893,17 +901,16 @@
           showAlreadyRegistered({ employee_code: pinToCheck });
           return;
         }
-        const { data, error } = await supabaseClient.from('guests')
-          .select('employee_code,full_name,branch,morning_check_in,evening_check_in')
-          .eq('employee_code', inputPin).maybeSingle();
-        if (error) throw error;
-        if (!data) {
+        if (!precheck.found) {
           showEmployeeNotFound(pinToCheck);
           return;
         }
-        matchedGuest = data;
+        if (!precheck.guest || precheck.guest.employee_code !== pinToCheck) {
+          throw new Error('ผลตรวจสอบไม่สมบูรณ์ กรุณาลองใหม่');
+        }
+        matchedGuest = precheck.guest;
         closePinModal();
-        openVerifyModal(data);
+        openVerifyModal(precheck.guest);
       } catch (err) {
         const code = String(err?.message || '');
         if (code.includes('ไม่ตรงกับบัญชี LINE')) {
@@ -912,7 +919,11 @@
           showEmployeePinAlert('ไม่สามารถตรวจสอบรหัสได้', 'กรุณาลองใหม่อีกครั้ง หากยังไม่สำเร็จให้ติดต่อเจ้าหน้าที่', 'ลองใหม่อีกครั้ง');
           console.warn('Employee preview failed:', err?.message || 'unknown');
         }
-      } finally { employeePinChecking = false; }
+      } finally {
+        clearTimeout(slowHint);
+        errEl.classList.add('hidden');
+        employeePinChecking = false;
+      }
     }
 
     function openVerifyModal(guest) {
