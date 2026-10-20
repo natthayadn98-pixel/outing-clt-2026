@@ -370,6 +370,26 @@
     #verifyModal button:focus-visible {outline:3px solid #d9b451;outline-offset:3px;}
     @media (max-height:750px){#verifyModal.clt-verify-overlay{padding-top:68px;}#verifyModal .clt-verify-card{margin-top:33px;}#verifyModal .clt-verify-hero{height:105px;}#verifyModal .clt-verify-hero img{max-height:178px;width:194px;}#verifyModal .clt-verify-row{min-height:47px;padding:6px 0;}#verifyModal .clt-verify-icon{width:34px;height:34px;}#verifyModal .clt-verify-subtitle{margin-bottom:9px;}#verifyModal .clt-verify-warning{margin:9px 0;padding:7px;}#verifyModal .clt-verify-confirm,#verifyModal .clt-verify-retry{padding:11px 7px;}}
 
+
+    /* Employee-code-not-found pop-out; uses local PNG to avoid missing emoji/CDN icons. */
+    #cltEmployeeNotFound {z-index:10060; background:rgba(17,22,48,.84);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);align-items:center;justify-content:center;padding:clamp(72px,12dvh,118px) 16px max(17px,env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;}
+    #cltEmployeeNotFound:not(.hidden){display:flex;}
+    #cltEmployeeNotFound .clt-nf-card {position:relative;isolation:isolate;width:min(100%,390px);flex-shrink:0;background:#fff;border-radius:30px;padding:0 22px 22px;color:#252442;text-align:center;box-shadow:0 30px 80px #080c2a6b;}
+    #cltEmployeeNotFound .clt-nf-hero {height:clamp(142px,24dvh,198px);position:relative;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;}
+    #cltEmployeeNotFound .clt-nf-hero:before {content:'';position:absolute;left:50%;bottom:5px;transform:translateX(-50%);width:230px;height:138px;border-radius:50%;background:radial-gradient(ellipse,#ffe3e9 0%,#fff6f9 68%,transparent 78%);z-index:-1;}
+    #cltEmployeeNotFound .clt-nf-hero img {position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:clamp(200px,67vw,270px);max-height:calc(100% + 85px);height:auto;object-fit:contain;object-position:bottom;filter:drop-shadow(0 9px 12px #8d466b22);}
+    #cltEmployeeNotFound .clt-nf-close {position:absolute;top:15px;right:15px;z-index:2;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;font-size:25px;line-height:1;background:#f1f0f7;color:#77768f;}
+    #cltEmployeeNotFound #cltNotFoundTitle {font-size:clamp(23px,6vw,28px);font-weight:900;color:#da304a;line-height:1.3;margin:7px 0 8px;}
+    #cltEmployeeNotFound #cltNotFoundDesc {color:#636782;font-size:13px;line-height:1.7;margin:0;}
+    #cltEmployeeNotFound .clt-nf-code {display:flex;align-items:center;justify-content:center;gap:14px;text-align:left;background:linear-gradient(105deg,#ffedf1,#fff7f9);border-radius:19px;padding:15px 18px;margin:17px 0;}
+    #cltEmployeeNotFound .clt-nf-code-icon {width:46px;height:46px;flex-shrink:0;background:#fbd7df;border-radius:15px;color:#e23a56;display:grid;place-items:center;}
+    #cltEmployeeNotFound .clt-nf-code-label {font-size:12px;font-weight:700;color:#7b7289;}
+    #cltEmployeeNotFound .clt-nf-code-value {font-size:24px;font-weight:900;letter-spacing:1px;color:#252442;font-variant-numeric:tabular-nums;}
+    #cltEmployeeNotFound .clt-nf-retry {display:flex;width:100%;align-items:center;justify-content:center;gap:10px;background:linear-gradient(110deg,#7849cd,#9347e1);padding:13px 10px;border-radius:17px;color:#fff;font-weight:800;font-size:15px;box-shadow:0 10px 25px #8649c12e;}
+    #cltEmployeeNotFound .clt-nf-footnote {font-size:11px;line-height:1.55;color:#8b8599;margin:15px 0 0;}
+    #cltEmployeeNotFound .clt-nf-close:focus-visible,#cltEmployeeNotFound .clt-nf-retry:focus-visible{outline:3px solid #f2bf53;outline-offset:3px;}
+    @media(max-height:720px){#cltEmployeeNotFound{padding-top:65px;}#cltEmployeeNotFound .clt-nf-hero{height:128px;}#cltEmployeeNotFound .clt-nf-hero img{width:190px;max-height:190px;}#cltEmployeeNotFound .clt-nf-card{padding-bottom:15px;}#cltEmployeeNotFound .clt-nf-code{margin:12px 0;padding:11px;}}
+    @media(max-height:590px){#cltEmployeeNotFound{align-items:flex-start;padding-top:55px;}#cltEmployeeNotFound .clt-nf-hero{height:98px;}#cltEmployeeNotFound .clt-nf-hero img{width:155px;max-height:155px;}#cltEmployeeNotFound .clt-nf-footnote{margin-top:7px;}}
   </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4 select-none">
@@ -542,6 +562,27 @@
       <h3 id="employeePinAlertTitle" class="text-xl font-bold text-amber-200 mb-3">ไม่พบรหัสพนักงานนี้</h3>
       <p id="employeePinAlertMessage" class="text-sm text-white/90 leading-relaxed mb-6">กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ</p>
       <button id="employeePinAlertButton" type="button" onclick="closeEmployeePinAlert()" class="w-full rounded-xl bg-amber-400 text-[#211322] font-bold py-3 text-base">กรอกรหัสใหม่</button>
+    </div>
+  </div>
+
+  <!-- Employee not found: bundled 3D artwork. No account details are disclosed. -->
+  <div id="cltEmployeeNotFound" class="fixed inset-0 hidden" role="alertdialog" aria-modal="true" aria-labelledby="cltNotFoundTitle" aria-describedby="cltNotFoundDesc">
+    <div class="clt-nf-card">
+      <button type="button" class="clt-nf-close" aria-label="ปิดและกรอกรหัสใหม่" onclick="dismissEmployeeNotFound()">&times;</button>
+      <div class="clt-nf-hero" aria-hidden="true">
+        <img src="clt-employee-not-found-girl.png" width="500" height="500" alt="" loading="eager">
+      </div>
+      <h3 id="cltNotFoundTitle">ไม่พบรหัสพนักงาน</h3>
+      <p id="cltNotFoundDesc">ไม่พบรหัสพนักงานนี้ในระบบ<br>กรุณาตรวจสอบแล้วกรอกใหม่อีกครั้งค่ะ</p>
+      <div class="clt-nf-code" aria-label="รหัสพนักงานที่กรอก">
+        <div class="clt-nf-code-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg></div>
+        <div><div class="clt-nf-code-label">รหัสที่กรอก</div><div id="cltNotFoundCode" class="clt-nf-code-value"></div></div>
+      </div>
+      <button type="button" id="cltNotFoundRetry" class="clt-nf-retry" onclick="dismissEmployeeNotFound()">
+        <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>
+        กรอกเลขพนักงานใหม่
+      </button>
+      <p class="clt-nf-footnote">หากตรวจสอบแล้วว่ารหัสถูกต้อง กรุณาติดต่อ IT</p>
     </div>
   </div>
 
@@ -801,7 +842,7 @@
     }
 
     function pressPin(digit) {
-      if (employeePinChecking || !document.getElementById('employeePinAlert').classList.contains('hidden')) return;
+      if (employeePinChecking || !document.getElementById('employeePinAlert').classList.contains('hidden') || !document.getElementById('cltEmployeeNotFound').classList.contains('hidden')) return;
       if (inputPin.length < 6) {
         inputPin += digit;
         updatePinDashes();
@@ -813,7 +854,7 @@
     }
 
     function backspacePin() {
-      if (employeePinChecking || !document.getElementById('employeePinAlert').classList.contains('hidden')) return;
+      if (employeePinChecking || !document.getElementById('employeePinAlert').classList.contains('hidden') || !document.getElementById('cltEmployeeNotFound').classList.contains('hidden')) return;
       if (inputPin.length > 0) {
         inputPin = inputPin.slice(0, -1);
         updatePinDashes();
@@ -822,7 +863,7 @@
 
     window.addEventListener('keydown', (e) => {
       const modal = document.getElementById('pinModal');
-      if (modal && !modal.classList.contains('hidden') && document.getElementById('employeePinAlert').classList.contains('hidden')) {
+      if (modal && !modal.classList.contains('hidden') && document.getElementById('employeePinAlert').classList.contains('hidden') && document.getElementById('cltEmployeeNotFound').classList.contains('hidden')) {
         if (e.key >= '0' && e.key <= '9') {
           pressPin(e.key);
         } else if (e.key === 'Backspace') {
@@ -857,7 +898,7 @@
           .eq('employee_code', inputPin).maybeSingle();
         if (error) throw error;
         if (!data) {
-          showEmployeePinAlert('ไม่พบรหัสพนักงานนี้', 'กรุณาตรวจสอบรหัสพนักงาน 6 หลัก แล้วกรอกใหม่อีกครั้งค่ะ');
+          showEmployeeNotFound(pinToCheck);
           return;
         }
         matchedGuest = data;
@@ -913,6 +954,22 @@
         if (e?.name === 'AbortError') throw new Error('ระบบตรวจสอบใช้เวลานาน กรุณาลองใหม่');
         throw e;
       } finally {clearTimeout(timer)}
+    }
+
+    function showEmployeeNotFound(code) {
+      const safeCode = typeof code === 'string' && /^\d{6}$/.test(code) ? code : '—';
+      document.getElementById('cltNotFoundCode').textContent = safeCode;
+      document.getElementById('cltEmployeeNotFound').classList.remove('hidden');
+      document.getElementById('cltNotFoundRetry').focus();
+    }
+
+    function dismissEmployeeNotFound() {
+      document.getElementById('cltEmployeeNotFound').classList.add('hidden');
+      matchedGuest = null;
+      inputPin = '';
+      updatePinDashes();
+      document.getElementById('pinSearchError').classList.add('hidden');
+      document.getElementById('pinModal').classList.remove('hidden');
     }
 
     function showAlreadyRegistered(guest) {
