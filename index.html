@@ -444,7 +444,7 @@
         </div>
         <div class="flex items-center gap-2">
           <span>🌙</span>
-          <span><b>รอบเย็น:</b> 14:00 น. เป็นต้นไป</span>
+          <span><b>รอบเย็น:</b> 17:00 น. เป็นต้นไป</span>
         </div>
         <div class="flex items-start gap-2">
           <span class="shrink-0 mt-0.5">📍</span>
@@ -878,15 +878,7 @@
       if (employeePinChecking || inputPin.length !== 6) return;
       employeePinChecking = true;
       const errEl = document.getElementById('pinSearchError');
-      errEl.classList.remove('hidden');
-      errEl.textContent = '⏳ กำลังตรวจสอบข้อมูลพนักงาน…';
-      errEl.style.color = '#c4b5fd';
-      const checkingAt = Date.now();
-      const slowHint = setTimeout(() => {
-        if (employeePinChecking && inputPin.length === 6) {
-          errEl.textContent = 'กำลังเชื่อมต่อกับระบบ กรุณารอสักครู่…';
-        }
-      }, 3000);
+      errEl.classList.add('hidden');
       try {
         if (!lineVerified) throw new Error('ยังยืนยันบัญชี LINE ไม่สำเร็จ กรุณาลองใหม่');
         if (lineReady && inputPin !== lineEmployeeCode) {
@@ -901,16 +893,17 @@
           showAlreadyRegistered({ employee_code: pinToCheck });
           return;
         }
-        if (!precheck.found) {
+        const { data, error } = await supabaseClient.from('guests')
+          .select('employee_code,full_name,branch,morning_check_in,evening_check_in')
+          .eq('employee_code', inputPin).maybeSingle();
+        if (error) throw error;
+        if (!data) {
           showEmployeeNotFound(pinToCheck);
           return;
         }
-        if (!precheck.guest || precheck.guest.employee_code !== pinToCheck) {
-          throw new Error('ผลตรวจสอบไม่สมบูรณ์ กรุณาลองใหม่');
-        }
-        matchedGuest = precheck.guest;
+        matchedGuest = data;
         closePinModal();
-        openVerifyModal(precheck.guest);
+        openVerifyModal(data);
       } catch (err) {
         const code = String(err?.message || '');
         if (code.includes('ไม่ตรงกับบัญชี LINE')) {
@@ -919,11 +912,7 @@
           showEmployeePinAlert('ไม่สามารถตรวจสอบรหัสได้', 'กรุณาลองใหม่อีกครั้ง หากยังไม่สำเร็จให้ติดต่อเจ้าหน้าที่', 'ลองใหม่อีกครั้ง');
           console.warn('Employee preview failed:', err?.message || 'unknown');
         }
-      } finally {
-        clearTimeout(slowHint);
-        errEl.classList.add('hidden');
-        employeePinChecking = false;
-      }
+      } finally { employeePinChecking = false; }
     }
 
     function openVerifyModal(guest) {
@@ -1065,10 +1054,10 @@
 
     function roundNotice(round) {
       return ({
-        before: '⏳ รอบเช้าเปิดให้แสดง QR เวลา 07:00 น.',
+        before: '⏳ รอบเช้าเปิดให้แสดง QR เวลา 08:30 น.',
         morning: '🌅 รอบเช้า: แสดง QR ได้ถึง 09:30 น.',
         closed: '⚠️ หมดเวลาเช็คอินรอบเช้า กรุณาติดต่อเจ้าหน้าที่',
-        evening: '🌙 รอบเย็น: เปิดให้แสดง QR ตั้งแต่ 14:00 น.'
+        evening: '🌙 รอบเย็น: เปิดให้แสดง QR ตั้งแต่ 17:00 น.'
       })[round];
     }
 
@@ -1082,7 +1071,7 @@
         el.appendChild(firstLine);
         if (round === 'closed') {
           const secondLine = document.createElement('div');
-          secondLine.textContent = '🌙 รอบเย็นเริ่ม 14:00 น.';
+          secondLine.textContent = '🌙 รอบเย็นเริ่ม 17:00 น.';
           secondLine.className = 'mt-1';
           secondLine.style.cssText = 'white-space:nowrap;font-size:11px;letter-spacing:-0.2px';
           el.appendChild(secondLine);
