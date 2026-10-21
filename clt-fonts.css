@@ -1,14 +1,17 @@
-/* CLT 2569 — central font policy
-   Body/table/form/numbers: Sarabun for easy reading.
-   Titles/section titles: Mali for a warm event identity.
-   Changing this file updates every HTML page without modifying business logic.
-*/
-:root{--clt-font-body:'Sarabun',Tahoma,sans-serif;--clt-font-title:'Mali','Sarabun',sans-serif}
-html, body, body *:not(svg):not(path):not(i):not(.material-icons):not(.material-symbols-outlined):not(.material-symbols-rounded):not(.fa):not(.fas):not(.far):not(.fab){font-family:var(--clt-font-body)!important}
-h1,h2,h3,h4,h5,h6,
-body h1 *, body h2 *,body h3 *,body h4 *,body h5 *,body h6 *{
- font-family:var(--clt-font-title)!important;
+/* CLT 2569: Mali across every page and every UI control.
+   Loaded by each HTML document, including admin iframe pages.
+   Preserves icon glyphs and SVG/vector graphics. */
+:root { --clt-font-body: 'Mali', 'Tahoma', sans-serif; --clt-font-title: 'Mali', 'Tahoma', sans-serif; }
+html, body, body *:not(svg):not(svg *):not(i):not(.material-icons):not(.material-symbols-outlined):not(.material-symbols-rounded):not(.fa):not(.fas):not(.far):not(.fab) {
+  font-family: 'Mali', 'Tahoma', sans-serif !important;
 }
-/* Mali at modest heading sizes remains readable on narrow LINE/iPhone screens. */
-h1,h2,h3,h4,h5,h6{line-height:1.5}
-input,button,textarea,select,option{font-family:var(--clt-font-body)!important}
+input, button, textarea, select, option { font-family: 'Mali', 'Tahoma', sans-serif !important; }
+/* Let Mali's taller Thai glyphs breathe; do not change app layout/JS. */
+body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+h1,h2,h3,h4,h5,h6 { line-height: 1.55; }
+button, input, select, textarea { line-height: 1.5; }
+@media (max-width: 767px) {
+  h1,h2,h3,h4,h5,h6 { overflow-wrap: break-word; }
+  button { overflow-wrap: anywhere; }
+  input,textarea,select { font-size: max(16px, 1em); }
+}
