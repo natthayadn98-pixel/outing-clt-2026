@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
-    * { font-family: 'Anakotmai', sans-serif; }
+    * { font-family: 'Mali', sans-serif; }
     body { background-color: #0c0217; color: #f1f5f9; min-height: 100vh; padding: 2rem 1rem; }
     .vip-input { background-color: #0e0523; border: 1px solid rgba(139, 92, 246, 0.35); }
     ::-webkit-scrollbar { width: 6px; }
@@ -49,6 +49,20 @@
       <div class="bg-[#0e0423] border border-purple-800/80 rounded-2xl p-3 sm:p-4">
         <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="handleExcelFileUpload(event)" class="block w-full text-xs text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-purple-900 file:text-amber-300" />
       </div>
+    </div>
+
+    <!-- Smart Import preview: no database write until an admin explicitly confirms. -->
+    <div id="smartImportPanel" class="hidden mb-6 rounded-3xl border border-amber-400/30 bg-[#160d31] p-4 sm:p-6 shadow-xl" style="color:#f5efff">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4"><div><h3 class="font-bold text-lg text-amber-300">✨ ตรวจสอบก่อนนำเข้า Excel</h3><p id="importFilename" class="text-xs opacity-75 mt-1"></p></div><button type="button" id="importCancelBtn" onclick="cancelSmartImport()" class="rounded-xl border border-purple-400/40 px-4 py-2 text-xs">ยกเลิก</button></div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        <div class="rounded-xl bg-white/10 p-3"><p class="text-xs">รายการใน Excel</p><b id="importTotal" class="text-2xl">0</b></div>
+        <div class="rounded-xl bg-emerald-500/15 p-3"><p class="text-xs">เพิ่มใหม่</p><b id="importNew" class="text-2xl text-emerald-300">0</b></div>
+        <div class="rounded-xl bg-slate-500/15 p-3"><p class="text-xs">ข้ามข้อมูลซ้ำ</p><b id="importDuplicates" class="text-2xl">0</b></div>
+        <div class="rounded-xl bg-rose-500/15 p-3"><p class="text-xs">ข้อมูลไม่ถูกต้อง</p><b id="importInvalid" class="text-2xl text-rose-300">0</b></div>
+      </div>
+      <div class="text-xs rounded-xl bg-white/5 border border-white/10 p-3 mb-3 max-h-40 overflow-y-auto" id="importPreviewRows">รออ่านไฟล์...</div>
+      <p id="importMessage" role="status" aria-live="polite" class="text-xs mb-3 text-amber-200"></p>
+      <button type="button" id="importConfirmBtn" onclick="confirmSmartImport()" disabled class="w-full rounded-xl py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-green-500 text-white font-bold disabled:opacity-45 disabled:cursor-not-allowed">ยืนยันนำเข้าเฉพาะพนักงานใหม่</button>
     </div>
 
     <div id="cloudSyncBanner" class="flex items-center justify-center gap-2 text-emerald-400 font-semibold mb-6 text-sm">
@@ -115,7 +129,7 @@
   <script>
     const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = (window.parent && window.parent !== window && window.parent.cltSecureAdminClient) || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     let guestsList = [];
     let searchDebounceTimer = null;
@@ -244,34 +258,111 @@
       filterSelect.value = curVal;
     }
 
-    function handleExcelFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array', cellText: true });
-          const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { raw: false, defval: '' });
-          const uniqueMap = new Map();
-
-          jsonRows.forEach(row => {
-            const rawCode = row['รหัสพนักงาน'] || row['รหัส'] || row['employee_code'];
-            const rawName = row['ชื่อพนักงาน'] || row['ชื่อ-สกุล'] || row['full_name'];
-            const rawBranch = row['สาขา'] || row['แผนก'] || 'สำนักงานใหญ่';
-            if (rawCode && rawName) {
-              const code = String(rawCode).trim();
-              uniqueMap.set(code, { employee_code: code, full_name: String(rawName).trim(), branch: String(rawBranch).trim(), qr_token: code });
-            }
+    let importNewGuests = [];
+    let importInProgress = false;
+    const importEl = id => document.getElementById(id);
+    const importEscape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function cancelSmartImport() {
+      if(importInProgress) return;
+      importNewGuests = [];
+      importEl('smartImportPanel').classList.add('hidden');
+      importEl('excelFileInput').value = '';
+    }
+    async function getAllGuestCodes() {
+      const client = window.parent?.cltSecureAdminClient;
+      if (!client) throw new Error('โปรดเปิดผ่านหน้า admin.html และเข้าสู่ระบบ Admin ก่อน');
+      const codes = new Set();
+      let from = 0;
+      while (true) {
+        const {data,error} = await client.from('guests').select('employee_code').order('employee_code').range(from,from+999);
+        if(error) throw error;
+        for(const row of data||[]) codes.add(String(row.employee_code));
+        if(!data || data.length<1000) break;
+        from+=1000;
+        if(from>100000) throw new Error('รายชื่อมีจำนวนมากเกินขอบเขตการตรวจสอบ');
+      }
+      return codes;
+    }
+    const getRowValue=(row,keys)=>{
+      for(const key of keys){
+        const found=Object.keys(row).find(k=>k.trim().toLowerCase()===key.toLowerCase());
+        if(found && row[found]!=='' && row[found]!==null && row[found]!==undefined) return String(row[found]).trim();
+      }
+      return '';
+    };
+    function normalizeEmployeeCode(value){
+      let code=String(value??'').trim();
+      if(/^\d{1,6}$/.test(code)) code=code.padStart(6,'0');
+      return code;
+    }
+    async function handleExcelFileUpload(event) {
+      const file=event.target.files?.[0];
+      if(!file)return;
+      const panel=importEl('smartImportPanel'); panel.classList.remove('hidden');
+      importEl('importFilename').textContent=file.name;
+      importEl('importMessage').textContent='กำลังอ่านไฟล์และตรวจสอบรหัสพนักงานกับ Cloud...';
+      importEl('importConfirmBtn').disabled=true;
+      importNewGuests=[];
+      try{
+        if(file.size>8*1024*1024)throw new Error('ขนาดไฟล์เกิน 8 MB');
+        const bytes=new Uint8Array(await file.arrayBuffer());
+        const workbook=XLSX.read(bytes,{type:'array',cellText:true});
+        const sheet=workbook.Sheets[workbook.SheetNames[0]];
+        if(!sheet)throw new Error('ไม่พบข้อมูลใน Excel');
+        const rows=XLSX.utils.sheet_to_json(sheet,{raw:false,defval:''});
+        if(!rows.length)throw new Error('ไม่พบรายชื่อในไฟล์');
+        if(rows.length>10000)throw new Error('รองรับไม่เกิน 10,000 แถวต่อไฟล์');
+        const existing=await getAllGuestCodes();
+        const inFile=new Set();
+        let skipped=0,invalid=0;
+        const examples=[];
+        for(const row of rows){
+          const code=normalizeEmployeeCode(getRowValue(row,['รหัสพนักงาน','รหัส','employee_code']));
+          const name=getRowValue(row,['ชื่อพนักงาน','ชื่อ-สกุล','ชื่อ-นามสกุล','full_name']);
+          const branch=getRowValue(row,['สาขา','แผนก','branch']) || 'สำนักงานใหญ่';
+          if(!/^\d{6}$/.test(code)||!name||name.length>200||branch.length>150){invalid++;if(examples.length<10)examples.push('⚠️ ข้อมูลไม่ครบหรือรูปแบบรหัสผิด');continue;}
+          if(inFile.has(code)||existing.has(code)){skipped++;if(examples.length<10)examples.push('ข้ามซ้ำ: '+code);continue;}
+          inFile.add(code);
+          importNewGuests.push({employee_code:code,full_name:name,branch});
+          if(examples.length<10)examples.push('เพิ่มใหม่: '+code+' — '+name);
+        }
+        importEl('importTotal').textContent=rows.length;
+        importEl('importNew').textContent=importNewGuests.length;
+        importEl('importDuplicates').textContent=skipped;
+        importEl('importInvalid').textContent=invalid;
+        importEl('importPreviewRows').innerHTML=examples.map(x=>'<div class="py-1 border-b border-white/10">'+importEscape(x)+'</div>').join('')||'ไม่มีรายการเพิ่มใหม่';
+        importEl('importMessage').textContent=invalid?'พบข้อมูลไม่ถูกต้อง '+invalid+' รายการ ระบบจะข้ามรายการเหล่านี้':'ตรวจสอบเสร็จแล้ว ข้อมูลเดิมจะไม่ถูกแก้ไข';
+        importEl('importConfirmBtn').disabled=importNewGuests.length===0;
+      }catch(err){importNewGuests=[];importEl('importMessage').textContent='ตรวจสอบไม่ได้: '+(err.message||'เกิดข้อผิดพลาด');importEl('importConfirmBtn').disabled=true;}
+    }
+    async function confirmSmartImport(){
+      if(importInProgress||!importNewGuests.length)return;
+      const client=window.parent?.cltSecureAdminClient;
+      if(!client){importEl('importMessage').textContent='กรุณาเข้าสู่ระบบ Admin ก่อน';return;}
+      const {data:{session},error:authError}=await client.auth.getSession();
+      if(authError||!session?.access_token){importEl('importMessage').textContent='เซสชัน Admin หมดอายุ';return;}
+      if(!confirm('ยืนยันเพิ่มพนักงานใหม่ '+importNewGuests.length+' คน โดยข้ามคนที่มีอยู่แล้วใช่หรือไม่?'))return;
+      importInProgress=true;
+      importEl('importConfirmBtn').disabled=true;
+      importEl('importCancelBtn').disabled=true;
+      let inserted=0, skipped=0;
+      try {
+        for(let i=0;i<importNewGuests.length;i+=200){
+          importEl('importMessage').textContent='กำลังนำเข้า '+Math.min(i+200,importNewGuests.length)+' / '+importNewGuests.length+'...';
+          const res=await fetch(SUPABASE_URL+'/functions/v1/admin-import-guests',{
+            method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SUPABASE_ANON_KEY},
+            body:JSON.stringify({action:'import_new',guests:importNewGuests.slice(i,i+200)})
           });
-
-          const list = Array.from(uniqueMap.values());
-          await supabaseClient.from('guests').upsert(list, { onConflict: 'employee_code' });
-          alert(`นำเข้า ${list.length} คน เรียบร้อยแล้ว`);
-          fetchGuestsFromSupabase(false);
-        } catch (err) { alert('ผิดพลาด: ' + err.message); }
-      };
-      reader.readAsArrayBuffer(file);
+          const body=await res.json().catch(()=>({}));
+          if(!res.ok||!body.success)throw new Error((body.error||'import_failed')+(body.code?' ('+body.code+')':''));
+          inserted+=body.inserted||0;skipped+=body.skipped||0;
+        }
+        importEl('importMessage').textContent='✅ เพิ่มพนักงานใหม่ '+inserted+' คน | ซ้ำใน Cloud ขณะบันทึก '+skipped+' คน | รายชื่อเดิมไม่ถูกแก้ไข';
+        importNewGuests=[];
+        await fetchGuestsFromSupabase(false);
+      } catch(err) {
+        importEl('importMessage').textContent='❌ นำเข้าไม่สำเร็จหรือสำเร็จบางส่วน: '+err.message+' — รีเฟรชและตรวจซ้ำก่อนลองใหม่';
+      } finally {importInProgress=false;importEl('importCancelBtn').disabled=false;importEl('importConfirmBtn').disabled=true;}
     }
 
     async function clearCloudDisplay() {
@@ -296,7 +387,7 @@
         <html><head><title>Print Badges</title>
         
         <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
-        <style>@page { size: A4; margin: 8mm; } body { font-family: 'Anakotmai', sans-serif; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8mm; } .badge { border: 2px dashed #7c3aed; padding: 12px; text-align: center; page-break-inside: avoid; }</style></head>
+        <style>@page { size: A4; margin: 8mm; } body { font-family: 'Mali', sans-serif; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8mm; } .badge { border: 2px dashed #7c3aed; padding: 12px; text-align: center; page-break-inside: avoid; }</style></head>
         <body><div class="grid" id="c"></div><script>
           const list = ${JSON.stringify(printItems)};
           list.forEach((item, idx) => {
