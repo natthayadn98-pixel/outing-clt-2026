@@ -382,6 +382,7 @@
             <span>จุดสแกนเข้างาน</span>
           </a>
 
+          <a href="page-music.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition"><span>🎵</span><span>จัดการเพลงพนักงาน</span></a>
           <a href="page-line-management.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition"><span>🔐</span><span>จัดการ LINE / ปลดล็อก</span></a>
           <a href="page-checked-list.html" target="adminFrame" onclick="handleMenuClick(this)" class="sidebar-btn flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-[#1a0e3f]/90 text-purple-200 hover:bg-[#27155e] border border-purple-700/50 transition">
             <span>📋</span>
@@ -664,7 +665,7 @@
  const gate=document.getElementById('secureAdminGate');
  const boot=document.getElementById('secureAdminBoot');
  const LAST_PAGE_KEY='clt_admin_last_page_v1';
- const allowedPages=new Set(['page-dashboard.html','page-walkin.html','page-cloud.html','page-search.html','page-scanner.html','page-checked-list.html','page-stats.html','page-line-management.html']);
+ const allowedPages=new Set(['page-dashboard.html','page-walkin.html','page-cloud.html','page-search.html','page-scanner.html','page-checked-list.html','page-stats.html','page-line-management.html','page-music.html']);
  const getSavedPage=()=>{let saved='';try{saved=sessionStorage.getItem(LAST_PAGE_KEY)||''}catch(_){}return allowedPages.has(saved)?saved:'page-dashboard.html'};
  function openSavedPage(){const page=getSavedPage();if(frame&&frame.getAttribute('src')!==page)frame.src=page;navLinks.forEach(link=>link.classList.toggle('active',link.getAttribute('href')===page));}
  function finishBoot(){if(boot)boot.style.display='none';}
