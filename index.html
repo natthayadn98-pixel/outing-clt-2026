@@ -390,6 +390,13 @@
     #cltEmployeeNotFound .clt-nf-close:focus-visible,#cltEmployeeNotFound .clt-nf-retry:focus-visible{outline:3px solid #f2bf53;outline-offset:3px;}
     @media(max-height:720px){#cltEmployeeNotFound{padding-top:65px;}#cltEmployeeNotFound .clt-nf-hero{height:128px;}#cltEmployeeNotFound .clt-nf-hero img{width:190px;max-height:190px;}#cltEmployeeNotFound .clt-nf-card{padding-bottom:15px;}#cltEmployeeNotFound .clt-nf-code{margin:12px 0;padding:11px;}}
     @media(max-height:590px){#cltEmployeeNotFound{align-items:flex-start;padding-top:55px;}#cltEmployeeNotFound .clt-nf-hero{height:98px;}#cltEmployeeNotFound .clt-nf-hero img{width:155px;max-height:155px;}#cltEmployeeNotFound .clt-nf-footnote{margin-top:7px;}}
+
+/* Pilot: YouTube surprise only for the specified employee after server precheck. */
+#cltMusicSurprise { margin:12px 0 4px; padding:12px; border:1px solid #d9c3ed; border-radius:17px; background:#f5edff; color:#493063; text-align:center; }
+#cltMusicSurprise .music-heading { font-size:13px; font-weight:900; margin-bottom:7px; }
+#cltMusicFrame { width:100%; max-width:310px; height:auto; aspect-ratio:16/9; border:0; border-radius:12px; display:block; margin:auto; background:#161020; }
+#cltMusicSurprise .music-note { font-size:10px; line-height:1.5; color:#674e80; margin-top:7px; }
+@media(max-height:720px) { #cltMusicSurprise {padding:8px;margin:7px 0 2px} #cltMusicFrame{max-width:245px} }
   </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -522,6 +529,9 @@
       <h3 class="text-xl font-bold text-white">Enter Employee <span class="text-[#f5d58a]">PIN</span></h3>
       <p class="text-xs text-purple-300/70 mt-0.5 mb-5 font-light">กรอกรหัสพนักงาน 6 หลัก เพื่อเข้าสู่ระบบ</p>
 
+      <p id="cltPinLineStatus" role="status" aria-live="polite" class="text-[11px] text-[#f5d58a] text-center mb-3 hidden"></p>
+      <button id="cltPinLineRetry" type="button" class="hidden mb-3 rounded-xl border border-amber-400/60 text-amber-100 px-3 py-2 text-xs" onclick="retryLineAuthentication()">↻ ลองเชื่อมต่อ LINE อีกครั้ง</button>
+
       <!-- Six separate, rounded PIN cells; keypad and logic unchanged -->
       <div class="clt-pin-cells mb-6" role="group" aria-label="รหัสพนักงาน 6 หลัก">
         <span id="pinDash0" class="clt-pin-cell" aria-label="หลักที่ 1">·</span>
@@ -638,6 +648,13 @@
           <span class="clt-verify-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M10 21v-3h4v3"/></svg></span>
           <span class="clt-verify-copy"><small>สาขา / แผนก</small><strong id="vBranch">—</strong></span>
         </div>
+      </div>
+
+      <!-- PILOT: hidden for all employees unless the verified employee has the configured YouTube song -->
+      <div id="cltMusicSurprise" class="hidden" aria-label="เพลงพิเศษสำหรับพนักงาน">
+        <div class="music-heading">🎵 Surprise! เพลงพิเศษสำหรับคุณ</div>
+        <div id="cltMusicPlayer"></div>
+        <div class="music-note">หาก LINE ไม่อนุญาตให้เล่นอัตโนมัติ สามารถแตะปุ่มเล่นบน YouTube ได้</div>
       </div>
       <div class="clt-verify-warning"><span class="clt-verify-warning-icon" aria-hidden="true">!</span><span>หากข้อมูลไม่ถูกต้อง กรุณากรอกใหม่<br><small>เพื่อให้การลงทะเบียนเป็นไปอย่างถูกต้อง</small></span></div>
       <button id="confirmRegistrationButton" type="button" onclick="confirmGuestRegistration()" class="clt-verify-confirm">
@@ -801,15 +818,47 @@
       document.getElementById('envelopeScene').classList.remove('hidden');
     }
 
+    // Open the keypad immediately on tap. LINE verification continues in background;
+    // no employee-code query or binding can occur until lineVerified is true.
+    let pinWaitingForLine = false;
+    let lineAuthInProgress = false;
+    let lineAuthFailed = false;
+    function setPinLineStatus(message, failed = false) {
+      const status = document.getElementById('cltPinLineStatus');
+      const retry = document.getElementById('cltPinLineRetry');
+      if (!status || !retry) return;
+      status.textContent = message;
+      status.classList.toggle('hidden', !message);
+      status.classList.toggle('text-rose-300', failed);
+      status.classList.toggle('text-[#f5d58a]', !failed);
+      retry.classList.toggle('hidden', !failed);
+    }
     function openPinModal() {
-      if (!lineVerified) return;
-      if (!['morning', 'evening'].includes(getActiveRound())) return;
       const round = getActiveRound();
       if (round !== 'morning' && round !== 'evening') { showTimeRestriction(round); return; }
-      inputPin = "";
+      inputPin = '';
+      pinWaitingForLine = false;
       updatePinDashes();
       document.getElementById('pinSearchError').classList.add('hidden');
       document.getElementById('pinModal').classList.remove('hidden');
+      setPinLineStatus(lineVerified ? '' : (lineAuthFailed ? 'ยืนยัน LINE ไม่สำเร็จ กดลองเชื่อมต่ออีกครั้ง' : 'กำลังเชื่อมต่อ LINE… สามารถกรอกรหัสไว้ก่อนได้'),lineAuthFailed);
+    }
+    function submitPinWhenReady() {
+      if (inputPin.length !== 6 || employeePinChecking) return;
+      if (!lineVerified) {
+        pinWaitingForLine = true;
+        setPinLineStatus(lineAuthFailed ? 'ยังยืนยัน LINE ไม่สำเร็จ กรุณาลองเชื่อมต่ออีกครั้ง' : 'กรอกรหัสครบแล้ว กำลังรอยืนยัน LINE…',lineAuthFailed);
+        return;
+      }
+      pinWaitingForLine = false;
+      setPinLineStatus('');
+      verifyEmployeePinFromSQL();
+    }
+    function retryLineAuthentication() {
+      if (lineAuthInProgress) return;
+      lineAuthFailed = false;
+      setPinLineStatus('กำลังเชื่อมต่อ LINE อีกครั้ง…');
+      initLineAccess();
     }
 
     function closePinModal() {
@@ -852,7 +901,8 @@
         updatePinDashes();
         document.getElementById('pinSearchError').classList.add('hidden');
         if (inputPin.length === 6) {
-          setTimeout(verifyEmployeePinFromSQL, 200);
+          // Render digit 6 first, then begin verification without an artificial 200ms delay.
+          requestAnimationFrame(() => setTimeout(submitPinWhenReady, 0));
         }
       }
     }
@@ -861,7 +911,9 @@
       if (employeePinChecking || !document.getElementById('employeePinAlert').classList.contains('hidden') || !document.getElementById('cltEmployeeNotFound').classList.contains('hidden')) return;
       if (inputPin.length > 0) {
         inputPin = inputPin.slice(0, -1);
+        pinWaitingForLine = false;
         updatePinDashes();
+        if (!lineVerified) setPinLineStatus(lineAuthFailed ? 'ยืนยัน LINE ไม่สำเร็จ' : 'กำลังเชื่อมต่อ LINE…',lineAuthFailed);
       }
     }
 
@@ -919,14 +971,47 @@
       } finally { employeePinChecking = false; }
     }
 
+
+    // VIP Surprise Song PILOT — configure these two values before enabling.
+    // IMPORTANT: Never put secret keys here. Employee must still pass LINE-bound precheck.
+    const CLT_MUSIC_PILOT = Object.freeze({
+      employeeCode: '', // Example: '000001' (six digits; do not use a real code until approved)
+      youtubeVideoId: 'ktAmrwHzqD8' // YouTube video ID (11 characters), not the full URL.
+    });
+    function stopCltSurpriseMusic() {
+      const panel = document.getElementById('cltMusicSurprise');
+      const container = document.getElementById('cltMusicPlayer');
+      if (container) container.replaceChildren(); // stop embedded playback
+      if (panel) panel.classList.add('hidden');
+    }
+    function showCltSurpriseMusic(guest) {
+      stopCltSurpriseMusic();
+      const {employeeCode,youtubeVideoId} = CLT_MUSIC_PILOT;
+      if (!lineVerified || !guest || guest.employee_code !== employeeCode ||
+          !/^\d{6}$/.test(employeeCode) || !/^[A-Za-z0-9_-]{11}$/.test(youtubeVideoId)) return;
+      const panel = document.getElementById('cltMusicSurprise');
+      const container = document.getElementById('cltMusicPlayer');
+      const iframe = document.createElement('iframe');
+      iframe.id = 'cltMusicFrame';
+      iframe.title = 'YouTube เพลงพิเศษสำหรับคุณ';
+      iframe.loading = 'eager';
+      iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+      iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+      iframe.src = 'https://www.youtube.com/embed/' + encodeURIComponent(youtubeVideoId) + '?autoplay=1&playsinline=1&rel=0';
+      container.appendChild(iframe);
+      panel.classList.remove('hidden');
+    }
+
     function openVerifyModal(guest) {
       document.getElementById('vCode').textContent = guest.employee_code;
       document.getElementById('vName').textContent = guest.full_name;
       document.getElementById('vBranch').textContent = guest.branch || 'สำนักงานใหญ่';
       document.getElementById('verifyModal').classList.remove('hidden');
+      showCltSurpriseMusic(guest);
     }
 
     function closeVerifyModal() {
+      stopCltSurpriseMusic();
       document.getElementById('verifyModal').classList.add('hidden');
       matchedGuest = null;
       inputPin = '';
@@ -961,6 +1046,7 @@
     }
 
     function showEmployeeNotFound(code) {
+      stopCltSurpriseMusic();
       const safeCode = typeof code === 'string' && /^\d{6}$/.test(code) ? code : '—';
       document.getElementById('cltNotFoundCode').textContent = safeCode;
       document.getElementById('cltEmployeeNotFound').classList.remove('hidden');
@@ -977,6 +1063,7 @@
     }
 
     function showAlreadyRegistered(guest) {
+      stopCltSurpriseMusic();
       document.getElementById('verifyModal').classList.add('hidden');
       document.getElementById('employeePinAlert').classList.add('hidden');
       // Keep the PIN pad available behind the popup for one-tap re-entry.
@@ -1021,6 +1108,7 @@
         if (guest.employee_code !== lineEmployeeCode) throw new Error('รหัสไม่ตรงกับบัญชี LINE');
         localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
         document.getElementById('verifyModal').classList.add('hidden');
+        stopCltSurpriseMusic();
         await checkExistingLogin();
         subscribeToGuestCheckIn(guest.employee_code);
         // No success/fireworks before a real check-in. Open the original purple/gold QR modal.
@@ -1531,7 +1619,6 @@
     }
 
     function handleMainCardButtonClick() {
-      if (!lineVerified) return;
       const active = getActiveRound();
       if (active !== 'morning' && active !== 'evening') { showTimeRestriction(active); return; }
       if (matchedGuest && matchedGuest.morning_check_in && matchedGuest.evening_check_in) return;
@@ -1667,6 +1754,9 @@
       el.style.display = text ? 'block' : 'none';
     }
     async function initLineAccess() {
+      if (lineAuthInProgress) return;
+      lineAuthInProgress = true;
+      lineAuthFailed = false;
       const gate = document.getElementById('lineAccessGate');
       const message = document.getElementById('lineGateMessage');
       try {
@@ -1681,6 +1771,8 @@
         const result = await lineAuthRequest('status');
         if (!result.verified) throw new Error('ไม่สามารถยืนยันบัญชี LINE ได้');
         lineVerified = true;
+        lineAuthFailed = false;
+        setPinLineStatus('');
         if (result.linked && /^\d{6}$/.test(result.employeeCode || '')) {
           lineEmployeeCode = result.employeeCode;
           lineReady = true;
@@ -1693,8 +1785,15 @@
           document.getElementById('btnMainText').textContent = 'กรอกรหัสพนักงาน (PIN 6 หลัก)';
         }
         showLineStatus('');
+        if (pinWaitingForLine && inputPin.length === 6 && !document.getElementById('pinModal').classList.contains('hidden')) {
+          submitPinWhenReady();
+        }
       } catch (error) {
         lineVerified = false;
+        lineAuthFailed = true;
+        if (!document.getElementById('pinModal').classList.contains('hidden')) {
+          setPinLineStatus('ยืนยัน LINE ไม่สำเร็จ กรุณาลองเชื่อมต่ออีกครั้ง',true);
+        }
         lineReady = false;
         lineEmployeeCode = null;
         // Only show the invitation immediately if we can identify the LINE in-app context.
@@ -1706,6 +1805,8 @@
           message.style.display = 'block';
           message.textContent = 'กรุณาเปิดผ่านแอป LINE';
         }
+      } finally {
+        lineAuthInProgress = false;
       }
     }
     window.addEventListener('DOMContentLoaded', () => {
