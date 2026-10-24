@@ -654,7 +654,9 @@
       <!-- PILOT: hidden for all employees unless the verified employee has the configured YouTube song -->
       <div id="cltMusicSurprise" class="hidden" aria-label="เพลงพิเศษสำหรับพนักงาน">
         <div class="music-heading">🎵 Surprise! เพลงพิเศษสำหรับคุณ</div>
-        <button id="cltMusicPlayButton" type="button" onclick="playCltSurpriseMusic()" aria-label="เปิดเพลงพิเศษบน YouTube"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>เล่นเพลงพิเศษ</button>
+        <button id="cltMusicPlayButton" type="button" onclick="playCltSurpriseMusic()" aria-label="เล่นหรือหยุดเพลงพิเศษ" aria-pressed="false"><span id="cltMusicPlayIcon" aria-hidden="true">▶</span><span id="cltMusicPlayText">เล่นเพลงพิเศษ</span></button>
+        <div id="cltMusicError" class="hidden" role="status" style="font-size:11px;color:#b42318;margin-top:4px">ไม่สามารถเล่นเสียงได้ กรุณาลองอีกครั้ง</div>
+        <audio id="cltMusicAudio" preload="none" src="vip-surprise-180968.wav"></audio>
       </div>
       <div class="clt-verify-warning"><span class="clt-verify-warning-icon" aria-hidden="true">!</span><span>หากข้อมูลไม่ถูกต้อง กรุณากรอกใหม่<br><small>เพื่อให้การลงทะเบียนเป็นไปอย่างถูกต้อง</small></span></div>
       <button id="confirmRegistrationButton" type="button" onclick="confirmGuestRegistration()" class="clt-verify-confirm">
@@ -972,37 +974,44 @@
     }
 
 
-    // VIP Surprise Song PILOT — configure these two values before enabling.
-    // IMPORTANT: Never put secret keys here. Employee must still pass LINE-bound precheck.
-    const CLT_MUSIC_PILOT = Object.freeze({
-      employeeCode: '180968', // Existing guest in Supabase; only after successful LINE verification
-      youtubeVideoId: 'ktAmrwHzqD8' // YouTube video ID (11 characters), not the full URL.
-    });
+    // Audio-only PILOT: original sample tone, NOT a recording from YouTube.
+    // Replace the WAV filename with a licensed MP3/M4A when ready.
+    const CLT_MUSIC_PILOT = Object.freeze({ employeeCode: '180968' });
+    function syncCltMusicButton() {
+      const audio = document.getElementById('cltMusicAudio');
+      const playing = audio && !audio.paused && !audio.ended;
+      const label = document.getElementById('cltMusicPlayText');
+      const icon = document.getElementById('cltMusicPlayIcon');
+      const btn = document.getElementById('cltMusicPlayButton');
+      if (label) label.textContent = playing ? 'หยุดเพลง' : 'เล่นเพลงพิเศษ';
+      if (icon) icon.textContent = playing ? '⏸' : '▶';
+      if (btn) btn.setAttribute('aria-pressed', String(Boolean(playing)));
+    }
     function stopCltSurpriseMusic() {
-      const panel = document.getElementById('cltMusicSurprise');
-      if (panel) panel.classList.add('hidden');
+      const audio = document.getElementById('cltMusicAudio');
+      if (audio) { audio.pause(); audio.currentTime = 0; }
+      document.getElementById('cltMusicSurprise')?.classList.add('hidden');
+      document.getElementById('cltMusicError')?.classList.add('hidden');
+      syncCltMusicButton();
     }
     function showCltSurpriseMusic(guest) {
       stopCltSurpriseMusic();
-      const {employeeCode,youtubeVideoId} = CLT_MUSIC_PILOT;
-      if (!lineVerified || !guest || guest.employee_code !== employeeCode ||
-          !/^\d{6}$/.test(employeeCode) || !/^[A-Za-z0-9_-]{11}$/.test(youtubeVideoId)) return;
+      if (!lineVerified || !guest || guest.employee_code !== CLT_MUSIC_PILOT.employeeCode) return;
       document.getElementById('cltMusicSurprise')?.classList.remove('hidden');
     }
-    // Button-only pilot: open the official YouTube video on user gesture.
-    // A hidden YouTube player is intentionally NOT used; it is unreliable on iOS
-    // and would violate YouTube's visible embedded-player expectations.
-    function playCltSurpriseMusic() {
-      const {employeeCode,youtubeVideoId} = CLT_MUSIC_PILOT;
-      if (!lineVerified || !matchedGuest || matchedGuest.employee_code !== employeeCode ||
+    async function playCltSurpriseMusic() {
+      if (!lineVerified || !matchedGuest || matchedGuest.employee_code !== CLT_MUSIC_PILOT.employeeCode ||
           document.getElementById('verifyModal').classList.contains('hidden')) return;
-      const url = 'https://www.youtube.com/watch?v=' + encodeURIComponent(youtubeVideoId);
-      if (window.liff && liff.isInClient() && typeof liff.openWindow === 'function') {
-        liff.openWindow({url, external:true});
-      } else {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
+      const audio = document.getElementById('cltMusicAudio');
+      if (!audio) return;
+      document.getElementById('cltMusicError')?.classList.add('hidden');
+      if (!audio.paused && !audio.ended) { audio.pause(); syncCltMusicButton(); return; }
+      try { if (audio.ended) audio.currentTime = 0; await audio.play(); syncCltMusicButton(); }
+      catch (err) { document.getElementById('cltMusicError')?.classList.remove('hidden'); syncCltMusicButton(); }
     }
+    document.getElementById('cltMusicAudio')?.addEventListener('ended', syncCltMusicButton);
+    document.getElementById('cltMusicAudio')?.addEventListener('pause', syncCltMusicButton);
+    document.getElementById('cltMusicAudio')?.addEventListener('play', syncCltMusicButton);
 
     function openVerifyModal(guest) {
       document.getElementById('vCode').textContent = guest.employee_code;
