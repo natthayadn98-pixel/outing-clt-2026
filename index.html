@@ -1033,7 +1033,7 @@
         if (requestId !== cltMusicLookupId || document.getElementById('verifyModal').classList.contains('hidden') || matchedGuest?.employee_code !== guest.employee_code) return;
         if (!result.track?.file_name) return;
         // Use exact allowlisted filenames only; never arbitrary external URLs.
-        if (!['Miss Call.mp3','ไปต่อไหว ไปต่อไหม.mp3'].includes(result.track.file_name)) return;
+        if (typeof result.track.file_name !== 'string' || !/^[^\\/\x00-\x1f]{1,180}\.mp3$/i.test(result.track.file_name) || result.track.file_name.includes('..')) return;
         cltMusicAssigned = result.track;
         document.getElementById('cltMusicSurprise')?.classList.remove('hidden');
       } catch(err) { console.warn('Music lookup unavailable:',err.message); }
