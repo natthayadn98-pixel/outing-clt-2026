@@ -391,13 +391,14 @@
     @media(max-height:720px){#cltEmployeeNotFound{padding-top:65px;}#cltEmployeeNotFound .clt-nf-hero{height:128px;}#cltEmployeeNotFound .clt-nf-hero img{width:190px;max-height:190px;}#cltEmployeeNotFound .clt-nf-card{padding-bottom:15px;}#cltEmployeeNotFound .clt-nf-code{margin:12px 0;padding:11px;}}
     @media(max-height:590px){#cltEmployeeNotFound{align-items:flex-start;padding-top:55px;}#cltEmployeeNotFound .clt-nf-hero{height:98px;}#cltEmployeeNotFound .clt-nf-hero img{width:155px;max-height:155px;}#cltEmployeeNotFound .clt-nf-footnote{margin-top:7px;}}
 
-/* Pilot: YouTube surprise only for the specified employee after server precheck. */
-#cltMusicSurprise { margin:12px 0 4px; padding:12px; border:1px solid #d9c3ed; border-radius:17px; background:#f5edff; color:#493063; text-align:center; }
-#cltMusicSurprise .music-heading { font-size:13px; font-weight:900; margin-bottom:7px; }
-#cltMusicFrame { width:100%; max-width:310px; height:auto; aspect-ratio:16/9; border:0; border-radius:12px; display:block; margin:auto; background:#161020; }
-#cltMusicSurprise .music-note { font-size:10px; line-height:1.5; color:#674e80; margin-top:7px; }
-@media(max-height:720px) { #cltMusicSurprise {padding:8px;margin:7px 0 2px} #cltMusicFrame{max-width:245px} }
-  </style>
+/* VIP Surprise — compact button only, responsive on small iPhones. */
+#cltMusicSurprise { margin:9px 0 3px; text-align:center; color:#56318a; }
+#cltMusicSurprise .music-heading { font-size:clamp(10px,3.1vw,12px); font-weight:800; line-height:1.4; margin-bottom:5px; }
+#cltMusicPlayButton { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; max-width:100%; width:min(235px,100%); border:1px solid #b08ce5; border-radius:999px; padding:8px 12px; background:linear-gradient(110deg,#9f65e1,#743bc5); box-shadow:0 5px 13px #7e4ac830; color:#fff; font-size:clamp(11px,3.1vw,13px); font-weight:800; cursor:pointer; }
+#cltMusicPlayButton svg {width:16px;height:16px;flex-shrink:0;}
+#cltMusicPlayButton:active {transform:scale(.98)}
+@media(max-width:360px), (max-height:750px) { #cltMusicSurprise{margin:6px 0 2px;} #cltMusicSurprise .music-heading{margin-bottom:3px;font-size:10px;} #cltMusicPlayButton{min-height:36px;padding:6px 10px;width:min(205px,100%);font-size:11px;} }
+</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Mali:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,200;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
@@ -653,8 +654,7 @@
       <!-- PILOT: hidden for all employees unless the verified employee has the configured YouTube song -->
       <div id="cltMusicSurprise" class="hidden" aria-label="เพลงพิเศษสำหรับพนักงาน">
         <div class="music-heading">🎵 Surprise! เพลงพิเศษสำหรับคุณ</div>
-        <div id="cltMusicPlayer"></div>
-        <div class="music-note">หาก LINE ไม่อนุญาตให้เล่นอัตโนมัติ สามารถแตะปุ่มเล่นบน YouTube ได้</div>
+        <button id="cltMusicPlayButton" type="button" onclick="playCltSurpriseMusic()" aria-label="เปิดเพลงพิเศษบน YouTube"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>เล่นเพลงพิเศษ</button>
       </div>
       <div class="clt-verify-warning"><span class="clt-verify-warning-icon" aria-hidden="true">!</span><span>หากข้อมูลไม่ถูกต้อง กรุณากรอกใหม่<br><small>เพื่อให้การลงทะเบียนเป็นไปอย่างถูกต้อง</small></span></div>
       <button id="confirmRegistrationButton" type="button" onclick="confirmGuestRegistration()" class="clt-verify-confirm">
@@ -980,8 +980,6 @@
     });
     function stopCltSurpriseMusic() {
       const panel = document.getElementById('cltMusicSurprise');
-      const container = document.getElementById('cltMusicPlayer');
-      if (container) container.replaceChildren(); // stop embedded playback
       if (panel) panel.classList.add('hidden');
     }
     function showCltSurpriseMusic(guest) {
@@ -989,17 +987,21 @@
       const {employeeCode,youtubeVideoId} = CLT_MUSIC_PILOT;
       if (!lineVerified || !guest || guest.employee_code !== employeeCode ||
           !/^\d{6}$/.test(employeeCode) || !/^[A-Za-z0-9_-]{11}$/.test(youtubeVideoId)) return;
-      const panel = document.getElementById('cltMusicSurprise');
-      const container = document.getElementById('cltMusicPlayer');
-      const iframe = document.createElement('iframe');
-      iframe.id = 'cltMusicFrame';
-      iframe.title = 'YouTube เพลงพิเศษสำหรับคุณ';
-      iframe.loading = 'eager';
-      iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
-      iframe.referrerPolicy = 'strict-origin-when-cross-origin';
-      iframe.src = 'https://www.youtube.com/embed/' + encodeURIComponent(youtubeVideoId) + '?autoplay=1&playsinline=1&rel=0';
-      container.appendChild(iframe);
-      panel.classList.remove('hidden');
+      document.getElementById('cltMusicSurprise')?.classList.remove('hidden');
+    }
+    // Button-only pilot: open the official YouTube video on user gesture.
+    // A hidden YouTube player is intentionally NOT used; it is unreliable on iOS
+    // and would violate YouTube's visible embedded-player expectations.
+    function playCltSurpriseMusic() {
+      const {employeeCode,youtubeVideoId} = CLT_MUSIC_PILOT;
+      if (!lineVerified || !matchedGuest || matchedGuest.employee_code !== employeeCode ||
+          document.getElementById('verifyModal').classList.contains('hidden')) return;
+      const url = 'https://www.youtube.com/watch?v=' + encodeURIComponent(youtubeVideoId);
+      if (window.liff && liff.isInClient() && typeof liff.openWindow === 'function') {
+        liff.openWindow({url, external:true});
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
     }
 
     function openVerifyModal(guest) {
