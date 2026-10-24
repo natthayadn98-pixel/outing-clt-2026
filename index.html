@@ -654,7 +654,7 @@
       <!-- PILOT: hidden for all employees unless the verified employee has the configured YouTube song -->
       <div id="cltMusicSurprise" class="hidden" aria-label="เพลงพิเศษสำหรับพนักงาน">
         <div class="music-heading">🎵 Surprise! เพลงพิเศษสำหรับคุณ</div>
-        <button id="cltMusicPlayButton" type="button" onclick="playCltSurpriseMusic()" aria-label="เล่นหรือหยุดเพลงพิเศษ" aria-pressed="false"><span id="cltMusicPlayIcon" aria-hidden="true">▶</span><span id="cltMusicPlayText">เปิด YouTube ในหน้านี้</span></button>
+        <button id="cltMusicPlayButton" type="button" onclick="playCltSurpriseMusic()" aria-label="เล่นหรือหยุดเพลงพิเศษ" aria-pressed="false"><span id="cltMusicPlayIcon" aria-hidden="true">▶</span><span id="cltMusicPlayText">เล่นเพลงพิเศษ</span></button>
         <div id="cltMusicError" class="hidden" role="status" style="font-size:11px;color:#b42318;margin-top:4px">ไม่สามารถเล่นเสียงได้ กรุณาลองอีกครั้ง</div>
 
       </div>
@@ -671,15 +671,6 @@
     </div>
   </div>
 
-
-  <!-- YouTube player remains IN the LINE LIFF page. Created only after user taps Play. -->
-  <div id="cltYoutubeOverlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="cltYoutubeTitle">
-    <div class="clt-yt-panel">
-      <div class="clt-yt-top"><span id="cltYoutubeTitle">🎵 เพลงพิเศษสำหรับคุณ</span><button class="clt-yt-close" type="button" onclick="closeCltYoutubePlayer()">✕ ปิดเพลง</button></div>
-      <div id="cltYoutubeMount"></div>
-      <p class="clt-yt-foot">เครื่องเล่น YouTube ภายในหน้าเดิม • ปิดแล้วกลับไปตรวจสอบข้อมูลได้ทันที</p>
-    </div>
-  </div>
 
   <!-- ================= MODAL 3: Dynamic Live QR Code ================= -->
   <div id="qrPassModal" class="fixed inset-0 z-50 hidden bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
@@ -985,44 +976,63 @@
 
 
     // CLT YouTube inline pilot — show only for a verified 180968 and only after PIN preview.
-    const CLT_MUSIC_PILOT = Object.freeze({ employeeCode: '180968', videoId: 'ktAmrwHzqD8' });
-    function closeCltYoutubePlayer() {
-      const overlay = document.getElementById('cltYoutubeOverlay');
-      if (overlay) overlay.classList.add('hidden');
-      // Removing the iframe stops YouTube playback on close/confirm.
-      document.getElementById('cltYoutubeMount')?.replaceChildren();
-      const button = document.getElementById('cltMusicPlayButton');
-      if (button) button.setAttribute('aria-pressed', 'false');
+    // MP3 mapping is retrieved only AFTER the existing LINE/PIN precheck succeeds.
+    // This fetch runs AFTER showing verification popup, so it never delays the UI.
+    let cltMusicAudio = null;
+    let cltMusicLookupId = 0;
+    let cltMusicAssigned = null;
+    const CLT_MUSIC_ENDPOINT = SUPABASE_URL + '/functions/v1/clt-employee-music';
+    function cltMusicSetButton(playing) {
+      const b = document.getElementById('cltMusicPlayButton');
+      const t = document.getElementById('cltMusicPlayText');
+      const i = document.getElementById('cltMusicPlayIcon');
+      if (b) b.setAttribute('aria-pressed', String(playing));
+      if (t) t.textContent = playing ? 'หยุดเพลงพิเศษ' : 'เล่นเพลงพิเศษ';
+      if (i) i.textContent = playing ? '❚❚' : '▶';
     }
     function stopCltSurpriseMusic() {
-      closeCltYoutubePlayer();
+      ++cltMusicLookupId;
+      if (cltMusicAudio) { cltMusicAudio.pause(); cltMusicAudio.removeAttribute('src'); cltMusicAudio.load(); cltMusicAudio = null; }
+      cltMusicAssigned = null;
+      cltMusicSetButton(false);
       document.getElementById('cltMusicSurprise')?.classList.add('hidden');
       document.getElementById('cltMusicError')?.classList.add('hidden');
     }
-    function showCltSurpriseMusic(guest) {
+    async function showCltSurpriseMusic(guest) {
       stopCltSurpriseMusic();
-      if (!lineVerified || !guest || guest.employee_code !== CLT_MUSIC_PILOT.employeeCode) return;
-      document.getElementById('cltMusicSurprise')?.classList.remove('hidden');
+      if (!lineVerified || !guest || !/^\d{6}$/.test(guest.employee_code || '')) return;
+      const requestId = cltMusicLookupId;
+      try {
+        const token = liff.getIDToken();
+        if (!token) return;
+        const response = await fetch(CLT_MUSIC_ENDPOINT, {
+          method:'POST', headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY},
+          body:JSON.stringify({action:'get',idToken:token,employeeCode:guest.employee_code})
+        });
+        if (!response.ok) throw Error('music_lookup_failed');
+        const result = await response.json();
+        if (requestId !== cltMusicLookupId || document.getElementById('verifyModal').classList.contains('hidden') || matchedGuest?.employee_code !== guest.employee_code) return;
+        if (!result.track?.file_name) return;
+        // Use exact allowlisted filenames only; never arbitrary external URLs.
+        if (!['Miss Call.mp3','ไปต่อไหว ไปต่อไหม.mp3'].includes(result.track.file_name)) return;
+        cltMusicAssigned = result.track;
+        document.getElementById('cltMusicSurprise')?.classList.remove('hidden');
+      } catch(err) { console.warn('Music lookup unavailable:',err.message); }
     }
-    function playCltSurpriseMusic() {
-      if (!lineVerified || !matchedGuest || matchedGuest.employee_code !== CLT_MUSIC_PILOT.employeeCode ||
-          document.getElementById('verifyModal').classList.contains('hidden')) return;
-      const mount = document.getElementById('cltYoutubeMount');
-      const overlay = document.getElementById('cltYoutubeOverlay');
-      if (!mount || !overlay) return;
-      mount.replaceChildren();
-      const frame = document.createElement('iframe');
-      frame.className = 'clt-yt-frame';
-      frame.title = 'YouTube เพลงพิเศษสำหรับคุณ';
-      frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
-      frame.allowFullscreen = true;
-      frame.referrerPolicy = 'strict-origin-when-cross-origin';
-      frame.src = 'https://www.youtube.com/embed/' + CLT_MUSIC_PILOT.videoId + '?autoplay=1&playsinline=1&rel=0';
-      mount.appendChild(frame);
-      overlay.classList.remove('hidden');
-      document.getElementById('cltMusicPlayButton')?.setAttribute('aria-pressed','true');
+    async function playCltSurpriseMusic() {
+      if (!lineVerified || !matchedGuest || !cltMusicAssigned || document.getElementById('verifyModal').classList.contains('hidden')) return;
+      const err=document.getElementById('cltMusicError');
+      err?.classList.add('hidden');
+      if (cltMusicAudio && !cltMusicAudio.paused) { cltMusicAudio.pause(); cltMusicSetButton(false); return; }
+      if (!cltMusicAudio) {
+        cltMusicAudio = new Audio('music/' + encodeURIComponent(cltMusicAssigned.file_name));
+        cltMusicAudio.preload='none';
+        cltMusicAudio.onended=()=>cltMusicSetButton(false);
+        cltMusicAudio.onerror=()=>{cltMusicSetButton(false);if(err){err.textContent='ไม่พบไฟล์เพลง กรุณาตรวจสอบโฟลเดอร์ music บน GitHub';err.classList.remove('hidden')}};
+      }
+      try { await cltMusicAudio.play(); cltMusicSetButton(true); }
+      catch(e) { cltMusicSetButton(false);if(err){err.textContent='ไม่สามารถเล่นเสียงได้ กรุณาตรวจสอบไฟล์เพลงหรือการตั้งค่าเสียง';err.classList.remove('hidden')} }
     }
-
     function openVerifyModal(guest) {
       document.getElementById('vCode').textContent = guest.employee_code;
       document.getElementById('vName').textContent = guest.full_name;
