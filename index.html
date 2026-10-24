@@ -990,14 +990,33 @@
       if (t) t.textContent = playing ? 'หยุดเพลงพิเศษ' : 'เล่นเพลงพิเศษ';
       if (i) i.textContent = playing ? '❚❚' : '▶';
     }
+    // Stop is reserved for a completed scan, changing identity, or an explicit retry.
+    // Merely hiding the verification popup must NOT stop the employee's song.
     function stopCltSurpriseMusic() {
       ++cltMusicLookupId;
-      if (cltMusicAudio) { cltMusicAudio.pause(); cltMusicAudio.removeAttribute('src'); cltMusicAudio.load(); cltMusicAudio = null; }
+      if (cltMusicAudio) {
+        cltMusicAudio.pause();
+        cltMusicAudio.removeAttribute('src');
+        cltMusicAudio.load();
+        cltMusicAudio = null;
+      }
       cltMusicAssigned = null;
       cltMusicSetButton(false);
       document.getElementById('cltMusicSurprise')?.classList.add('hidden');
       document.getElementById('cltMusicError')?.classList.add('hidden');
     }
+    function hideCltMusicControlsForQr() {
+      document.getElementById('cltMusicSurprise')?.classList.add('hidden');
+      document.getElementById('cltMusicError')?.classList.add('hidden');
+      // Keep the HTMLAudioElement alive, including across the QR modal switch.
+    }
+    function cltMusicWasPlaying() {
+      return Boolean(cltMusicAudio && !cltMusicAudio.paused && !cltMusicAudio.ended);
+    }
+    window.addEventListener('pagehide', () => {
+      // Leaving the CLT page stops the sound; background playback is OS-dependent.
+      if (cltMusicAudio) cltMusicAudio.pause();
+    });
     async function showCltSurpriseMusic(guest) {
       stopCltSurpriseMusic();
       if (!lineVerified || !guest || !/^\d{6}$/.test(guest.employee_code || '')) return;
@@ -1027,6 +1046,7 @@
       if (!cltMusicAudio) {
         cltMusicAudio = new Audio('music/' + encodeURIComponent(cltMusicAssigned.file_name));
         cltMusicAudio.preload='none';
+        cltMusicAudio.loop = true; // Repeat until Admin check-in succeeds.
         cltMusicAudio.onended=()=>cltMusicSetButton(false);
         cltMusicAudio.onerror=()=>{cltMusicSetButton(false);if(err){err.textContent='ไม่พบไฟล์เพลง กรุณาตรวจสอบโฟลเดอร์ music บน GitHub';err.classList.remove('hidden')}};
       }
@@ -1139,7 +1159,7 @@
         if (guest.employee_code !== lineEmployeeCode) throw new Error('รหัสไม่ตรงกับบัญชี LINE');
         localStorage.setItem('my_registered_emp_code', lineEmployeeCode);
         document.getElementById('verifyModal').classList.add('hidden');
-        stopCltSurpriseMusic();
+        hideCltMusicControlsForQr(); // Keep music playing while showing QR.
         await checkExistingLogin();
         subscribeToGuestCheckIn(guest.employee_code);
         // No success/fireworks before a real check-in. Open the original purple/gold QR modal.
@@ -1499,6 +1519,7 @@
 
             // [จุดสำคัญ] เมื่อแอดมินกด "ปลดล็อก" บนหน้า admin: device_token จะเป็น null หรือ is_locked เป็น false
             if (!updated.device_token || updated.is_locked === false) {
+              stopCltSurpriseMusic();
               localStorage.removeItem('my_registered_emp_code');
               matchedGuest = null;
               closeQrPassModal();
@@ -1622,6 +1643,9 @@
     function showSuccessPopup(guest, mode, roundText) {
       successPopupMode = mode;
       const isCheckin = mode === 'checkin';
+      // A successful scan is the authoritative end of the personalized song.
+      const musicWasPlayingAtScan = isCheckin && cltMusicWasPlaying();
+      if (isCheckin) stopCltSurpriseMusic();
       const modal = document.getElementById('successModal');
       modal.dataset.mode = isCheckin ? 'checkin' : 'binding';
       document.getElementById('successTitle').textContent = isCheckin ? 'ลงทะเบียนเรียบร้อยแล้ว!' : 'ยืนยันข้อมูลสำเร็จ';
@@ -1636,8 +1660,10 @@
         const checkinKey = String(guest.employee_code || '') + ':' + String(roundText || '');
         lastCelebratedCheckinKey = checkinKey;
         startSuccessFireworks();
-        unlockCelebrationAudio();
-        playCelebrationSound();
+        if (!musicWasPlayingAtScan) {
+          unlockCelebrationAudio();
+          playCelebrationSound();
+        }
       } else { stopSuccessFireworks(); }
     }
     function enterPartyPass() {
