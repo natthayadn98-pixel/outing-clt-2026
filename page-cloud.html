@@ -297,12 +297,14 @@
     }
 
     let importNewGuests = [];
+    let importStats = {total:0,duplicateCloud:0,duplicateFile:0,invalid:0};
     let importInProgress = false;
     const importEl = id => document.getElementById(id);
     const importEscape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     function cancelSmartImport() {
       if(importInProgress) return;
       importNewGuests = [];
+      importStats = {total:0,duplicateCloud:0,duplicateFile:0,invalid:0};
       importEl('smartImportPanel').classList.add('hidden');
       importEl('excelFileInput').value = '';
     }
@@ -368,8 +370,9 @@
           importEl('importMessage').textContent='ไม่พบคอลัมน์ '+missing+' — ยังไม่ได้นำเข้าข้อมูล กรุณาปรับชื่อหัวคอลัมน์หรือเลือกชีตที่ถูกต้อง';
           return;
         }
-        const existing=await getAllGuestCodes();
-        const inFile=new Set();let skipped=0,invalid=0;const counts={code:0,name:0,other:0};const samples=[];
+        const existingRaw=await getAllGuestCodes();
+        const existing=new Set([...existingRaw].map(normalizeEmployeeCode));
+        const inFile=new Set();let skipped=0,invalid=0,duplicateCloud=0,duplicateFile=0;const counts={code:0,name:0,other:0};const samples=[];
         for(let i=0;i<rows.length;i++){
           const row=rows[i];const code=normalizeEmployeeCode(rowValue(row,codeAliases));
           const first=rowValue(row,firstAliases),last=rowValue(row,lastAliases);
@@ -378,13 +381,15 @@
           if(!/^\d{6}$/.test(code)){invalid++;counts.code++;if(samples.length<6)samples.push('แถว '+(i+2)+': รหัสพนักงานไม่ครบ 6 หลักหรือไม่ใช่ตัวเลข');continue;}
           if(!name||name.length>200){invalid++;counts.name++;if(samples.length<6)samples.push('แถว '+(i+2)+': ไม่มีชื่อ-นามสกุล');continue;}
           if(branch.length>150){invalid++;counts.other++;if(samples.length<6)samples.push('แถว '+(i+2)+': ชื่อสาขายาวเกินไป');continue;}
-          if(inFile.has(code)||existing.has(code)){skipped++;continue;}
+          if(inFile.has(code)){skipped++;duplicateFile++;if(samples.length<10)samples.push('ซ้ำในไฟล์ '+code+' — '+name);continue;}
           inFile.add(code);
+          if(existing.has(code)){skipped++;duplicateCloud++;if(samples.length<10)samples.push('มีใน Cloud แล้ว '+code+' — '+name);continue;}
           importNewGuests.push({employee_code:code,full_name:name,branch});
           if(samples.length<6)samples.push('เพิ่มใหม่ '+code+' — '+name);
         }
+        importStats={total:rows.length,duplicateCloud,duplicateFile,invalid};
         for(const [id,n] of [['importTotal',rows.length],['importNew',importNewGuests.length],['importDuplicates',skipped],['importInvalid',invalid]])importEl(id).textContent=n;
-        const breakdown=invalid?'พบข้อผิดพลาด: รหัสไม่ถูกต้อง '+counts.code+' / ชื่อไม่ครบ '+counts.name+' / สาขา '+counts.other:'ไม่พบข้อผิดพลาดในรูปแบบข้อมูล';
+        const breakdown='ซ้ำกับ Cloud '+duplicateCloud+' รายการ | ซ้ำภายในไฟล์ '+duplicateFile+' รายการ | รหัสไม่ถูกต้อง '+counts.code+' | ชื่อไม่ครบ '+counts.name+' | สาขาไม่ถูกต้อง '+counts.other;
         importEl('importPreviewRows').innerHTML='<div class="import-row"><strong>หัวคอลัมน์:</strong> '+importEscape(heads.join(' | '))+'</div><div class="import-row"><strong>'+importEscape(breakdown)+'</strong></div>'+samples.map(x=>'<div class="import-row">'+importEscape(x)+'</div>').join('');
         importEl('importMessage').textContent=invalid?'ตรวจสอบเสร็จ: ข้าม '+invalid+' แถวที่ไม่ถูกต้อง และ '+skipped+' แถวที่ซ้ำ — เพิ่มได้เฉพาะ '+importNewGuests.length+' คน':'ตรวจสอบเสร็จ: เพิ่มได้ '+importNewGuests.length+' คน / ข้ามซ้ำ '+skipped+' คน ข้อมูลเก่าไม่เปลี่ยน';
         importEl('importConfirmBtn').disabled=importNewGuests.length===0;
@@ -412,7 +417,7 @@
           if(!res.ok||!body.success)throw new Error((body.error||'import_failed')+(body.code?' ('+body.code+')':''));
           inserted+=body.inserted||0;skipped+=body.skipped||0;
         }
-        importEl('importMessage').textContent='✅ เพิ่มพนักงานใหม่ '+inserted+' คน | ซ้ำใน Cloud ขณะบันทึก '+skipped+' คน | รายชื่อเดิมไม่ถูกแก้ไข';
+        importEl('importMessage').textContent='✅ ผลนำเข้า: เพิ่มสำเร็จ '+inserted+' คน | ซ้ำกับ Cloud เดิม '+importStats.duplicateCloud+' | ซ้ำใน Excel '+importStats.duplicateFile+' | ซ้ำเพิ่มระหว่างบันทึก '+skipped+' | ไม่ถูกต้อง '+importStats.invalid+' | ข้อมูลเดิมไม่ได้ถูกส่งไปแก้ไข';
         importNewGuests=[];
         await fetchGuestsFromSupabase(false);
       } catch(err) {
