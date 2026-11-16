@@ -246,7 +246,7 @@
        <h2 style="font-weight:800;font-size:23px;text-align:center;color:#165c3a">CLT Admin</h2>
        <p style="text-align:center;font-size:14px;color:#54806b;margin-top:-14px">VIP Party Connect · เข้าสู่ระบบ</p>
       <p style="font-size:13px;text-align:center;color:#647d70">สำหรับผู้ดูแลระบบที่ได้รับอนุญาตเท่านั้น</p>
-      <input id="secureAdminEmail" type="email" required autocomplete="username" placeholder="อีเมล Admin" style="border:1px solid #d4e6db;background:#f9fcfa;border-radius:12px;padding:13px;font-size:16px;outline-color:#28a96b;color:#17382b" />
+      <input id="secureAdminEmail" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Username เช่น AdminIT1" style="border:1px solid #d4e6db;background:#f9fcfa;border-radius:12px;padding:13px;font-size:16px;outline-color:#28a96b;color:#17382b" />
       <input id="secureAdminPassword" type="password" required autocomplete="current-password" placeholder="รหัสผ่าน" style="border:1px solid #d4e6db;background:#f9fcfa;border-radius:12px;padding:13px;font-size:16px;outline-color:#28a96b;color:#17382b" />
       <button type="submit" style="background:linear-gradient(100deg,#168b55,#28ad72);color:white;padding:14px;border-radius:12px;font-weight:800;box-shadow:0 8px 18px rgba(21,135,82,.18)">เข้าสู่ระบบอย่างปลอดภัย</button>
       <p id="secureAdminError" role="alert" style="font-size:13px;color:#b91c1c;text-align:center;line-height:1.7"></p>
@@ -743,11 +743,20 @@
    submit.textContent = 'กำลังเข้าสู่ระบบ…';
    msg.textContent = 'กำลังตรวจสอบบัญชี…';
    try {
+     // Username is a login alias only; Supabase Auth and server-side admin checks remain unchanged.
+     const adminAliases = Object.freeze({
+       adminit1:'clt.admin01@yourcompany.com',
+       adminit2:'clt.admin02@yourcompany.com',
+       adminit3:'clt.admin03@yourcompany.com'
+     });
+     const username = document.getElementById('secureAdminEmail').value.trim().toLowerCase();
+     const resolvedEmail = adminAliases[username];
+     if (!resolvedEmail) { lockPortal('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); return; }
      const {error} = await withTimeout(client.auth.signInWithPassword({
-       email:document.getElementById('secureAdminEmail').value.trim(),
+       email:resolvedEmail,
        password:document.getElementById('secureAdminPassword').value
      }),12000);
-     if (error) { lockPortal('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); return; }
+     if (error) { lockPortal('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); return; }
      msg.textContent = 'กำลังตรวจสอบสิทธิ์ Admin…';
      const permission = await checkAdminPermission();
      if (!permission.ok) { lockPortal(permission.message); return; }

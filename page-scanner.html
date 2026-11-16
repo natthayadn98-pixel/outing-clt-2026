@@ -397,7 +397,7 @@
       try {
         const session=await supabaseClient.auth.getSession();
         const jwt=session.data?.session?.access_token;
-        if(!jwt){show('🔒 กรุณาเข้าสู่ระบบ Admin ด้วยอีเมลและรหัสผ่านก่อนสแกน','error');return;}
+        if(!jwt){show('🔒 กรุณาเข้าสู่ระบบ Admin ด้วย Username และรหัสผ่านก่อนสแกน','error');return;}
         const response=await fetch(SUPABASE_URL+'/functions/v1/secure-checkin',{
           method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+jwt,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({qr})
         });
