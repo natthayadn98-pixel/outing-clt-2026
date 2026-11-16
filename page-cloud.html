@@ -425,12 +425,56 @@
       } finally {importInProgress=false;importEl('importCancelBtn').disabled=false;importEl('importConfirmBtn').disabled=true;}
     }
 
+    // ลบผ่าน RPC ที่ตรวจสิทธิ์ Admin ฝั่งฐานข้อมูลเท่านั้น ไม่ล้าง UI โดยคาดเดา
+    let cloudDeleteInProgress = false;
     async function clearCloudDisplay() {
-      if (!confirm('ยืนยันลบข้อมูลทั้งหมดในตาราง guests บน Supabase ใช่หรือไม่?')) return;
-      await supabaseClient.from('guests').delete().neq('employee_code', '');
-      guestsList = [];
-      renderCloudCardsGrid();
-      document.getElementById('cloudSyncText').textContent = 'ซิงค์ข้อมูลกับ Cloud สำเร็จ (0 คน)';
+      if (cloudDeleteInProgress || importInProgress) return;
+      const client = window.parent?.cltSecureAdminClient;
+      if (!client) { alert('กรุณาเปิดจากหน้า Admin และเข้าสู่ระบบก่อน'); return; }
+      cloudDeleteInProgress = true;
+      const status = document.getElementById('cloudSyncText');
+      try {
+        const { data: authData, error: authError } = await client.auth.getUser();
+        if (authError || !authData?.user) throw new Error('ไม่พบเซสชัน Admin ที่ถูกต้อง กรุณาเข้าสู่ระบบใหม่');
+        // ดึงข้อมูลครบทุกหน้าเพื่อสำรองก่อนลบ (Supabase จำกัดผลลัพธ์ต่อ request)
+        status.textContent = 'กำลังอ่านข้อมูลจาก Cloud เพื่อสำรองก่อนลบ…';
+        const backup = [];
+        for (let start = 0; ; start += 1000) {
+          const {data, error} = await client.from('guests').select('*').order('id', {ascending:true}).range(start,start+999);
+          if (error) throw new Error('อ่านข้อมูลสำรองไม่สำเร็จ: '+error.message);
+          backup.push(...(data||[]));
+          if (!data || data.length < 1000) break;
+          if (start > 100000) throw new Error('ข้อมูลเกินขอบเขตการสำรองที่รองรับ');
+        }
+        const {count, error: countError} = await client.from('guests').select('id', {count:'exact',head:true});
+        if (countError) throw new Error('ตรวจสอบจำนวนข้อมูลไม่สำเร็จ: '+countError.message);
+        if (count !== backup.length) throw new Error('จำนวนข้อมูลเปลี่ยนระหว่างสำรอง กรุณาลองใหม่ ('+backup.length+' / '+count+')');
+        if (count === 0) { await fetchGuestsFromSupabase(false); alert('ไม่มีรายชื่อใน Cloud ให้ลบ'); return; }
+        const filename = 'clt-guests-backup-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+        const payload = JSON.stringify({exported_at:new Date().toISOString(),table:'public.guests',count,guests:backup},null,2);
+        const blob = new Blob([payload],{type:'application/json;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a'); anchor.href=url; anchor.download=filename;
+        document.body.appendChild(anchor); anchor.click(); anchor.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),60000);
+        status.textContent = 'เตรียมไฟล์สำรอง '+count+' คนแล้ว — กรุณาตรวจสอบไฟล์ที่ดาวน์โหลด';
+        if (!confirm('ระบบเตรียมดาวน์โหลดไฟล์สำรอง '+filename+' ('+count+' คน)\n\nกรุณาตรวจสอบว่าไฟล์ดาวน์โหลดสำเร็จและเก็บไว้แล้ว ก่อนดำเนินการต่อ\n\nต้องการดำเนินการลบทั้งหมดหรือไม่?')) return;
+        const typed = prompt('คำเตือน: จะลบข้อมูลใน public.guests ทั้ง '+count+' คน และอาจกระทบ QR / เช็กอิน / LINE ที่เชื่อมโยง\n\nหากตรวจสอบไฟล์สำรองแล้ว ให้พิมพ์ ลบทั้งหมด เพื่อยืนยัน');
+        if (typed !== 'ลบทั้งหมด') { alert('ยกเลิกการลบ ข้อมูลใน Cloud ไม่เปลี่ยนแปลง'); return; }
+        status.textContent = 'กำลังส่งคำขอลบ '+count+' คนไปยัง Supabase…';
+        const {data: deleted, error: rpcError} = await client.rpc('clt_admin_clear_guests',{expected_count:count});
+        if (rpcError) throw new Error('Supabase ปฏิเสธการลบ: '+rpcError.message);
+        const {count: remaining, error: verifyError} = await client.from('guests').select('id',{count:'exact',head:true});
+        if (verifyError) throw new Error('คำสั่งลบถูกส่งแล้ว แต่ตรวจสอบผลไม่ได้: '+verifyError.message);
+        await fetchGuestsFromSupabase(false);
+        if (remaining !== 0) throw new Error('ยังพบรายชื่อใน Cloud '+remaining+' คน หลังเรียกฟังก์ชัน (ผล RPC: '+JSON.stringify(deleted)+')');
+        status.textContent = 'ลบข้อมูลจาก Supabase สำเร็จ (เหลือ 0 คน)';
+        alert('ลบรายชื่อจาก Cloud สำเร็จ '+count+' คน\nไฟล์สำรอง: '+filename+'\nสามารถนำเข้า Excel ชุดใหม่ได้แล้ว');
+      } catch (err) {
+        status.textContent = '❌ การลบไม่สำเร็จ / ยังไม่ได้ยืนยันผล: '+(err?.message||String(err));
+        alert('ไม่สามารถยืนยันการลบจาก Supabase ได้\n'+(err?.message||String(err))+'\n\nกรุณารีเฟรชข้อมูล Cloud ก่อนดำเนินการต่อ');
+        // ไม่ล้าง guestsList เองเด็ดขาด
+      } finally { cloudDeleteInProgress = false; }
     }
 
     function openPrintBranchModal() { document.getElementById('printBranchModal').classList.remove('hidden'); }
