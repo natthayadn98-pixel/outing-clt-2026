@@ -440,7 +440,7 @@
   <script>
     const CORRECT_ADMIN_PIN = "DISABLED"; // UI gate only: NOT secure server-side authorization
     let enteredPin = "";
-    const IDLE_TIMEOUT_LIMIT = 10 * 60 * 1000;
+    const IDLE_TIMEOUT_LIMIT = 60 * 60 * 1000;
     let idleTimer = null;
 
     const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
@@ -602,7 +602,7 @@
       const password = document.getElementById('secureAdminPassword');
       if (password) password.value = '';
       const error = document.getElementById('secureAdminError');
-      if (error) error.textContent = isTimeout ? '⏰ ไม่มีการใช้งานเกิน 10 นาที ระบบออกจากระบบอัตโนมัติ กรุณาเข้าสู่ระบบอีกครั้ง' : '';
+      if (error) error.textContent = isTimeout ? '⏰ ไม่มีการใช้งานเกิน 60 นาที ระบบออกจากระบบอัตโนมัติ กรุณาเข้าสู่ระบบอีกครั้ง' : '';
       if (window.cltSecureAdminClient) {
         try { await window.cltSecureAdminClient.auth.signOut({scope:'local'}); }
         catch (e) { console.warn('Sign-out failed:', e); }
@@ -716,7 +716,7 @@
      if (!last || Date.now() - last >= IDLE_TIMEOUT_LIMIT || last > Date.now() + 60000) {
        await client.auth.signOut({scope:'local'});
        try { localStorage.removeItem(LAST_ACTIVITY_KEY); } catch (_) {}
-       lockPortal('⏰ ไม่มีการใช้งานเกิน 10 นาที กรุณาเข้าสู่ระบบอีกครั้ง');
+       lockPortal('⏰ ไม่มีการใช้งานเกิน 60 นาที กรุณาเข้าสู่ระบบอีกครั้ง');
        return;
      }
      const permission = await checkAdminPermission();
