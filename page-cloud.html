@@ -107,13 +107,14 @@
       <span>✅</span><span id="cloudSyncText">ซิงค์ข้อมูลกับ Cloud สำเร็จ (0 คน)</span>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-7">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
       <button onclick="fetchGuestsFromSupabase(true)" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-sky-500 to-blue-600 active:scale-95 transition">
         <span>🔄</span> รีเฟรชดึงข้อมูลล่าสุด
       </button>
       <button onclick="openPrintBranchModal()" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 active:scale-95 transition">
         <span>🖨️</span> สั่งปริ้นแยกสาขา
       </button>
+      <button type="button" onclick="openAttendancePrint()" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-violet-500 to-purple-700 active:scale-95 transition">🖨️ พิมพ์ใบลงชื่อพนักงาน</button>
       <button onclick="clearCloudDisplay()" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-rose-500 to-red-600 active:scale-95 transition">
         <span>🗑️</span> ล้างข้อมูลทั้งหมด
       </button>
@@ -146,6 +147,18 @@
         <button onclick="downloadModalQRCode()" class="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition">💾 บันทึกรูป QR</button>
         <button onclick="closeQRModal()" class="px-4 py-2.5 rounded-xl bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs transition">ปิด</button>
       </div>
+    </div>
+  </div>
+
+  <div id="attendanceModal" class="fixed inset-0 bg-black/85 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#170b36] border border-purple-600 rounded-3xl p-6 max-w-md w-full" style="background:#fff;color:#222">
+      <h3 class="text-lg font-bold mb-3" style="color:#55308c">พิมพ์ใบลงชื่อพนักงาน A4</h3>
+      <label for="attendanceBranch" class="block text-sm mb-1">สาขา / แผนก</label>
+      <select id="attendanceBranch" class="w-full border rounded-xl p-2 mb-3" style="background:white;color:#222"></select>
+      <label for="attendanceRound" class="block text-sm mb-1">รอบลงชื่อ</label>
+      <select id="attendanceRound" class="w-full border rounded-xl p-2 mb-3" style="background:white;color:#222"><option value="both">เช้าและเย็น</option><option value="morning">รอบเช้า</option><option value="evening">รอบเย็น</option></select>
+      <p id="attendanceStatus" role="status" class="text-sm mb-3"></p>
+      <div class="flex gap-2 justify-end"><button type="button" onclick="document.getElementById('attendanceModal').classList.add('hidden')" class="border rounded-xl px-4 py-2">ปิด</button><button type="button" id="attendancePrintBtn" onclick="printAttendance()" class="bg-violet-700 text-white rounded-xl px-4 py-2" disabled>พิมพ์ใบลงชื่อ</button></div>
     </div>
   </div>
 
@@ -487,6 +500,56 @@
         <\/script></body></html>
       `);
       printWindow.document.close();
+    }
+
+
+    let attendanceRows = [];
+    async function loadAttendanceRows() {
+      const client = window.parent?.cltSecureAdminClient;
+      if (!client) throw new Error('กรุณาเปิดผ่านหน้า Admin');
+      const {data:auth,error:authError}=await client.auth.getUser();
+      if(authError || !auth?.user) throw new Error('กรุณาเข้าสู่ระบบใหม่');
+      const rows=[];
+      for(let offset=0;;offset+=500){
+        const {data,error}=await client.from('guests').select('employee_code,full_name,branch').order('employee_code').range(offset,offset+499);
+        if(error) throw error;
+        rows.push(...(data||[]));
+        if(!data || data.length<500) break;
+      }
+      return rows;
+    }
+    const attendanceBranchName = g => String(g.branch || 'ทั่วไป');
+    async function openAttendancePrint(){
+      const modal=document.getElementById('attendanceModal'), status=document.getElementById('attendanceStatus'), btn=document.getElementById('attendancePrintBtn'), select=document.getElementById('attendanceBranch');
+      modal.classList.remove('hidden'); btn.disabled=true; select.replaceChildren(); status.textContent='กำลังดึงรายชื่อจาก Cloud…';
+      try{
+        attendanceRows=await loadAttendanceRows();
+        select.add(new Option('ทุกสาขา (แยกหน้า)', ''));
+        [...new Set(attendanceRows.map(attendanceBranchName))].sort((a,b)=>a.localeCompare(b,'th')).forEach(b=>select.add(new Option(b,b)));
+        status.textContent='รายชื่อทั้งหมด '+attendanceRows.length+' คน'; btn.disabled=!attendanceRows.length;
+      }catch(e){status.textContent='โหลดไม่สำเร็จ: '+e.message;}
+    }
+    async function printAttendance(){
+      const btn=document.getElementById('attendancePrintBtn'), status=document.getElementById('attendanceStatus');
+      const branch=document.getElementById('attendanceBranch').value, round=document.getElementById('attendanceRound').value;
+      const w=window.open('','_blank');
+      if(!w){status.textContent='กรุณาอนุญาต Pop-up ก่อนพิมพ์';return;}
+      btn.disabled=true; w.document.body.textContent='กำลังดึงรายชื่อล่าสุด…';
+      try{
+        const rows=(await loadAttendanceRows()).filter(g=>!branch || attendanceBranchName(g)===branch);
+        if(!rows.length) throw new Error('ไม่พบรายชื่อสำหรับพิมพ์');
+        const groups=new Map();
+        rows.forEach(g=>{const b=attendanceBranchName(g);if(!groups.has(b))groups.set(b,[]);groups.get(b).push(g);});
+        const esc=importEscape, pages=[];
+        const heads=round==='both'?['ลายเซ็นรอบเช้า','ลายเซ็นรอบเย็น']:[round==='morning'?'ลายเซ็นรอบเช้า':'ลายเซ็นรอบเย็น'];
+        for(const b of [...groups.keys()].sort((a,b)=>a.localeCompare(b,'th'))){
+          const list=groups.get(b).sort((a,b)=>String(a.full_name||'').localeCompare(String(b.full_name||''),'th')||String(a.employee_code).localeCompare(String(b.employee_code)));
+          for(let i=0;i<list.length;i+=18) pages.push({b,total:list.length,offset:i,items:list.slice(i,i+18)});
+        }
+        const html=pages.map((p,k)=>`<section><h2>บริษัท ห้องปฏิบัติการกลาง (ประเทศไทย) จำกัด</h2><h1>ใบลงทะเบียนเข้าร่วมงาน CLT 2569</h1><p class="center">VIP Party Connect</p><p>สาขา: ${esc(p.b)} | จำนวน ${p.total} คน | วันที่ ................................</p><table><colgroup><col style="width:8%"><col style="width:15%"><col style="width:37%">${heads.map(()=>`<col style="width:${40/heads.length}%">`).join('')}</colgroup><thead><tr><th>ลำดับ</th><th>รหัสพนักงาน</th><th>ชื่อ–นามสกุล</th>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${p.items.map((g,j)=>`<tr><td class="center">${p.offset+j+1}</td><td class="center">${esc(normalizeEmployeeCode(g.employee_code))}</td><td>${esc(g.full_name)}</td>${heads.map(()=>'<td></td>').join('')}</tr>`).join('')}</tbody></table><p>ผู้ตรวจสอบรายชื่อ ........................................................</p><p class="footer">หน้า ${k+1} / ${pages.length} · รวม ${rows.length} คน</p></section>`).join('');
+        w.document.open();w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบลงชื่อพนักงาน CLT 2569</title><style>@page{size:A4 portrait;margin:12mm}*{box-sizing:border-box}body{font:12px Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0}h1,h2,.center{text-align:center}h1{font-size:20px;margin:5px 0}h2{font-size:15px;margin:0}p{margin:7px 0}table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{border:1px solid #333;padding:3px 5px;overflow-wrap:anywhere}th{height:10mm}td{height:10mm}tr{break-inside:avoid}thead{display:table-header-group}section{break-after:page}section:last-child{break-after:auto}.footer{text-align:right}.tools{padding:10px;text-align:center}@media print{.tools{display:none}}@media screen{section{max-width:186mm;margin:15px auto;padding:10px;border:1px solid #ddd}}</style></head><body><div class="tools"><button onclick="window.print()">พิมพ์ / บันทึก PDF</button></div>${html}</body></html>`);w.document.close();w.focus();w.print();
+        status.textContent='เตรียมใบลงชื่อ '+rows.length+' คน / '+pages.length+' หน้าแล้ว';
+      }catch(e){w.close();status.textContent='พิมพ์ไม่สำเร็จ: '+e.message;}finally{btn.disabled=false;}
     }
 
     fetchGuestsFromSupabase(false);
