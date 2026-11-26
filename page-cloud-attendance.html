@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    * { font-family: 'Mali', sans-serif; }
+    body { background-color: #0c0217; color: #f1f5f9; min-height: 100vh; padding: 2rem 1rem; }
+    .vip-input { background-color: #0e0523; border: 1px solid rgba(139, 92, 246, 0.35); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #5b21b6; border-radius: 9999px; }
+  </style>
+  <link rel="stylesheet" href="admin-pages-theme.css" />
+  <style id="clt-smart-import-readable">
+    /* Explicit per-theme colors: never combine a dark panel with light-mode text overrides. */
+    #smartImportPanel{background:#fffdfb!important;color:#1c2340!important;border:1px solid #e6d9ef!important;box-shadow:0 12px 35px rgba(40,27,61,.09)!important}
+    #smartImportPanel .import-heading{color:#55308c!important}
+    #smartImportPanel .import-subtle{color:#52617a!important;opacity:1!important}
+    #smartImportPanel .import-summary{background:#f5f6fa!important;color:#1c2340!important;border:1px solid #e2e6ef!important}
+    #smartImportPanel .import-summary.new{background:#e8f8ef!important;border-color:#bce5cc!important}
+    #smartImportPanel .import-summary.duplicate{background:#eff2f7!important}
+    #smartImportPanel .import-summary.invalid{background:#fff0f1!important;border-color:#f4c7cc!important}
+    #smartImportPanel .import-summary p{color:#344158!important;font-size:13px;font-weight:700!important}
+    #smartImportPanel .import-summary b{color:#17203a!important;font-weight:800!important}
+    #smartImportPanel .import-summary.new b{color:#087646!important}
+    #smartImportPanel .import-summary.invalid b{color:#ab2436!important}
+    #smartImportPanel #importPreviewRows{background:#f8f9fc!important;color:#26324b!important;border:1px solid #dfe4ed!important;font-size:13px!important;line-height:1.85!important;max-height:210px}
+    #smartImportPanel #importPreviewRows .import-row{border-bottom:1px solid #e2e6ed!important;padding:5px 0}
+    #smartImportPanel #importMessage{color:#6e4209!important;font-size:13px!important;font-weight:700!important;line-height:1.8!important}
+    #smartImportPanel #importCancelBtn{color:#3f3057!important;border:1px solid #d4cae0!important;background:#faf8fd!important}
+    #smartImportPanel #importConfirmBtn{background:#07834a!important;color:#fff!important;font-size:14px!important}
+    #smartImportPanel #importConfirmBtn:disabled{background:#d5dce5!important;color:#5c6678!important;opacity:1!important}
+    html[data-admin-theme="dark"] #smartImportPanel{background:#211637!important;color:#fff7ff!important;border-color:#634a81!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-heading{color:#ffdc8f!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-subtle{color:#d9ccec!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-summary{background:#302444!important;color:#fff!important;border-color:#564469!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-summary.new{background:#123e34!important;border-color:#276c56!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-summary.duplicate{background:#30354a!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-summary.invalid{background:#4a263c!important;border-color:#8e5365!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-summary p{color:#e6def2!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-summary b{color:#fff!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-summary.new b{color:#7ef0b8!important}
+    html[data-admin-theme="dark"] #smartImportPanel .import-summary.invalid b{color:#ff9cab!important}
+    html[data-admin-theme="dark"] #smartImportPanel #importPreviewRows{background:#160e29!important;color:#f1ebfd!important;border-color:#544069!important}
+    html[data-admin-theme="dark"] #smartImportPanel #importPreviewRows .import-row{border-color:#463757!important}
+    html[data-admin-theme="dark"] #smartImportPanel #importMessage{color:#ffda93!important}
+    html[data-admin-theme="dark"] #smartImportPanel #importCancelBtn{background:#302444!important;color:#fff!important;border-color:#68547d!important}
+    html[data-admin-theme="dark"] #smartImportPanel #importConfirmBtn:disabled{background:#414052!important;color:#d0cfda!important}
+    @media(max-width:600px){#smartImportPanel{padding:15px!important}#smartImportPanel .import-summary{padding:12px!important}#smartImportPanel .import-summary b{font-size:24px!important}}
+  </style>
+
+<script>
+(function(){
+  const key = 'clt_admin_color_theme_v1';
+  function setPageTheme(value) {
+    if (value !== 'light' && value !== 'dark') return;
+    document.documentElement.setAttribute('data-admin-theme', value);
+  }
+  try { setPageTheme(localStorage.getItem(key) || 'dark'); } catch (_) {}
+  window.addEventListener('message', function(event) {
+    if (event.origin !== location.origin || event.source !== window.parent) return;
+    if (event.data && event.data.type === 'clt-admin-theme') setPageTheme(event.data.theme);
+  });
+  window.addEventListener('storage', function(event) {
+    if (event.key === key) setPageTheme(event.newValue);
+  });
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mali:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,200;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="clt-fonts.css">
+</head>
+<body class="flex justify-center">
+
+  <section class="w-full max-w-5xl bg-[#14082e]/95 border border-[#3c1d77] rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-amber-300">จัดการรายชื่อและพิมพ์บัตร QR Code</h2>
+      <p class="text-xs sm:text-sm text-purple-300/70 mt-1">นำเข้าไฟล์ Excel เพื่อบันทึกลงตาราง guests และสั่งพิมพ์บัตร</p>
+    </div>
+
+    <div class="mb-4">
+      <div class="bg-[#0e0423] border border-purple-800/80 rounded-2xl p-3 sm:p-4">
+        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="handleExcelFileUpload(event)" class="block w-full text-xs text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-purple-900 file:text-amber-300" />
+      </div>
+    </div>
+
+    <!-- Smart Import preview: no database write until an admin explicitly confirms. -->
+    <div id="smartImportPanel" class="hidden mb-6 rounded-3xl border border-amber-400/30 bg-[#160d31] p-4 sm:p-6 shadow-xl" style="color:#f5efff">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4"><div><h3 class="import-heading font-bold text-lg">✨ ตรวจสอบก่อนนำเข้า Excel</h3><p id="importFilename" class="import-subtle text-xs mt-1"></p></div><button type="button" id="importCancelBtn" onclick="cancelSmartImport()" class="rounded-xl border border-purple-400/40 px-4 py-2 text-xs">ยกเลิก</button></div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        <div class="import-summary rounded-xl p-3"><p class="text-xs">รายการใน Excel</p><b id="importTotal" class="text-2xl">0</b></div>
+        <div class="import-summary new rounded-xl p-3"><p class="text-xs">เพิ่มใหม่</p><b id="importNew" class="text-2xl text-emerald-300">0</b></div>
+        <div class="import-summary duplicate rounded-xl p-3"><p class="text-xs">ข้ามข้อมูลซ้ำ</p><b id="importDuplicates" class="text-2xl">0</b></div>
+        <div class="import-summary invalid rounded-xl p-3"><p class="text-xs">ข้อมูลไม่ถูกต้อง</p><b id="importInvalid" class="text-2xl text-rose-300">0</b></div>
+      </div>
+      <div class="text-xs rounded-xl p-3 mb-3 overflow-y-auto" id="importPreviewRows">รออ่านไฟล์...</div>
+      <p id="importMessage" role="status" aria-live="polite" class="text-xs mb-3"></p>
+      <button type="button" id="importConfirmBtn" onclick="confirmSmartImport()" disabled class="w-full rounded-xl py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-green-500 text-white font-bold disabled:opacity-45 disabled:cursor-not-allowed">ยืนยันนำเข้าเฉพาะพนักงานใหม่</button>
+    </div>
+
+    <div id="cloudSyncBanner" class="flex items-center justify-center gap-2 text-emerald-400 font-semibold mb-6 text-sm">
+      <span>✅</span><span id="cloudSyncText">ซิงค์ข้อมูลกับ Cloud สำเร็จ (0 คน)</span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
+      <button onclick="fetchGuestsFromSupabase(true)" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-sky-500 to-blue-600 active:scale-95 transition">
+        <span>🔄</span> รีเฟรชดึงข้อมูลล่าสุด
+      </button>
+      <button onclick="openPrintBranchModal()" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 active:scale-95 transition">
+        <span>🖨️</span> สั่งปริ้นแยกสาขา
+      </button>
+      <button type="button" onclick="openAttendancePrint()" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-violet-500 to-purple-700 active:scale-95 transition">🖨️ พิมพ์ใบลงชื่อพนักงาน</button>
+      <button onclick="clearCloudDisplay()" class="py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-rose-500 to-red-600 active:scale-95 transition">
+        <span>🗑️</span> ล้างข้อมูลทั้งหมด
+      </button>
+    </div>
+
+    <!-- แถบค้นหาและตัวกรอง -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-5">
+      <input type="text" id="cloudSearchInput" placeholder="ค้นหาด้วยรหัสพนักงาน, ชื่อ หรือ สาขา..." oninput="handleSearchDebounce()" class="flex-1 px-4 py-2.5 vip-input rounded-xl text-white text-xs sm:text-sm focus:outline-none" />
+      <select id="cloudBranchSelect" onchange="renderCloudCardsGrid()" class="px-4 py-2.5 vip-input rounded-xl text-purple-200 text-xs sm:text-sm focus:outline-none">
+        <option value="">ทุกสาขา / แผนก</option>
+      </select>
+    </div>
+
+    <!-- พื้นที่แสดงรายชื่อ -->
+    <div id="cloudCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 max-h-[500px] overflow-y-auto pr-1"></div>
+  </section>
+
+  <!-- MODAL แสดง QR Code รายบุคคล (โหลดเฉพาะเมื่อคลิก) -->
+  <div id="qrPreviewModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#170b36] border border-purple-600/70 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl relative">
+      <button onclick="closeQRModal()" class="absolute top-4 right-4 text-purple-400 hover:text-white text-lg">✕</button>
+      <span class="inline-block px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[11px] font-semibold mb-3">VIP PARTY CONNECT PASS</span>
+      <h3 id="modalGuestName" class="text-xl font-bold text-white mb-0.5">-</h3>
+      <p id="modalGuestCode" class="text-xs text-purple-300 font-mono">-</p>
+      <p id="modalGuestBranch" class="text-xs text-amber-300/90 mb-4">-</p>
+      <div class="bg-white p-3.5 rounded-2xl mx-auto w-fit shadow-lg mb-4">
+        <div id="modalQrCanvas" class="flex justify-center items-center"></div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="downloadModalQRCode()" class="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition">💾 บันทึกรูป QR</button>
+        <button onclick="closeQRModal()" class="px-4 py-2.5 rounded-xl bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs transition">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="attendanceModal" class="fixed inset-0 bg-black/85 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#170b36] border border-purple-600 rounded-3xl p-6 max-w-md w-full" style="background:#fff;color:#222">
+      <h3 class="text-lg font-bold mb-3" style="color:#55308c">พิมพ์ใบลงชื่อพนักงาน A4</h3>
+      <label for="attendanceBranch" class="block text-sm mb-1">สาขา / แผนก</label>
+      <select id="attendanceBranch" class="w-full border rounded-xl p-2 mb-3" style="background:white;color:#222"></select>
+      <label for="attendanceRound" class="block text-sm mb-1">รอบลงชื่อ</label>
+      <select id="attendanceRound" class="w-full border rounded-xl p-2 mb-3" style="background:white;color:#222"><option value="both">เช้าและเย็น</option><option value="morning">รอบเช้า</option><option value="evening">รอบเย็น</option></select>
+      <p id="attendanceStatus" role="status" class="text-sm mb-3"></p>
+      <div class="flex gap-2 justify-end"><button type="button" onclick="document.getElementById('attendanceModal').classList.add('hidden')" class="border rounded-xl px-4 py-2">ปิด</button><button type="button" id="attendancePrintBtn" onclick="printAttendance()" class="bg-violet-700 text-white rounded-xl px-4 py-2" disabled>พิมพ์ใบลงชื่อ</button></div>
+    </div>
+  </div>
+
+  <!-- MODAL สั่งปริ้นแยกสาขา -->
+  <div id="printBranchModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#170b36] border border-purple-600/70 rounded-3xl p-6 max-w-sm w-full">
+      <h3 class="text-lg font-bold text-amber-300 mb-2">พิมพ์บัตร QR Code แยกสาขา</h3>
+      <div class="mb-5">
+        <label class="block text-xs text-purple-200 mb-1.5">เลือกสาขา:</label>
+        <select id="modalPrintBranchSelect" class="w-full px-3.5 py-2.5 vip-input rounded-xl text-white text-xs"></select>
+      </div>
+      <div class="flex gap-2 justify-end">
+        <button onclick="closePrintBranchModal()" class="px-4 py-2.5 rounded-xl bg-purple-900/50 text-purple-300 text-xs">ยกเลิก</button>
+        <button onclick="executeBranchPrinting()" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">พิมพ์บัตร</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ycljxlywewigwxovdnyj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljbGp4bHl3ZXdpZ3d4b3ZkbnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI5NjQsImV4cCI6MjEwNzEwODk2NH0.2j7_E3TuxcLU3royoFRjiFJDmI7dwKLrvJVOLUdSXpI";
+    const supabaseClient = (window.parent && window.parent !== window && window.parent.cltSecureAdminClient) || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let guestsList = [];
+    let searchDebounceTimer = null;
+
+    async function fetchGuestsFromSupabase(showAlert = true) {
+      try {
+        const { data, error } = await supabaseClient.from('guests').select('*').order('employee_code', { ascending: true });
+        if (error) throw error;
+        guestsList = data || [];
+        document.getElementById('cloudSyncText').textContent = `ซิงค์ข้อมูลกับ Cloud สำเร็จ (${guestsList.length} คน)`;
+        renderCloudCardsGrid();
+        if (showAlert) alert(`ดึงข้อมูลสำเร็จ (${guestsList.length} คน)`);
+      } catch (e) {
+        alert('ดึงข้อมูลผิดพลาด: ' + e.message);
+      }
+    }
+
+    function handleSearchDebounce() {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        renderCloudCardsGrid();
+      }, 200); // หน่วงเวลา 0.2 วินาทีเพื่อให้พิมพ์ค้นหาได้ไม่สะดุด
+    }
+
+    // แสดงผลแบบเบาเครื่อง (ไม่วาด QR 500 ภาพค้างไว้)
+    function renderCloudCardsGrid() {
+      const container = document.getElementById('cloudCardsContainer');
+      const keyword = (document.getElementById('cloudSearchInput').value || '').toLowerCase().trim();
+      const branchFilter = document.getElementById('cloudBranchSelect').value;
+      container.innerHTML = '';
+
+      updateBranchDropdowns();
+
+      const filtered = guestsList.filter(guest => {
+        const matchK = String(guest.employee_code).toLowerCase().includes(keyword) || 
+                       String(guest.full_name).toLowerCase().includes(keyword) || 
+                       (guest.branch && String(guest.branch).toLowerCase().includes(keyword));
+        const matchB = !branchFilter || guest.branch === branchFilter;
+        return matchK && matchB;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="col-span-full text-center py-12 text-purple-400/60 text-xs">ไม่พบรายชื่อผู้เข้าร่วม</div>';
+        return;
+      }
+
+      // สร้างการ์ดแบบเบาและเร็ว
+      const fragment = document.createDocumentFragment();
+      filtered.forEach((guest) => {
+        const card = document.createElement('div');
+        card.className = "bg-[#0d0421] border border-purple-800/70 rounded-2xl p-4 flex flex-col justify-between shadow-lg hover:border-amber-400/50 transition cursor-pointer";
+        
+        const hasCheckedIn = guest.morning_check_in || guest.evening_check_in;
+        const qrVal = String(guest.qr_token || guest.employee_code || '').trim();
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs text-purple-300 font-mono font-bold">${guest.employee_code}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full ${hasCheckedIn ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' : 'bg-purple-950 text-purple-300 border border-purple-700/50'}">
+                ${hasCheckedIn ? 'เช็คอินแล้ว' : 'ยังไม่เช็คอิน'}
+              </span>
+            </div>
+            <div class="font-bold text-amber-300 text-sm truncate w-full">${guest.full_name}</div>
+            <div class="text-[11px] text-slate-300 mt-1 truncate">${guest.branch || 'ทั่วไป'}</div>
+          </div>
+          <button type="button" class="mt-3 w-full py-1.5 rounded-xl bg-purple-900/60 hover:bg-amber-400 hover:text-slate-950 text-amber-300 border border-purple-600/50 text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+            <span>🔍</span> ดู QR Code
+          </button>
+        `;
+
+        // กดที่การ์ดแล้วค่อยเรนเดอร์ QR Code ใน Modal
+        card.onclick = () => openQRModal(guest.full_name, guest.employee_code, guest.branch, qrVal);
+        fragment.appendChild(card);
+      });
+
+      container.appendChild(fragment);
+    }
+
+    function openQRModal(name, code, branch, token) {
+      document.getElementById('modalGuestName').textContent = name;
+      document.getElementById('modalGuestCode').textContent = `รหัส: ${code}`;
+      document.getElementById('modalGuestBranch').textContent = `สาขา: ${branch || 'ทั่วไป'}`;
+
+      const qrCanvas = document.getElementById('modalQrCanvas');
+      qrCanvas.innerHTML = '';
+      new QRCode(qrCanvas, {
+        text: String(token),
+        width: 150,
+        height: 150,
+        colorDark: '#0e0423',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      document.getElementById('qrPreviewModal').classList.remove('hidden');
+    }
+
+    function closeQRModal() {
+      document.getElementById('qrPreviewModal').classList.add('hidden');
+    }
+
+    function downloadModalQRCode() {
+      const canvas = document.querySelector('#modalQrCanvas canvas');
+      if (canvas) {
+        const link = document.createElement('a');
+        link.download = `QR-${document.getElementById('modalGuestCode').textContent}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+    }
+
+    function updateBranchDropdowns() {
+      const branches = [...new Set(guestsList.map(g => g.branch).filter(Boolean))];
+      const filterSelect = document.getElementById('cloudBranchSelect');
+      const modalSelect = document.getElementById('modalPrintBranchSelect');
+      const curVal = filterSelect.value;
+
+      filterSelect.innerHTML = '<option value="">ทุกสาขา / แผนก</option>';
+      modalSelect.innerHTML = '<option value="ALL">พิมพ์บัตรทุกสาขา</option>';
+
+      branches.forEach(b => {
+        filterSelect.innerHTML += `<option value="${b}">${b}</option>`;
+        modalSelect.innerHTML += `<option value="${b}">${b}</option>`;
+      });
+      filterSelect.value = curVal;
+    }
+
+    let importNewGuests = [];
+    let importStats = {total:0,duplicateCloud:0,duplicateFile:0,invalid:0};
+    let importInProgress = false;
+    const importEl = id => document.getElementById(id);
+    const importEscape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function cancelSmartImport() {
+      if(importInProgress) return;
+      importNewGuests = [];
+      importStats = {total:0,duplicateCloud:0,duplicateFile:0,invalid:0};
+      importEl('smartImportPanel').classList.add('hidden');
+      importEl('excelFileInput').value = '';
+    }
+    async function getAllGuestCodes() {
+      const client = window.parent?.cltSecureAdminClient;
+      if (!client) throw new Error('โปรดเปิดผ่านหน้า admin.html และเข้าสู่ระบบ Admin ก่อน');
+      const codes = new Set();
+      let from = 0;
+      while (true) {
+        const {data,error} = await client.from('guests').select('employee_code').order('employee_code').range(from,from+999);
+        if(error) throw error;
+        for(const row of data||[]) codes.add(String(row.employee_code));
+        if(!data || data.length<1000) break;
+        from+=1000;
+        if(from>100000) throw new Error('รายชื่อมีจำนวนมากเกินขอบเขตการตรวจสอบ');
+      }
+      return codes;
+    }
+    const canonicalHeader = h => String(h??'').replace(/[\s_\-–—.()\[\]\u200b]/g,'').toLowerCase();
+    const rowValue = (row,aliases) => {
+      const normalized=new Map(Object.keys(row).map(k=>[canonicalHeader(k),row[k]]));
+      for(const name of aliases){const v=normalized.get(canonicalHeader(name));if(v!==undefined && v!==null && String(v).trim()!=='')return String(v).trim();}
+      return '';
+    };
+    const allHeaders = row => Object.keys(row||{});
+    function normalizeEmployeeCode(value){
+      let code=String(value??'').trim().replace(/^'/,'');
+      if(/^\d{1,6}(?:\.0+)?$/.test(code)) code=code.replace(/\.0+$/,'').padStart(6,'0');
+      return code;
+    }
+    const codeAliases=['รหัสพนักงาน','รหัส','รหัสพนง','employee_code','employee code','empcode','emp id','employee id','id','pin'];
+    const nameAliases=['ชื่อพนักงาน','ชื่อ-สกุล','ชื่อ-นามสกุล','ชื่อและนามสกุล','ชื่อ นามสกุล','ชื่อเต็ม','ชื่อ-สกุลพนักงาน','full_name','full name','name'];
+    const firstAliases=['ชื่อ','ชื่อจริง','first_name','firstname','first name'];
+    const lastAliases=['นามสกุล','สกุล','last_name','lastname','last name'];
+    const branchAliases=['สาขา','แผนก','branch','department','หน่วยงาน','ต้นสังกัด'];
+    const hasAlias=(heads,aliases)=>heads.some(h=>aliases.some(a=>canonicalHeader(h)===canonicalHeader(a)));
+    async function handleExcelFileUpload(event) {
+      const file=event.target.files?.[0];
+      if(!file)return;
+      const panel=importEl('smartImportPanel');panel.classList.remove('hidden');
+      importEl('importFilename').textContent=file.name;
+      importEl('importMessage').textContent='กำลังอ่าน Excel และตรวจสอบข้อมูลกับ Cloud…';
+      importEl('importPreviewRows').textContent='กำลังตรวจสอบรูปแบบคอลัมน์…';
+      for(const id of ['importTotal','importNew','importDuplicates','importInvalid'])importEl(id).textContent='—';
+      importEl('importConfirmBtn').disabled=true;
+      importNewGuests=[];
+      try{
+        if(file.size>8*1024*1024)throw new Error('ไฟล์ใหญ่กว่า 8 MB');
+        const workbook=XLSX.read(new Uint8Array(await file.arrayBuffer()),{type:'array',cellText:true});
+        const sheet=workbook.Sheets[workbook.SheetNames[0]];
+        if(!sheet)throw new Error('ไม่พบชีต Excel');
+        const rows=XLSX.utils.sheet_to_json(sheet,{raw:false,defval:'',blankrows:false});
+        if(!rows.length)throw new Error('ไม่พบรายชื่อในไฟล์ โปรดตรวจสอบแถวหัวตาราง');
+        if(rows.length>10000)throw new Error('รองรับไม่เกิน 10,000 แถว');
+        const heads=allHeaders(rows[0]);
+        const hasCode=hasAlias(heads,codeAliases);
+        const hasName=hasAlias(heads,nameAliases)||(hasAlias(heads,firstAliases)&&hasAlias(heads,lastAliases));
+        if(!hasCode||!hasName){
+          importEl('importTotal').textContent=rows.length;
+          importEl('importNew').textContent='0';importEl('importDuplicates').textContent='0';importEl('importInvalid').textContent='—';
+          const missing=[!hasCode?'รหัสพนักงาน':null,!hasName?'ชื่อ-นามสกุล':null].filter(Boolean).join(' และ ');
+          importEl('importPreviewRows').innerHTML='<div class="import-row"><strong>หัวคอลัมน์ที่พบจริง:</strong> '+importEscape(heads.join(' | '))+'</div><div class="import-row">ตัวอย่างที่รองรับ: รหัสพนักงาน | ชื่อ-นามสกุล | สาขา</div><div class="import-row">หรือ รหัสพนักงาน | ชื่อ | นามสกุล | สาขา</div>';
+          importEl('importMessage').textContent='ไม่พบคอลัมน์ '+missing+' — ยังไม่ได้นำเข้าข้อมูล กรุณาปรับชื่อหัวคอลัมน์หรือเลือกชีตที่ถูกต้อง';
+          return;
+        }
+        const existingRaw=await getAllGuestCodes();
+        const existing=new Set([...existingRaw].map(normalizeEmployeeCode));
+        const inFile=new Set();let skipped=0,invalid=0,duplicateCloud=0,duplicateFile=0;const counts={code:0,name:0,other:0};const samples=[];
+        for(let i=0;i<rows.length;i++){
+          const row=rows[i];const code=normalizeEmployeeCode(rowValue(row,codeAliases));
+          const first=rowValue(row,firstAliases),last=rowValue(row,lastAliases);
+          const name=rowValue(row,nameAliases)||[first,last].filter(Boolean).join(' ');
+          const branch=rowValue(row,branchAliases)||'สำนักงานใหญ่';
+          if(!/^\d{6}$/.test(code)){invalid++;counts.code++;if(samples.length<6)samples.push('แถว '+(i+2)+': รหัสพนักงานไม่ครบ 6 หลักหรือไม่ใช่ตัวเลข');continue;}
+          if(!name||name.length>200){invalid++;counts.name++;if(samples.length<6)samples.push('แถว '+(i+2)+': ไม่มีชื่อ-นามสกุล');continue;}
+          if(branch.length>150){invalid++;counts.other++;if(samples.length<6)samples.push('แถว '+(i+2)+': ชื่อสาขายาวเกินไป');continue;}
+          if(inFile.has(code)){skipped++;duplicateFile++;if(samples.length<10)samples.push('ซ้ำในไฟล์ '+code+' — '+name);continue;}
+          inFile.add(code);
+          if(existing.has(code)){skipped++;duplicateCloud++;if(samples.length<10)samples.push('มีใน Cloud แล้ว '+code+' — '+name);continue;}
+          importNewGuests.push({employee_code:code,full_name:name,branch});
+          if(samples.length<6)samples.push('เพิ่มใหม่ '+code+' — '+name);
+        }
+        importStats={total:rows.length,duplicateCloud,duplicateFile,invalid};
+        for(const [id,n] of [['importTotal',rows.length],['importNew',importNewGuests.length],['importDuplicates',skipped],['importInvalid',invalid]])importEl(id).textContent=n;
+        const breakdown='ซ้ำกับ Cloud '+duplicateCloud+' รายการ | ซ้ำภายในไฟล์ '+duplicateFile+' รายการ | รหัสไม่ถูกต้อง '+counts.code+' | ชื่อไม่ครบ '+counts.name+' | สาขาไม่ถูกต้อง '+counts.other;
+        importEl('importPreviewRows').innerHTML='<div class="import-row"><strong>หัวคอลัมน์:</strong> '+importEscape(heads.join(' | '))+'</div><div class="import-row"><strong>'+importEscape(breakdown)+'</strong></div>'+samples.map(x=>'<div class="import-row">'+importEscape(x)+'</div>').join('');
+        importEl('importMessage').textContent=invalid?'ตรวจสอบเสร็จ: ข้าม '+invalid+' แถวที่ไม่ถูกต้อง และ '+skipped+' แถวที่ซ้ำ — เพิ่มได้เฉพาะ '+importNewGuests.length+' คน':'ตรวจสอบเสร็จ: เพิ่มได้ '+importNewGuests.length+' คน / ข้ามซ้ำ '+skipped+' คน ข้อมูลเก่าไม่เปลี่ยน';
+        importEl('importConfirmBtn').disabled=importNewGuests.length===0;
+      }catch(err){importNewGuests=[];importEl('importMessage').textContent='ตรวจสอบไม่สำเร็จ: '+(err.message||'โปรดตรวจสอบไฟล์');importEl('importPreviewRows').textContent='ยังไม่มีการนำเข้าข้อมูล';importEl('importConfirmBtn').disabled=true;}
+    }
+    async function confirmSmartImport(){
+      if(importInProgress||!importNewGuests.length)return;
+      const client=window.parent?.cltSecureAdminClient;
+      if(!client){importEl('importMessage').textContent='กรุณาเข้าสู่ระบบ Admin ก่อน';return;}
+      const {data:{session},error:authError}=await client.auth.getSession();
+      if(authError||!session?.access_token){importEl('importMessage').textContent='เซสชัน Admin หมดอายุ';return;}
+      if(!confirm('ยืนยันเพิ่มพนักงานใหม่ '+importNewGuests.length+' คน โดยข้ามคนที่มีอยู่แล้วใช่หรือไม่?'))return;
+      importInProgress=true;
+      importEl('importConfirmBtn').disabled=true;
+      importEl('importCancelBtn').disabled=true;
+      let inserted=0, skipped=0;
+      try {
+        for(let i=0;i<importNewGuests.length;i+=200){
+          importEl('importMessage').textContent='กำลังนำเข้า '+Math.min(i+200,importNewGuests.length)+' / '+importNewGuests.length+'...';
+          const res=await fetch(SUPABASE_URL+'/functions/v1/admin-import-guests',{
+            method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SUPABASE_ANON_KEY},
+            body:JSON.stringify({action:'import_new',guests:importNewGuests.slice(i,i+200)})
+          });
+          const body=await res.json().catch(()=>({}));
+          if(!res.ok||!body.success)throw new Error((body.error||'import_failed')+(body.code?' ('+body.code+')':''));
+          inserted+=body.inserted||0;skipped+=body.skipped||0;
+        }
+        importEl('importMessage').textContent='✅ ผลนำเข้า: เพิ่มสำเร็จ '+inserted+' คน | ซ้ำกับ Cloud เดิม '+importStats.duplicateCloud+' | ซ้ำใน Excel '+importStats.duplicateFile+' | ซ้ำเพิ่มระหว่างบันทึก '+skipped+' | ไม่ถูกต้อง '+importStats.invalid+' | ข้อมูลเดิมไม่ได้ถูกส่งไปแก้ไข';
+        importNewGuests=[];
+        await fetchGuestsFromSupabase(false);
+      } catch(err) {
+        importEl('importMessage').textContent='❌ นำเข้าไม่สำเร็จหรือสำเร็จบางส่วน: '+err.message+' — รีเฟรชและตรวจซ้ำก่อนลองใหม่';
+      } finally {importInProgress=false;importEl('importCancelBtn').disabled=false;importEl('importConfirmBtn').disabled=true;}
+    }
+
+    // ล้างข้อมูลผ่าน RPC แบบ transaction เท่านั้น ห้ามล้าง UI ก่อนยืนยันผลจาก Cloud
+    async function clearCloudDisplay() {
+      const client = window.parent?.cltSecureAdminClient;
+      if (!client) return alert('กรุณาเข้าสู่ระบบผ่านหน้า Admin ก่อน');
+      if (importInProgress) return alert('กรุณารอให้การนำเข้าเสร็จก่อน');
+      try {
+        const { data: auth, error: authError } = await client.auth.getUser();
+        if (authError || !auth?.user) throw new Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
+        const email = String(auth.user.email || '').toLowerCase();
+        if (!['clt.admin01@yourcompany.com','clt.admin02@yourcompany.com','clt.admin03@yourcompany.com'].includes(email)) {
+          throw new Error('บัญชีนี้ไม่มีสิทธิ์ล้างรายชื่อ');
+        }
+        // นับข้อมูลจริงจากฐานข้อมูลก่อนลบ ไม่ใช้ค่าจาก UI
+        const { count, error: countError } = await client.from('guests').select('id', { count: 'exact', head: true });
+        if (countError || count == null) throw new Error('ไม่สามารถตรวจสอบจำนวนข้อมูลจาก Cloud: ' + (countError?.message || 'unknown'));
+        if (count === 0) { await fetchGuestsFromSupabase(false); return alert('Cloud ไม่มีรายชื่อให้ลบ'); }
+        if (!confirm('กำลังจะลบรายชื่อ ' + count + ' คน พร้อมข้อมูล LINE / เพลง / รหัสลงทะเบียนที่เชื่อมโยงทั้งหมด\nระบบจะสำรองข้อมูลลงใน Supabase ก่อนลบ\nต้องการดำเนินการต่อหรือไม่?')) return;
+        const typed = prompt('ยืนยันครั้งสุดท้าย: พิมพ์ ลบทั้งหมด เพื่อดำเนินการ');
+        if (typed !== 'ลบทั้งหมด') return alert('ยกเลิกการลบแล้ว');
+        document.getElementById('cloudSyncText').textContent = 'กำลังสำรองและลบข้อมูลใน Supabase...';
+        const { data: deleted, error: rpcError } = await client.rpc('clt_admin_clear_guests', { expected_count: count });
+        if (rpcError) throw new Error(rpcError.message);
+        const { count: remaining, error: verifyError } = await client.from('guests').select('id', { count: 'exact', head: true });
+        if (verifyError || remaining == null) throw new Error('ส่งคำสั่งลบแล้ว แต่ตรวจสอบจำนวนหลังลบไม่ได้: ' + (verifyError?.message || 'unknown'));
+        await fetchGuestsFromSupabase(false);
+        if (remaining !== 0) throw new Error('ข้อมูลใน Cloud ยังเหลือ ' + remaining + ' คน กรุณาตรวจสอบก่อนนำเข้าใหม่');
+        alert('ล้างข้อมูลสำเร็จ ' + count + ' คน (RPC ตอบกลับ ' + deleted + ')\nมีสำเนาในตาราง clt_guest_reset_backups ของ Supabase');
+        // แจ้งหน้าหลักให้รีเฟรชสถิติเมื่อกลับไปหน้าอื่น
+        window.parent?.postMessage({ type: 'CLT_GUESTS_CHANGED' }, window.location.origin);
+      } catch (err) {
+        document.getElementById('cloudSyncText').textContent = 'ล้างข้อมูลไม่สำเร็จ — กรุณารีเฟรชจาก Cloud';
+        alert('ล้างข้อมูลไม่สำเร็จ: ' + (err?.message || String(err)) + '\nข้อมูลบนหน้าเว็บจะไม่ถูกล้างเอง');
+      }
+    }
+
+    function openPrintBranchModal() { document.getElementById('printBranchModal').classList.remove('hidden'); }
+    function closePrintBranchModal() { document.getElementById('printBranchModal').classList.add('hidden'); }
+
+    function executeBranchPrinting() {
+      const selected = document.getElementById('modalPrintBranchSelect').value;
+      closePrintBranchModal();
+      const printItems = selected === 'ALL' ? guestsList : guestsList.filter(g => g.branch === selected);
+      if (printItems.length === 0) return alert('ไม่มีข้อมูล');
+
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <html><head><title>Print Badges</title>
+        
+        <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
+        <style>@page { size: A4; margin: 8mm; } body { font-family: 'Mali', sans-serif; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8mm; } .badge { border: 2px dashed #7c3aed; padding: 12px; text-align: center; page-break-inside: avoid; }</style></head>
+        <body><div class="grid" id="c"></div><script>
+          const list = ${JSON.stringify(printItems)};
+          list.forEach((item, idx) => {
+            const b = document.createElement('div'); b.className = 'badge';
+            b.innerHTML = '<h3>✨ VIP Party</h3><div id="q_'+idx+'"></div><p>'+item.full_name+' ('+item.employee_code+')</p>';
+            document.getElementById('c').appendChild(b);
+            new QRCode(document.getElementById('q_'+idx), { text: String(item.qr_token || item.employee_code), width: 105, height: 105 });
+          });
+          setTimeout(() => window.print(), 700);
+        <\/script></body></html>
+      `);
+      printWindow.document.close();
+    }
+
+
+    let attendanceRows = [];
+    async function loadAttendanceRows() {
+      const client = window.parent?.cltSecureAdminClient;
+      if (!client) throw new Error('กรุณาเปิดผ่านหน้า Admin');
+      const {data:auth,error:authError}=await client.auth.getUser();
+      if(authError || !auth?.user) throw new Error('กรุณาเข้าสู่ระบบใหม่');
+      const rows=[];
+      for(let offset=0;;offset+=500){
+        const {data,error}=await client.from('guests').select('employee_code,full_name,branch').order('employee_code').range(offset,offset+499);
+        if(error) throw error;
+        rows.push(...(data||[]));
+        if(!data || data.length<500) break;
+      }
+      return rows;
+    }
+    const attendanceBranchName = g => String(g.branch || 'ทั่วไป');
+    async function openAttendancePrint(){
+      const modal=document.getElementById('attendanceModal'), status=document.getElementById('attendanceStatus'), btn=document.getElementById('attendancePrintBtn'), select=document.getElementById('attendanceBranch');
+      modal.classList.remove('hidden'); btn.disabled=true; select.replaceChildren(); status.textContent='กำลังดึงรายชื่อจาก Cloud…';
+      try{
+        attendanceRows=await loadAttendanceRows();
+        select.add(new Option('ทุกสาขา (แยกหน้า)', ''));
+        [...new Set(attendanceRows.map(attendanceBranchName))].sort((a,b)=>a.localeCompare(b,'th')).forEach(b=>select.add(new Option(b,b)));
+        status.textContent='รายชื่อทั้งหมด '+attendanceRows.length+' คน'; btn.disabled=!attendanceRows.length;
+      }catch(e){status.textContent='โหลดไม่สำเร็จ: '+e.message;}
+    }
+    async function printAttendance(){
+      const btn=document.getElementById('attendancePrintBtn'), status=document.getElementById('attendanceStatus');
+      const branch=document.getElementById('attendanceBranch').value, round=document.getElementById('attendanceRound').value;
+      const w=window.open('','_blank');
+      if(!w){status.textContent='กรุณาอนุญาต Pop-up ก่อนพิมพ์';return;}
+      btn.disabled=true; w.document.body.textContent='กำลังดึงรายชื่อล่าสุด…';
+      try{
+        const rows=(await loadAttendanceRows()).filter(g=>!branch || attendanceBranchName(g)===branch);
+        if(!rows.length) throw new Error('ไม่พบรายชื่อสำหรับพิมพ์');
+        const groups=new Map();
+        rows.forEach(g=>{const b=attendanceBranchName(g);if(!groups.has(b))groups.set(b,[]);groups.get(b).push(g);});
+        const esc=importEscape, pages=[];
+        const heads=round==='both'?['ลายเซ็นรอบเช้า','ลายเซ็นรอบเย็น']:[round==='morning'?'ลายเซ็นรอบเช้า':'ลายเซ็นรอบเย็น'];
+        for(const b of [...groups.keys()].sort((a,b)=>a.localeCompare(b,'th'))){
+          const list=groups.get(b).sort((a,b)=>String(a.full_name||'').localeCompare(String(b.full_name||''),'th')||String(a.employee_code).localeCompare(String(b.employee_code)));
+          for(let i=0;i<list.length;i+=18) pages.push({b,total:list.length,offset:i,items:list.slice(i,i+18)});
+        }
+        const html=pages.map((p,k)=>`<section><h2>บริษัท ห้องปฏิบัติการกลาง (ประเทศไทย) จำกัด</h2><h1>ใบลงทะเบียนเข้าร่วมงาน CLT 2569</h1><p class="center">VIP Party Connect</p><p>สาขา: ${esc(p.b)} | จำนวน ${p.total} คน | วันที่ ................................</p><table><colgroup><col style="width:8%"><col style="width:15%"><col style="width:37%">${heads.map(()=>`<col style="width:${40/heads.length}%">`).join('')}</colgroup><thead><tr><th>ลำดับ</th><th>รหัสพนักงาน</th><th>ชื่อ–นามสกุล</th>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${p.items.map((g,j)=>`<tr><td class="center">${p.offset+j+1}</td><td class="center">${esc(normalizeEmployeeCode(g.employee_code))}</td><td>${esc(g.full_name)}</td>${heads.map(()=>'<td></td>').join('')}</tr>`).join('')}</tbody></table><p>ผู้ตรวจสอบรายชื่อ ........................................................</p><p class="footer">หน้า ${k+1} / ${pages.length} · รวม ${rows.length} คน</p></section>`).join('');
+        w.document.open();w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบลงชื่อพนักงาน CLT 2569</title><style>@page{size:A4 portrait;margin:12mm}*{box-sizing:border-box}body{font:12px Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0}h1,h2,.center{text-align:center}h1{font-size:20px;margin:5px 0}h2{font-size:15px;margin:0}p{margin:7px 0}table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{border:1px solid #333;padding:3px 5px;overflow-wrap:anywhere}th{height:10mm}td{height:10mm}tr{break-inside:avoid}thead{display:table-header-group}section{break-after:page}section:last-child{break-after:auto}.footer{text-align:right}.tools{padding:10px;text-align:center}@media print{.tools{display:none}}@media screen{section{max-width:186mm;margin:15px auto;padding:10px;border:1px solid #ddd}}</style></head><body><div class="tools"><button onclick="window.print()">พิมพ์ / บันทึก PDF</button></div>${html}</body></html>`);w.document.close();w.focus();w.print();
+        status.textContent='เตรียมใบลงชื่อ '+rows.length+' คน / '+pages.length+' หน้าแล้ว';
+      }catch(e){w.close();status.textContent='พิมพ์ไม่สำเร็จ: '+e.message;}finally{btn.disabled=false;}
+    }
+
+    fetchGuestsFromSupabase(false);
+  </script>
+</body>
+</html>
